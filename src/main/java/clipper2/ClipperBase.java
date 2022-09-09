@@ -2,8 +2,24 @@ package clipper2;
 
 import java.util.*;
 
+import clipper2.core.ClipType;
+import clipper2.core.FillRule;
+import clipper2.core.InternalClipper;
+import clipper2.core.PathType;
+import clipper2.core.Point64;
+import clipper2.core.Rect64;
+import clipper2.engine.Active;
+import clipper2.engine.IntersectNode;
+import clipper2.engine.Joiner;
+import clipper2.engine.LocalMinima;
+import clipper2.engine.OutPt;
+import clipper2.engine.OutRec;
+import clipper2.engine.PointInPolygonResult;
+import clipper2.engine.Vertex;
+import clipper2.engine.VertexFlags;
+
 public class ClipperBase {
-	
+
 	private ClipType _cliptype;
 	private FillRule _fillrule;
 	private Active _actives = null;
@@ -72,13 +88,11 @@ public class ClipperBase {
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static bool IsOpenEnd(Active ae)
 	private static boolean IsOpenEnd(Active ae) {
-	  return ae.localMin.isOpen && IsOpenEnd(ae.vertexTop!);
+	  return ae.localMin.isOpen && IsOpenEnd(ae.vertexTop);
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static bool IsOpenEnd(Vertex v)
 	private static boolean IsOpenEnd(Vertex v) {
-		return (v.flags & (VertexFlags.OpenStart | VertexFlags.OpenEnd)) != VertexFlags.None;
+		return (v.flags.getValue() & (VertexFlags.OpenStart.getValue() | VertexFlags.OpenEnd.getValue())) != VertexFlags.None.getValue();
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
@@ -94,7 +108,7 @@ public class ClipperBase {
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static bool IsFront(Active ae)
 	private static boolean IsFront(Active ae) {
-	  return (ae == ae.outrec!.frontEdge);
+		return (ae == ae.outrec.frontEdge);
 	}
 
 	/*******************************************************************************
@@ -202,19 +216,19 @@ public class ClipperBase {
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static Vertex NextVertex(Active ae)
 	private static Vertex NextVertex(Active ae) {
-	  if (ae.windDx > 0) {
-		return ae.vertexTop!.next!;
-	  }
-	  return ae.vertexTop!.prev!;
+		if (ae.windDx > 0) {
+			return ae.vertexTop.next;
+		}
+		return ae.vertexTop.prev;
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private Vertex PrevPrevVertex(Active ae)
 	private Vertex PrevPrevVertex(Active ae) {
-	  if (ae.windDx > 0) {
-		return ae.vertexTop!.prev!.prev!;
-	  }
-	  return ae.vertexTop!.next!.next!;
+		if (ae.windDx > 0) {
+			return ae.vertexTop.prev.prev;
+		}
+		return ae.vertexTop.next.next;
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
@@ -226,7 +240,7 @@ public class ClipperBase {
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static bool IsMaxima(Active ae)
 	private static boolean IsMaxima(Active ae) {
-	  return IsMaxima(ae.vertexTop!);
+		return IsMaxima(ae.vertexTop);
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
@@ -246,20 +260,20 @@ public class ClipperBase {
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static System.Nullable<Vertex> GetCurrYMaximaVertex(Active ae)
 	private static Vertex GetCurrYMaximaVertex(Active ae) {
-	  Vertex result = ae.vertexTop;
-	  if (ae.windDx > 0) {
-		while (result!.next!.pt.Y == result.pt.Y) {
-			result = result.next;
+		Vertex result = ae.vertexTop;
+		if (ae.windDx > 0) {
+			while (result.next.pt.Y == result.pt.Y) {
+				result = result.next;
+			}
+		} else {
+			while (result.prev.pt.Y == result.pt.Y) {
+				result = result.prev;
+			}
 		}
-	  } else {
-		while (result!.prev!.pt.Y == result.pt.Y) {
-			result = result.prev;
+		if (!IsMaxima(result)) {
+			result = null; // not a maxima
 		}
-	  }
-	  if (!IsMaxima(result)) {
-		  result = null; // not a maxima
-	  }
-	  return result;
+		return result;
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
@@ -305,46 +319,46 @@ public class ClipperBase {
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static void SwapOutrecs(Active ae1, Active ae2)
 	private static void SwapOutrecs(Active ae1, Active ae2) {
-	  OutRec or1 = ae1.outrec; // at least one edge has
-	  OutRec or2 = ae2.outrec; // an assigned outrec
-	  if (or1.equals(or2)) {
-		Active ae = or1!.frontEdge;
-		or1.frontEdge = or1.backEdge;
-		or1.backEdge = ae;
-		return;
-	  }
-
-	  if (or1 != null) {
-		if (ae1 == or1.frontEdge) {
-		  or1.frontEdge = ae2;
-		} else {
-		  or1.backEdge = ae2;
+		OutRec or1 = ae1.outrec; // at least one edge has
+		OutRec or2 = ae2.outrec; // an assigned outrec
+		if (or1.equals(or2)) {
+			Active ae = or1.frontEdge;
+			or1.frontEdge = or1.backEdge;
+			or1.backEdge = ae;
+			return;
 		}
-	  }
 
-	  if (or2 != null) {
-		if (ae2 == or2.frontEdge) {
-		  or2.frontEdge = ae1;
-		} else {
-		  or2.backEdge = ae1;
+		if (or1 != null) {
+			if (ae1 == or1.frontEdge) {
+				or1.frontEdge = ae2;
+			} else {
+				or1.backEdge = ae2;
+			}
 		}
-	  }
 
-	  ae1.outrec = or2;
-	  ae2.outrec = or1;
+		if (or2 != null) {
+			if (ae2 == or2.frontEdge) {
+				or2.frontEdge = ae1;
+			} else {
+				or2.backEdge = ae1;
+			}
+		}
+
+		ae1.outrec = or2;
+		ae2.outrec = or1;
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static double Area(OutPt op)
 	private static double Area(OutPt op) {
-	  // https://en.wikipedia.org/wiki/Shoelace_formula
-	  double area = 0.0;
-	  OutPt op2 = op;
-	  do {
-		area += (double)(op2.prev.pt.Y + op2.pt.Y) * (op2.prev.pt.X - op2.pt.X);
-		op2 = op2.next!;
-	  } while (op2 != op);
-	  return area * 0.5;
+		// https://en.wikipedia.org/wiki/Shoelace_formula
+		double area = 0.0;
+		OutPt op2 = op;
+		do {
+			area += (double) (op2.prev.pt.Y + op2.pt.Y) * (op2.prev.pt.X - op2.pt.X);
+			op2 = op2.next;
+		} while (op2 != op);
+		return area * 0.5;
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
@@ -366,31 +380,31 @@ public class ClipperBase {
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static void UncoupleOutRec(Active ae)
 	private static void UncoupleOutRec(Active ae) {
-	  OutRec outrec = ae.outrec;
-	  if (outrec == null) {
-		  return;
-	  }
-	  outrec.frontEdge!.outrec = null;
-	  outrec.backEdge!.outrec = null;
-	  outrec.frontEdge = null;
-	  outrec.backEdge = null;
+		OutRec outrec = ae.outrec;
+		if (outrec == null) {
+			return;
+		}
+		outrec.frontEdge.outrec = null;
+		outrec.backEdge.outrec = null;
+		outrec.frontEdge = null;
+		outrec.backEdge = null;
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private bool OutrecIsAscending(Active hotEdge)
 	private boolean OutrecIsAscending(Active hotEdge) {
-		  return (hotEdge == hotEdge.outrec!.frontEdge);
+		return (hotEdge == hotEdge.outrec.frontEdge);
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static void SwapFrontBackSides(OutRec outrec)
 	private static void SwapFrontBackSides(OutRec outrec) {
-	  // while this proc. is needed for open paths
-	  // it's almost never needed for closed paths
-	  Active ae2 = outrec.frontEdge!;
-	  outrec.frontEdge = outrec.backEdge;
-	  outrec.backEdge = ae2;
-	  outrec.pts = outrec.pts!.next;
+		// while this proc. is needed for open paths
+		// it's almost never needed for closed paths
+		Active ae2 = outrec.frontEdge;
+		outrec.frontEdge = outrec.backEdge;
+		outrec.backEdge = ae2;
+		outrec.pts = outrec.pts.next;
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
@@ -496,139 +510,138 @@ public class ClipperBase {
 		_minimaList.add(lm);
 	}
 
-	protected final void AddPathsToVertexList(Paths64 paths, PathType polytype, boolean isOpen) {
-	  int totalVertCnt = 0;
-	  for (Path64 path : paths) {
-		  totalVertCnt += path.Count;
-	  }
-	  _vertexList.ensureCapacity(_vertexList.size() + totalVertCnt);
+	protected final void AddPathsToVertexList(List<List<Point64>> paths, PathType polytype, boolean isOpen) {
+		int totalVertCnt = 0;
+		for (List<Point64> path : paths) {
+			totalVertCnt += path.size();
+		}
+		_vertexList.ensureCapacity(_vertexList.size() + totalVertCnt);
 
-	  for (Path64 path : paths) {
-		Vertex v0 = null, prev_v = null, curr_v;
-		for (Point64 pt : path) {
-		  if (v0 == null) {
-			v0 = new Vertex(pt, VertexFlags.None, null);
-			_vertexList.add(v0);
+		for (List<Point64> path : paths) {
+			Vertex v0 = null, prev_v = null, curr_v;
+			for (Point64 pt : path) {
+				if (v0 == null) {
+					v0 = new Vertex(pt, VertexFlags.None, null);
+					_vertexList.add(v0);
+					prev_v = v0;
+				} else if (prev_v.pt != pt) { // ie skips duplicates
+					curr_v = new Vertex(pt, VertexFlags.None, prev_v);
+					_vertexList.add(curr_v);
+					prev_v.next = curr_v;
+					prev_v = curr_v;
+				}
+			}
+			if (prev_v == null || prev_v.prev == null) {
+				continue;
+			}
+			if (!isOpen && v0.equals(prev_v.pt).pt) {
+				prev_v = prev_v.prev;
+			}
+			prev_v.next = v0;
+			v0.prev = prev_v;
+			if (!isOpen && prev_v.equals(prev_v.next)) {
+				continue;
+			}
+
+			// OK, we have a valid path
+			boolean going_up, going_up0;
+			if (isOpen) {
+				curr_v = v0.next;
+				while (!v0.equals(curr_v) && curr_v.pt.Y == v0.pt.Y) {
+					curr_v = curr_v.next;
+				}
+				going_up = curr_v.pt.Y <= v0.pt.Y;
+				if (going_up) {
+					v0.flags = VertexFlags.OpenStart;
+					AddLocMin(v0, polytype, true);
+				} else {
+					v0.flags = VertexFlags.OpenStart | VertexFlags.LocalMax;
+				}
+			} else { // closed path
+				prev_v = v0.prev;
+				while (!v0.equals(prev_v) && prev_v.pt.Y == v0.pt.Y) {
+					prev_v = prev_v.prev;
+				}
+				if (v0.equals(prev_v)) {
+					continue; // only open paths can be completely flat
+				}
+				going_up = prev_v.pt.Y > v0.pt.Y;
+			}
+
+			going_up0 = going_up;
 			prev_v = v0;
-		  } else if (prev_v!.pt != pt) { // ie skips duplicates
-			curr_v = new Vertex(pt, VertexFlags.None, prev_v);
-			_vertexList.add(curr_v);
-			prev_v.next = curr_v;
-			prev_v = curr_v;
-		  }
-		}
-		if (prev_v == null || prev_v.prev == null) {
-			continue;
-		}
-		if (!isOpen && v0.equals(prev_v.pt)!.pt) {
-			prev_v = prev_v.prev;
-		}
-		prev_v.next = v0;
-		v0!.prev = prev_v;
-		if (!isOpen && prev_v.equals(prev_v.next)) {
-			continue;
-		}
+			curr_v = v0.next;
+			while (!v0.equals(curr_v)) {
+				if (curr_v.pt.Y > prev_v.pt.Y && going_up) {
+					prev_v.flags |= VertexFlags.LocalMax;
+					going_up = false;
+				} else if (curr_v.pt.Y < prev_v.pt.Y && !going_up) {
+					going_up = true;
+					AddLocMin(prev_v, polytype, isOpen);
+				}
+				prev_v = curr_v;
+				curr_v = curr_v.next;
+			}
 
-		// OK, we have a valid path
-		boolean going_up, going_up0;
-		if (isOpen) {
-		  curr_v = v0.next;
-		  while (!v0.equals(curr_v) && curr_v!.pt.Y == v0.pt.Y) {
-			curr_v = curr_v.next;
-		  }
-		  going_up = curr_v.pt.Y <= v0.pt.Y;
-		  if (going_up) {
-			v0.flags = VertexFlags.OpenStart;
-			AddLocMin(v0, polytype, true);
-		  } else {
-			v0.flags = VertexFlags.OpenStart | VertexFlags.LocalMax;
-		  }
+			if (isOpen) {
+				prev_v.flags |= VertexFlags.OpenEnd;
+				if (going_up) {
+					prev_v.flags |= VertexFlags.LocalMax;
+				} else {
+					AddLocMin(prev_v, polytype, isOpen);
+				}
+			} else if (going_up != going_up0) {
+				if (going_up0) {
+					AddLocMin(prev_v, polytype, false);
+				} else {
+					prev_v.flags |= VertexFlags.LocalMax;
+				}
+			}
 		}
-		else { // closed path
-		  prev_v = v0.prev;
-		  while (!v0.equals(prev_v) && prev_v!.pt.Y == v0.pt.Y) {
-			prev_v = prev_v.prev;
-		  }
-		  if (v0.equals(prev_v)) {
-			continue; // only open paths can be completely flat
-		  }
-		  going_up = prev_v.pt.Y > v0.pt.Y;
-		}
-
-		going_up0 = going_up;
-		prev_v = v0;
-		curr_v = v0.next;
-		while (!v0.equals(curr_v)) {
-		  if (curr_v!.pt.Y > prev_v.pt.Y && going_up) {
-			prev_v.flags |= VertexFlags.LocalMax;
-			going_up = false;
-		  } else if (curr_v.pt.Y < prev_v.pt.Y && !going_up) {
-			going_up = true;
-			AddLocMin(prev_v, polytype, isOpen);
-		  }
-		  prev_v = curr_v;
-		  curr_v = curr_v.next;
-		}
-
-		if (isOpen) {
-		  prev_v.flags |= VertexFlags.OpenEnd;
-		  if (going_up) {
-			prev_v.flags |= VertexFlags.LocalMax;
-		  } else {
-			AddLocMin(prev_v, polytype, isOpen);
-		  }
-		} else if (going_up != going_up0) {
-		  if (going_up0) {
-			  AddLocMin(prev_v, polytype, false);
-		  } else {
-			  prev_v.flags |= VertexFlags.LocalMax;
-		  }
-		}
-	  }
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] public void AddSubject(Path64 path)
-	public final void AddSubject(Path64 path) {
+//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] public void AddSubject(List<Point64> path)
+	public final void AddSubject(List<Point64> path) {
 		AddPath(path, PathType.Subject);
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] public void AddOpenSubject(Path64 path)
-	public final void AddOpenSubject(Path64 path) {
+//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] public void AddOpenSubject(List<Point64> path)
+	public final void AddOpenSubject(List<Point64> path) {
 		AddPath(path, PathType.Subject, true);
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] public void AddClip(Path64 path)
-	public final void AddClip(Path64 path) {
+//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] public void AddClip(List<Point64> path)
+	public final void AddClip(List<Point64> path) {
 		AddPath(path, PathType.Clip);
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] protected void AddPath(Path64 path, PathType polytype, bool isOpen = false)
+//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] protected void AddPath(List<Point64> path, PathType polytype, bool isOpen = false)
 
-	protected final void AddPath(Path64 path, PathType polytype) {
+	protected final void AddPath(List<Point64> path, PathType polytype) {
 		AddPath(path, polytype, false);
 	}
 
 //C# TO JAVA CONVERTER NOTE: Java does not support optional parameters. Overloaded method(s) are created above:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] protected void AddPath(Path64 path, PathType polytype, bool isOpen = false)
-	protected final void AddPath(Path64 path, PathType polytype, boolean isOpen) {
-	  Paths64 tmp = new Paths64(1) { path };
+//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] protected void AddPath(List<Point64> path, PathType polytype, bool isOpen = false)
+	protected final void AddPath(List<Point64> path, PathType polytype, boolean isOpen) {
+	  List<List<Point64>> tmp = new List<List<Point64>>(1) { path };
 	  AddPaths(tmp, polytype, isOpen);
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] protected void AddPaths(Paths64 paths, PathType polytype, bool isOpen = false)
+//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] protected void AddPaths(List<List<Point64>> paths, PathType polytype, bool isOpen = false)
 
-	protected final void AddPaths(Paths64 paths, PathType polytype) {
+	protected final void AddPaths(List<List<Point64>> paths, PathType polytype) {
 		AddPaths(paths, polytype, false);
 	}
 
 //C# TO JAVA CONVERTER NOTE: Java does not support optional parameters. Overloaded method(s) are created above:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] protected void AddPaths(Paths64 paths, PathType polytype, bool isOpen = false)
-	protected final void AddPaths(Paths64 paths, PathType polytype, boolean isOpen) {
+//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] protected void AddPaths(List<List<Point64>> paths, PathType polytype, bool isOpen = false)
+	protected final void AddPaths(List<List<Point64>> paths, PathType polytype, boolean isOpen) {
 		if (isOpen) {
 			_hasOpenPaths = true;
 		}
@@ -783,17 +796,17 @@ public class ClipperBase {
 	  // update windCount2 ...
 	  if (_fillrule == FillRule.EvenOdd) {
 		while (!ae2.equals(ae)) {
-		  if (GetPolyType(ae2!) != pt && !IsOpen(ae2!)) {
+		  if (GetPolyType(ae2) != pt && !IsOpen(ae2)) {
 			ae.windCount2 = (ae.windCount2 == 0 ? 1 : 0);
 		  }
-		  ae2 = ae2!.nextInAEL;
+		  ae2 = ae2.nextInAEL;
 		}
 	  } else {
 		while (!ae2.equals(ae)) {
-		  if (GetPolyType(ae2!) != pt && !IsOpen(ae2!)) {
-			ae.windCount2 += ae2!.windDx;
+		  if (GetPolyType(ae2) != pt && !IsOpen(ae2)) {
+			ae.windCount2 += ae2.windDx;
 		  }
-		  ae2 = ae2!.nextInAEL;
+		  ae2 = ae2.nextInAEL;
 		}
 	  }
 	}
@@ -805,24 +818,24 @@ public class ClipperBase {
 	  if (_fillrule == FillRule.EvenOdd) {
 		int cnt1 = 0, cnt2 = 0;
 		while (!ae2.equals(ae)) {
-		  if (GetPolyType(ae2!) == PathType.Clip) {
+		  if (GetPolyType(ae2) == PathType.Clip) {
 			cnt2++;
-		  } else if (!IsOpen(ae2!)) {
+		  } else if (!IsOpen(ae2)) {
 			cnt1++;
 		  }
-		  ae2 = ae2!.nextInAEL;
+		  ae2 = ae2.nextInAEL;
 		}
 
 		ae.windCount = (IsOdd(cnt1) ? 1 : 0);
 		ae.windCount2 = (IsOdd(cnt2) ? 1 : 0);
 	  } else {
 		while (!ae2.equals(ae)) {
-		  if (GetPolyType(ae2!) == PathType.Clip) {
-			ae.windCount2 += ae2!.windDx;
-		  } else if (!IsOpen(ae2!)) {
-			ae.windCount += ae2!.windDx;
+		  if (GetPolyType(ae2) == PathType.Clip) {
+			ae.windCount2 += ae2.windDx;
+		  } else if (!IsOpen(ae2)) {
+			ae.windCount += ae2.windDx;
 		  }
-		  ae2 = ae2!.nextInAEL;
+		  ae2 = ae2.nextInAEL;
 		}
 	  }
 	}
@@ -923,7 +936,7 @@ public class ClipperBase {
 		  leftBound.curX = localMinima.vertex.pt.X;
 		  leftBound.windDx = -1;
 		  leftBound.vertexTop = localMinima.vertex.prev;
-		  leftBound.top = localMinima.vertex.prev!.pt;
+		  leftBound.top = localMinima.vertex.prev.pt;
 		  leftBound.outrec = null;
 		  leftBound.localMin = localMinima;
 		  SetDx(leftBound);
@@ -937,7 +950,7 @@ public class ClipperBase {
 		  rightBound.curX = localMinima.vertex.pt.X;
 		  rightBound.windDx = 1;
 		  rightBound.vertexTop = localMinima.vertex.next;
-		  rightBound.top = localMinima.vertex.next!.pt;
+		  rightBound.top = localMinima.vertex.next.pt;
 		  rightBound.outrec = null;
 		  rightBound.localMin = localMinima;
 		  SetDx(rightBound);
@@ -977,7 +990,7 @@ public class ClipperBase {
 		}
 
 		boolean contributing;
-		leftBound!.isLeftBound = true;
+		leftBound.isLeftBound = true;
 		InsertLeftEdge(leftBound);
 
 		if (IsOpen(leftBound)) {
@@ -996,8 +1009,8 @@ public class ClipperBase {
 		  if (contributing) {
 			AddLocalMinPoly(leftBound, rightBound, leftBound.bot, true);
 			if (!IsHorizontal(leftBound) && TestJoinWithPrev1(leftBound)) {
-			  OutPt op = AddOutPt(leftBound.prevInAEL!, leftBound.bot);
-			  AddJoin(op, leftBound.outrec!.pts!);
+			  OutPt op = AddOutPt(leftBound.prevInAEL, leftBound.bot);
+			  AddJoin(op, leftBound.outrec.pts);
 			}
 		  }
 
@@ -1007,8 +1020,8 @@ public class ClipperBase {
 		  }
 
 		  if (!IsHorizontal(rightBound) && TestJoinWithNext1(rightBound)) {
-			OutPt op = AddOutPt(rightBound.nextInAEL!, rightBound.bot);
-			AddJoin(rightBound.outrec!.pts!, op);
+			OutPt op = AddOutPt(rightBound.nextInAEL, rightBound.bot);
+			AddJoin(rightBound.outrec.pts, op);
 		  }
 
 		  if (IsHorizontal(rightBound)) {
@@ -1144,9 +1157,9 @@ public class ClipperBase {
 	private OutPt AddLocalMaxPoly(Active ae1, Active ae2, Point64 pt) {
 	  if (IsFront(ae1) == IsFront(ae2)) {
 		if (IsOpenEnd(ae1)) {
-		  SwapFrontBackSides(ae1.outrec!);
+		  SwapFrontBackSides(ae1.outrec);
 		} else if (IsOpenEnd(ae2)) {
-		  SwapFrontBackSides(ae2.outrec!);
+		  SwapFrontBackSides(ae2.outrec);
 		} else {
 		  _succeeded = false;
 		  return null;
@@ -1155,7 +1168,7 @@ public class ClipperBase {
 
 	  OutPt result = AddOutPt(ae1, pt);
 	  if (ae1.outrec == ae2.outrec) {
-		OutRec outrec = ae1.outrec!;
+		OutRec outrec = ae1.outrec;
 		outrec.pts = result;
 		UncoupleOutRec(ae1);
 		if (!IsOpen(ae1)) {
@@ -1177,7 +1190,7 @@ public class ClipperBase {
 		} else {
 		  JoinOutrecPaths(ae2, ae1);
 		}
-	  } else if (ae1.outrec!.idx < ae2.outrec!.idx) {
+	  } else if (ae1.outrec.idx < ae2.outrec.idx) {
 		JoinOutrecPaths(ae1, ae2);
 	  } else {
 		JoinOutrecPaths(ae2, ae1);
@@ -1189,86 +1202,86 @@ public class ClipperBase {
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void JoinOutrecPaths(Active ae1, Active ae2)
 	private void JoinOutrecPaths(Active ae1, Active ae2) {
-	  // join ae2 outrec path onto ae1 outrec path and then delete ae2 outrec path
-	  // pointers. (NB Only very rarely do the joining ends share the same coords.)
-	  OutPt p1Start = ae1.outrec!.pts!;
-	  OutPt p2Start = ae2.outrec!.pts!;
-	  OutPt p1End = p1Start.next!;
-	  OutPt p2End = p2Start.next!;
-	  if (IsFront(ae1)) {
-		p2End.prev = p1Start;
-		p1Start.next = p2End;
-		p2Start.next = p1End;
-		p1End.prev = p2Start;
-		ae1.outrec.pts = p2Start;
-		// nb: if IsOpen(e1) then e1 & e2 must be a 'maximaPair'
-		ae1.outrec.frontEdge = ae2.outrec.frontEdge;
-		if (ae1.outrec.frontEdge != null) {
-		  ae1.outrec.frontEdge!.outrec = ae1.outrec;
+		// join ae2 outrec path onto ae1 outrec path and then delete ae2 outrec path
+		// pointers. (NB Only very rarely do the joining ends share the same coords.)
+		OutPt p1Start = ae1.outrec.pts;
+		OutPt p2Start = ae2.outrec.pts;
+		OutPt p1End = p1Start.next;
+		OutPt p2End = p2Start.next;
+		if (IsFront(ae1)) {
+			p2End.prev = p1Start;
+			p1Start.next = p2End;
+			p2Start.next = p1End;
+			p1End.prev = p2Start;
+			ae1.outrec.pts = p2Start;
+			// nb: if IsOpen(e1) then e1 & e2 must be a 'maximaPair'
+			ae1.outrec.frontEdge = ae2.outrec.frontEdge;
+			if (ae1.outrec.frontEdge != null) {
+				ae1.outrec.frontEdge.outrec = ae1.outrec;
+			}
+		} else {
+			p1End.prev = p2Start;
+			p2Start.next = p1End;
+			p1Start.next = p2End;
+			p2End.prev = p1Start;
+
+			ae1.outrec.backEdge = ae2.outrec.backEdge;
+			if (ae1.outrec.backEdge != null) {
+				ae1.outrec.backEdge.outrec = ae1.outrec;
+			}
 		}
-	  } else {
-		p1End.prev = p2Start;
-		p2Start.next = p1End;
-		p1Start.next = p2End;
-		p2End.prev = p1Start;
 
-		ae1.outrec.backEdge = ae2.outrec.backEdge;
-		if (ae1.outrec.backEdge != null) {
-		  ae1.outrec.backEdge!.outrec = ae1.outrec;
+		// an owner must have a lower idx otherwise
+		// it won't be a valid owner
+		if (ae2.outrec.owner != null && ae2.outrec.owner.idx < ae1.outrec.idx) {
+			if (ae1.outrec.owner == null || ae2.outrec.owner.idx < ae1.outrec.owner.idx) {
+				ae1.outrec.owner = ae2.outrec.owner;
+			}
 		}
-	  }
 
-	  // an owner must have a lower idx otherwise
-	  // it won't be a valid owner
-	  if (ae2.outrec.owner != null && ae2.outrec.owner.idx < ae1.outrec.idx) {
-		if (ae1.outrec.owner == null || ae2.outrec.owner.idx < ae1.outrec.owner.idx) {
-			ae1.outrec.owner = ae2.outrec.owner;
+		// after joining, the ae2.OutRec must contains no vertices ...
+		ae2.outrec.frontEdge = null;
+		ae2.outrec.backEdge = null;
+		ae2.outrec.pts = null;
+		ae2.outrec.owner = ae1.outrec; // this may be redundant
+
+		if (IsOpenEnd(ae1)) {
+			ae2.outrec.pts = ae1.outrec.pts;
+			ae1.outrec.pts = null;
 		}
-	  }
 
-	  // after joining, the ae2.OutRec must contains no vertices ...
-	  ae2.outrec.frontEdge = null;
-	  ae2.outrec.backEdge = null;
-	  ae2.outrec.pts = null;
-	  ae2.outrec.owner = ae1.outrec; // this may be redundant
-
-	  if (IsOpenEnd(ae1)) {
-		ae2.outrec.pts = ae1.outrec.pts;
-		ae1.outrec.pts = null;
-	  }
-
-	  // and ae1 and ae2 are maxima and are about to be dropped from the Actives list.
-	  ae1.outrec = null;
-	  ae2.outrec = null;
+		// and ae1 and ae2 are maxima and are about to be dropped from the Actives list.
+		ae1.outrec = null;
+		ae2.outrec = null;
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private OutPt AddOutPt(Active ae, Point64 pt)
 	private OutPt AddOutPt(Active ae, Point64 pt) {
-	  OutPt newOp;
+		OutPt newOp;
 
-	  // Outrec.OutPts: a circular doubly-linked-list of POutPt where ...
-	  // opFront[.Prev]* ~~~> opBack & opBack == opFront.Next
-	  OutRec outrec = ae.outrec!;
-	  boolean toFront = IsFront(ae);
-	  OutPt opFront = outrec.pts!;
-	  OutPt opBack = opFront.next!;
+		// Outrec.OutPts: a circular doubly-linked-list of POutPt where ...
+		// opFront[.Prev]* ~~~> opBack & opBack == opFront.Next
+		OutRec outrec = ae.outrec;
+		boolean toFront = IsFront(ae);
+		OutPt opFront = outrec.pts;
+		OutPt opBack = opFront.next;
 
-	  if (toFront && (pt == opFront.pt)) {
-		  newOp = opFront;
-	  } else if (!toFront && (pt == opBack.pt)) {
-		  newOp = opBack;
-	  } else {
-		newOp = new OutPt(pt, outrec);
-		opBack.prev = newOp;
-		newOp.prev = opFront;
-		newOp.next = opBack;
-		opFront.next = newOp;
-		if (toFront) {
-			outrec.pts = newOp;
+		if (toFront && (pt == opFront.pt)) {
+			newOp = opFront;
+		} else if (!toFront && (pt == opBack.pt)) {
+			newOp = opBack;
+		} else {
+			newOp = new OutPt(pt, outrec);
+			opBack.prev = newOp;
+			newOp.prev = opFront;
+			newOp.next = opBack;
+			opFront.next = newOp;
+			if (toFront) {
+				outrec.pts = newOp;
+			}
 		}
-	  }
-	  return newOp;
+		return newOp;
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
@@ -1298,20 +1311,20 @@ public class ClipperBase {
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void UpdateEdgeIntoAEL(Active ae)
 	private void UpdateEdgeIntoAEL(Active ae) {
-	  ae.bot = ae.top;
-	  ae.vertexTop = NextVertex(ae);
-	  ae.top = ae.vertexTop!.pt;
-	  ae.curX = ae.bot.X;
-	  SetDx(ae);
-	  if (IsHorizontal(ae)) {
-		  return;
-	  }
-	  InsertScanline(ae.top.Y);
-	  if (TestJoinWithPrev1(ae)) {
-		OutPt op1 = AddOutPt(ae.prevInAEL!, ae.bot);
-		OutPt op2 = AddOutPt(ae, ae.bot);
-		AddJoin(op1, op2);
-	  }
+		ae.bot = ae.top;
+		ae.vertexTop = NextVertex(ae);
+		ae.top = ae.vertexTop.pt;
+		ae.curX = ae.bot.X;
+		SetDx(ae);
+		if (IsHorizontal(ae)) {
+			return;
+		}
+		InsertScanline(ae.top.Y);
+		if (TestJoinWithPrev1(ae)) {
+			OutPt op1 = AddOutPt(ae.prevInAEL, ae.bot);
+			OutPt op2 = AddOutPt(ae, ae.bot);
+			AddJoin(op1, op2);
+		}
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
@@ -1342,223 +1355,226 @@ public class ClipperBase {
 	}
 
 	private OutPt IntersectEdges(Active ae1, Active ae2, Point64 pt) {
-	  OutPt resultOp = null;
+		OutPt resultOp = null;
 
-	  // MANAGE OPEN PATH INTERSECTIONS SEPARATELY ...
-	  if (_hasOpenPaths && (IsOpen(ae1) || IsOpen(ae2))) {
-		if (IsOpen(ae1) && IsOpen(ae2)) {
-			return null;
-		}
-		// the following line avoids duplicating quite a bit of code
-		if (IsOpen(ae2)) {
-			tangible.RefObject<Active> tempRef_ae1 = new tangible.RefObject<>(ae1);
-			tangible.RefObject<Active> tempRef_ae2 = new tangible.RefObject<>(ae2);
-			SwapActives(tempRef_ae1, tempRef_ae2);
-			ae2 = tempRef_ae2.argValue;
-			ae1 = tempRef_ae1.argValue;
+		// MANAGE OPEN PATH INTERSECTIONS SEPARATELY ...
+		if (_hasOpenPaths && (IsOpen(ae1) || IsOpen(ae2))) {
+			if (IsOpen(ae1) && IsOpen(ae2)) {
+				return null;
+			}
+			// the following line avoids duplicating quite a bit of code
+			if (IsOpen(ae2)) {
+				tangible.RefObject<Active> tempRef_ae1 = new tangible.RefObject<>(ae1);
+				tangible.RefObject<Active> tempRef_ae2 = new tangible.RefObject<>(ae2);
+				SwapActives(tempRef_ae1, tempRef_ae2);
+				ae2 = tempRef_ae2.argValue;
+				ae1 = tempRef_ae1.argValue;
+			}
+
+			if (_cliptype == ClipType.Union) {
+				if (!IsHotEdge(ae2)) {
+					return null;
+				}
+			} else if (ae2.localMin.polytype == PathType.Subject) {
+				return null;
+			}
+
+			switch (_fillrule) {
+				case FillRule.Positive :
+					if (ae2.windCount != 1) {
+						return null;
+					}
+					break;
+				case FillRule.Negative :
+					if (ae2.windCount != -1) {
+						return null;
+					}
+					break;
+				default :
+					if (Math.abs(ae2.windCount) != 1) {
+						return null;
+					}
+					break;
+			}
+
+			// toggle contribution ...
+			if (IsHotEdge(ae1)) {
+				resultOp = AddOutPt(ae1, pt);
+				if (IsFront(ae1)) {
+					ae1.outrec.frontEdge = null;
+				} else {
+					ae1.outrec.backEdge = null;
+				}
+				ae1.outrec = null;
+			}
+
+			// horizontal edges can pass under open paths at a LocMins
+			else if (pt == ae1.localMin.vertex.pt && !IsOpenEnd(ae1.localMin.vertex)) {
+				// find the other side of the LocMin and
+				// if it's 'hot' join up with it ...
+				Active ae3 = FindEdgeWithMatchingLocMin(ae1);
+				if (ae3 != null && IsHotEdge(ae3)) {
+					ae1.outrec = ae3.outrec;
+					if (ae1.windDx > 0) {
+						SetSides(ae3.outrec, ae1, ae3);
+					} else {
+						SetSides(ae3.outrec, ae3, ae1);
+					}
+					return ae3.outrec.pts;
+				}
+
+				resultOp = StartOpenPath(ae1, pt);
+			} else {
+				resultOp = StartOpenPath(ae1, pt);
+			}
+
+			return resultOp;
 		}
 
-		if (_cliptype == ClipType.Union) {
-		  if (!IsHotEdge(ae2)) {
-			  return null;
-		  }
-		} else if (ae2.localMin.polytype == PathType.Subject) {
-		  return null;
+		// MANAGING CLOSED PATHS FROM HERE ON
+
+		// UPDATE WINDING COUNTS...
+
+		int oldE1WindCount, oldE2WindCount;
+		if (ae1.localMin.polytype == ae2.localMin.polytype) {
+			if (_fillrule == FillRule.EvenOdd) {
+				oldE1WindCount = ae1.windCount;
+				ae1.windCount = ae2.windCount;
+				ae2.windCount = oldE1WindCount;
+			} else {
+				if (ae1.windCount + ae2.windDx == 0) {
+					ae1.windCount = -ae1.windCount;
+				} else {
+					ae1.windCount += ae2.windDx;
+				}
+				if (ae2.windCount - ae1.windDx == 0) {
+					ae2.windCount = -ae2.windCount;
+				} else {
+					ae2.windCount -= ae1.windDx;
+				}
+			}
+		} else {
+			if (_fillrule != FillRule.EvenOdd) {
+				ae1.windCount2 += ae2.windDx;
+			} else {
+				ae1.windCount2 = (ae1.windCount2 == 0 ? 1 : 0);
+			}
+			if (_fillrule != FillRule.EvenOdd) {
+				ae2.windCount2 -= ae1.windDx;
+			} else {
+				ae2.windCount2 = (ae2.windCount2 == 0 ? 1 : 0);
+			}
 		}
 
 		switch (_fillrule) {
-		  case FillRule.Positive:
-			if (ae2.windCount != 1) {
-				return null;
-			}
-			break;
-		  case FillRule.Negative:
-			if (ae2.windCount != -1) {
-				return null;
-			}
-			break;
-		  default:
-			if (Math.abs(ae2.windCount) != 1) {
-				return null;
-			}
-			break;
+			case FillRule.Positive :
+				oldE1WindCount = ae1.windCount;
+				oldE2WindCount = ae2.windCount;
+				break;
+			case FillRule.Negative :
+				oldE1WindCount = -ae1.windCount;
+				oldE2WindCount = -ae2.windCount;
+				break;
+			default :
+				oldE1WindCount = Math.abs(ae1.windCount);
+				oldE2WindCount = Math.abs(ae2.windCount);
+				break;
 		}
 
-		// toggle contribution ...
-		if (IsHotEdge(ae1)) {
-		  resultOp = AddOutPt(ae1, pt);
-		  if (IsFront(ae1)) {
-			ae1.outrec!.frontEdge = null;
-		  } else {
-			ae1.outrec!.backEdge = null;
-		  }
-		  ae1.outrec = null;
+		boolean e1WindCountIs0or1 = oldE1WindCount == 0 || oldE1WindCount == 1;
+		boolean e2WindCountIs0or1 = oldE2WindCount == 0 || oldE2WindCount == 1;
+
+		if ((!IsHotEdge(ae1) && !e1WindCountIs0or1) || (!IsHotEdge(ae2) && !e2WindCountIs0or1)) {
+			return null;
 		}
 
-		// horizontal edges can pass under open paths at a LocMins
-		else if (pt == ae1.localMin.vertex.pt && !IsOpenEnd(ae1.localMin.vertex)) {
-		  // find the other side of the LocMin and
-		  // if it's 'hot' join up with it ...
-		  Active ae3 = FindEdgeWithMatchingLocMin(ae1);
-		  if (ae3 != null && IsHotEdge(ae3)) {
-			ae1.outrec = ae3.outrec;
-			if (ae1.windDx > 0) {
-			  SetSides(ae3.outrec!, ae1, ae3);
+		// NOW PROCESS THE INTERSECTION ...
+
+		// if both edges are 'hot' ...
+		if (IsHotEdge(ae1) && IsHotEdge(ae2)) {
+			if ((oldE1WindCount != 0 && oldE1WindCount != 1) || (oldE2WindCount != 0 && oldE2WindCount != 1)
+					|| (ae1.localMin.polytype != ae2.localMin.polytype && _cliptype != ClipType.Xor)) {
+				resultOp = AddLocalMaxPoly(ae1, ae2, pt);
+			} else if (IsFront(ae1) || (ae1.outrec == ae2.outrec)) {
+				// this 'else if' condition isn't strictly needed but
+				// it's sensible to split polygons that ony touch at
+				// a common vertex (not at common edges).
+				resultOp = AddLocalMaxPoly(ae1, ae2, pt);
+				OutPt op2 = AddLocalMinPoly(ae1, ae2, pt);
+				if (resultOp != null && resultOp.pt == op2.pt && !IsHorizontal(ae1) && !IsHorizontal(ae2)
+						&& (InternalClipper.CrossProduct(ae1.bot, resultOp.pt, ae2.bot) == 0)) {
+					AddJoin(resultOp, op2);
+				}
 			} else {
-			  SetSides(ae3.outrec!, ae3, ae1);
+				// can't treat as maxima & minima
+				resultOp = AddOutPt(ae1, pt);
+				AddOutPt(ae2, pt);
+				SwapOutrecs(ae1, ae2);
 			}
-			return ae3.outrec!.pts;
-		  }
+		}
 
-		  resultOp = StartOpenPath(ae1, pt);
-		} else {
-		  resultOp = StartOpenPath(ae1, pt);
+		// if one or other edge is 'hot' ...
+		else if (IsHotEdge(ae1)) {
+			resultOp = AddOutPt(ae1, pt);
+			SwapOutrecs(ae1, ae2);
+		} else if (IsHotEdge(ae2)) {
+			resultOp = AddOutPt(ae2, pt);
+			SwapOutrecs(ae1, ae2);
+		}
+
+		// neither edge is 'hot'
+		else {
+			long e1Wc2, e2Wc2;
+			switch (_fillrule) {
+				case FillRule.Positive :
+					e1Wc2 = ae1.windCount2;
+					e2Wc2 = ae2.windCount2;
+					break;
+				case FillRule.Negative :
+					e1Wc2 = -ae1.windCount2;
+					e2Wc2 = -ae2.windCount2;
+					break;
+				default :
+					e1Wc2 = Math.abs(ae1.windCount2);
+					e2Wc2 = Math.abs(ae2.windCount2);
+					break;
+			}
+
+			if (!IsSamePolyType(ae1, ae2)) {
+				resultOp = AddLocalMinPoly(ae1, ae2, pt);
+			} else if (oldE1WindCount == 1 && oldE2WindCount == 1) {
+				resultOp = null;
+				switch (_cliptype) {
+					case ClipType.Union :
+						if (e1Wc2 > 0 && e2Wc2 > 0) {
+							return null;
+						}
+						resultOp = AddLocalMinPoly(ae1, ae2, pt);
+						break;
+
+					case ClipType.Difference :
+						if (((GetPolyType(ae1) == PathType.Clip) && (e1Wc2 > 0) && (e2Wc2 > 0))
+								|| ((GetPolyType(ae1) == PathType.Subject) && (e1Wc2 <= 0) && (e2Wc2 <= 0))) {
+							resultOp = AddLocalMinPoly(ae1, ae2, pt);
+						}
+
+						break;
+
+					case ClipType.Xor :
+						resultOp = AddLocalMinPoly(ae1, ae2, pt);
+						break;
+
+					default : // ClipType.Intersection:
+						if (e1Wc2 <= 0 || e2Wc2 <= 0) {
+							return null;
+						}
+						resultOp = AddLocalMinPoly(ae1, ae2, pt);
+						break;
+				}
+			}
 		}
 
 		return resultOp;
-	  }
-
-	  // MANAGING CLOSED PATHS FROM HERE ON
-
-	  // UPDATE WINDING COUNTS...
-
-	  int oldE1WindCount, oldE2WindCount;
-	  if (ae1.localMin.polytype == ae2.localMin.polytype) {
-		if (_fillrule == FillRule.EvenOdd) {
-		  oldE1WindCount = ae1.windCount;
-		  ae1.windCount = ae2.windCount;
-		  ae2.windCount = oldE1WindCount;
-		} else {
-		  if (ae1.windCount + ae2.windDx == 0) {
-			ae1.windCount = -ae1.windCount;
-		  } else {
-			ae1.windCount += ae2.windDx;
-		  }
-		  if (ae2.windCount - ae1.windDx == 0) {
-			ae2.windCount = -ae2.windCount;
-		  } else {
-			ae2.windCount -= ae1.windDx;
-		  }
-		}
-	  } else {
-		if (_fillrule != FillRule.EvenOdd) {
-		  ae1.windCount2 += ae2.windDx;
-		} else {
-		  ae1.windCount2 = (ae1.windCount2 == 0 ? 1 : 0);
-		}
-		if (_fillrule != FillRule.EvenOdd) {
-		  ae2.windCount2 -= ae1.windDx;
-		} else {
-		  ae2.windCount2 = (ae2.windCount2 == 0 ? 1 : 0);
-		}
-	  }
-
-	  switch (_fillrule) {
-		case FillRule.Positive:
-		  oldE1WindCount = ae1.windCount;
-		  oldE2WindCount = ae2.windCount;
-		  break;
-		case FillRule.Negative:
-		  oldE1WindCount = -ae1.windCount;
-		  oldE2WindCount = -ae2.windCount;
-		  break;
-		default:
-		  oldE1WindCount = Math.abs(ae1.windCount);
-		  oldE2WindCount = Math.abs(ae2.windCount);
-		  break;
-	  }
-
-	  boolean e1WindCountIs0or1 = oldE1WindCount == 0 || oldE1WindCount == 1;
-	  boolean e2WindCountIs0or1 = oldE2WindCount == 0 || oldE2WindCount == 1;
-
-	  if ((!IsHotEdge(ae1) && !e1WindCountIs0or1) || (!IsHotEdge(ae2) && !e2WindCountIs0or1)) {
-		  return null;
-	  }
-
-	  // NOW PROCESS THE INTERSECTION ...
-
-	  // if both edges are 'hot' ...
-	  if (IsHotEdge(ae1) && IsHotEdge(ae2)) {
-		if ((oldE1WindCount != 0 && oldE1WindCount != 1) || (oldE2WindCount != 0 && oldE2WindCount != 1) || (ae1.localMin.polytype != ae2.localMin.polytype && _cliptype != ClipType.Xor)) {
-		  resultOp = AddLocalMaxPoly(ae1, ae2, pt);
-		} else if (IsFront(ae1) || (ae1.outrec == ae2.outrec)) {
-		  // this 'else if' condition isn't strictly needed but
-		  // it's sensible to split polygons that ony touch at
-		  // a common vertex (not at common edges).
-		  resultOp = AddLocalMaxPoly(ae1, ae2, pt);
-		  OutPt op2 = AddLocalMinPoly(ae1, ae2, pt);
-		  if (resultOp != null && resultOp.pt == op2.pt && !IsHorizontal(ae1) && !IsHorizontal(ae2) && (InternalClipper.CrossProduct(ae1.bot, resultOp.pt, ae2.bot) == 0)) {
-			AddJoin(resultOp, op2);
-		  }
-		} else {
-		  // can't treat as maxima & minima
-		  resultOp = AddOutPt(ae1, pt);
-		  AddOutPt(ae2, pt);
-		  SwapOutrecs(ae1, ae2);
-		}
-	  }
-
-	  // if one or other edge is 'hot' ...
-	  else if (IsHotEdge(ae1)) {
-		resultOp = AddOutPt(ae1, pt);
-		SwapOutrecs(ae1, ae2);
-	  } else if (IsHotEdge(ae2)) {
-		resultOp = AddOutPt(ae2, pt);
-		SwapOutrecs(ae1, ae2);
-	  }
-
-	  // neither edge is 'hot'
-	  else {
-		long e1Wc2, e2Wc2;
-		switch (_fillrule) {
-		  case FillRule.Positive:
-			e1Wc2 = ae1.windCount2;
-			e2Wc2 = ae2.windCount2;
-			break;
-		  case FillRule.Negative:
-			e1Wc2 = -ae1.windCount2;
-			e2Wc2 = -ae2.windCount2;
-			break;
-		  default:
-			e1Wc2 = Math.abs(ae1.windCount2);
-			e2Wc2 = Math.abs(ae2.windCount2);
-			break;
-		}
-
-		if (!IsSamePolyType(ae1, ae2)) {
-		  resultOp = AddLocalMinPoly(ae1, ae2, pt);
-		} else if (oldE1WindCount == 1 && oldE2WindCount == 1) {
-		  resultOp = null;
-		  switch (_cliptype) {
-			case ClipType.Union:
-			  if (e1Wc2 > 0 && e2Wc2 > 0) {
-				  return null;
-			  }
-			  resultOp = AddLocalMinPoly(ae1, ae2, pt);
-			  break;
-
-			case ClipType.Difference:
-			  if (((GetPolyType(ae1) == PathType.Clip) && (e1Wc2 > 0) && (e2Wc2 > 0)) || ((GetPolyType(ae1) == PathType.Subject) && (e1Wc2 <= 0) && (e2Wc2 <= 0))) {
-				resultOp = AddLocalMinPoly(ae1, ae2, pt);
-			  }
-
-			  break;
-
-			case ClipType.Xor:
-			  resultOp = AddLocalMinPoly(ae1, ae2, pt);
-			  break;
-
-			default: // ClipType.Intersection:
-			  if (e1Wc2 <= 0 || e2Wc2 <= 0) {
-				  return null;
-			  }
-			  resultOp = AddLocalMinPoly(ae1, ae2, pt);
-			  break;
-		  }
-		}
-	  }
-
-	  return resultOp;
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
@@ -1616,7 +1632,7 @@ public class ClipperBase {
 		tangible.OutObject<Active> tempOut_ae = new tangible.OutObject<>();
 		while (PopHorz(tempOut_ae)) {
 			ae = tempOut_ae.argValue;
-			DoHorizontal(ae!);
+			DoHorizontal(ae);
 		}
 		ae = tempOut_ae.argValue;
 		ConvertHorzTrialsToJoins();
@@ -1633,7 +1649,7 @@ public class ClipperBase {
 		tangible.OutObject<Active> tempOut_ae2 = new tangible.OutObject<>();
 		while (PopHorz(tempOut_ae2)) {
 			ae = tempOut_ae2.argValue;
-			DoHorizontal(ae!);
+			DoHorizontal(ae);
 		}
 		ae = tempOut_ae2.argValue;
 	  }
@@ -1693,12 +1709,12 @@ public class ClipperBase {
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private System.Nullable<Active> ExtractFromSEL(Active ae)
 	private Active ExtractFromSEL(Active ae) {
-	  Active res = ae.nextInSEL;
-	  if (res != null) {
-		res.prevInSEL = ae.prevInSEL;
-	  }
-	  ae.prevInSEL!.nextInSEL = res;
-	  return res;
+		Active res = ae.nextInSEL;
+		if (res != null) {
+			res.prevInSEL = ae.prevInSEL;
+		}
+		ae.prevInSEL.nextInSEL = res;
+		return res;
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
@@ -1713,65 +1729,65 @@ public class ClipperBase {
 	}
 
 	private boolean BuildIntersectList(long topY) {
-	  if (_actives == null || _actives.nextInAEL == null) {
-		  return false;
-	  }
-
-	  // Calculate edge positions at the top of the current scanbeam, and from this
-	  // we will determine the intersections required to reach these new positions.
-	  AdjustCurrXAndCopyToSEL(topY);
-
-	  // Find all edge intersections in the current scanbeam using a stable merge
-	  // sort that ensures only adjacent edges are intersecting. Intersect info is
-	  // stored in FIntersectList ready to be processed in ProcessIntersectList.
-	  // Re merge sorts see https://stackoverflow.com/a/46319131/359538
-
-	  Active left = _sel, right, lEnd, rEnd, currBase, prevBase, tmp;
-
-	  while (left!.jump != null) {
-		prevBase = null;
-		while (left != null && left.jump != null) {
-		  currBase = left;
-		  right = left.jump;
-		  lEnd = right;
-		  rEnd = right.jump;
-		  left.jump = rEnd;
-		  while (!left.equals(lEnd) && !right.equals(rEnd)) {
-			if (right!.curX < left!.curX) {
-			  tmp = right.prevInSEL!;
-			  for (; ;) {
-				AddNewIntersectNode(tmp, right, topY);
-				if (left.equals(tmp)) {
-					break;
-				}
-				tmp = tmp.prevInSEL!;
-			  }
-
-			  tmp = right;
-			  right = ExtractFromSEL(tmp);
-			  lEnd = right;
-			  Insert1Before2InSEL(tmp, left);
-			  if (left.equals(currBase)) {
-				currBase = tmp;
-				currBase.jump = rEnd;
-				if (prevBase == null) {
-					_sel = currBase;
-				} else {
-					prevBase.jump = currBase;
-				}
-			  }
-			} else {
-				left = left.nextInSEL;
-			}
-		  }
-
-		  prevBase = currBase;
-		  left = rEnd;
+		if (_actives == null || _actives.nextInAEL == null) {
+			return false;
 		}
-		left = _sel;
-	  }
 
-	  return !_intersectList.isEmpty();
+		// Calculate edge positions at the top of the current scanbeam, and from this
+		// we will determine the intersections required to reach these new positions.
+		AdjustCurrXAndCopyToSEL(topY);
+
+		// Find all edge intersections in the current scanbeam using a stable merge
+		// sort that ensures only adjacent edges are intersecting. Intersect info is
+		// stored in FIntersectList ready to be processed in ProcessIntersectList.
+		// Re merge sorts see https://stackoverflow.com/a/46319131/359538
+
+		Active left = _sel, right, lEnd, rEnd, currBase, prevBase, tmp;
+
+		while (left.jump != null) {
+			prevBase = null;
+			while (left != null && left.jump != null) {
+				currBase = left;
+				right = left.jump;
+				lEnd = right;
+				rEnd = right.jump;
+				left.jump = rEnd;
+				while (!left.equals(lEnd) && !right.equals(rEnd)) {
+					if (right.curX < left.curX) {
+						tmp = right.prevInSEL;
+						for (;;) {
+							AddNewIntersectNode(tmp, right, topY);
+							if (left.equals(tmp)) {
+								break;
+							}
+							tmp = tmp.prevInSEL;
+						}
+
+						tmp = right;
+						right = ExtractFromSEL(tmp);
+						lEnd = right;
+						Insert1Before2InSEL(tmp, left);
+						if (left.equals(currBase)) {
+							currBase = tmp;
+							currBase.jump = rEnd;
+							if (prevBase == null) {
+								_sel = currBase;
+							} else {
+								prevBase.jump = currBase;
+							}
+						}
+					} else {
+						left = left.nextInSEL;
+					}
+				}
+
+				prevBase = currBase;
+				left = rEnd;
+			}
+			left = _sel;
+		}
+
+		return !_intersectList.isEmpty();
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
@@ -1803,14 +1819,14 @@ public class ClipperBase {
 		SwapPositionsInAEL(node.edge1, node.edge2);
 
 		if (TestJoinWithPrev2(node.edge2, node.pt)) {
-		  OutPt op1 = AddOutPt(node.edge2.prevInAEL!, node.pt);
+		  OutPt op1 = AddOutPt(node.edge2.prevInAEL, node.pt);
 		  OutPt op2 = AddOutPt(node.edge2, node.pt);
 		  if (op1 != op2) {
 			  AddJoin(op1, op2);
 		  }
 		} else if (TestJoinWithNext2(node.edge1, node.pt)) {
 		  OutPt op1 = AddOutPt(node.edge1, node.pt);
-		  OutPt op2 = AddOutPt(node.edge1.nextInAEL!, node.pt);
+		  OutPt op2 = AddOutPt(node.edge1.nextInAEL, node.pt);
 		  if (op1 != op2) {
 			  AddJoin(op1, op2);
 		  }
@@ -2024,7 +2040,7 @@ public class ClipperBase {
 			}
 
 			if (!IsHorizontal(ae) && TestJoinWithPrev1(ae)) {
-			  op = AddOutPt(ae.prevInAEL!, pt);
+			  op = AddOutPt(ae.prevInAEL, pt);
 			  OutPt op2 = AddOutPt(ae, pt);
 			  AddJoin(op, op2);
 			}
@@ -2041,7 +2057,7 @@ public class ClipperBase {
 
 			if (!IsHorizontal(ae) && TestJoinWithNext1(ae)) {
 			  op = AddOutPt(ae, pt);
-			  OutPt op2 = AddOutPt(ae.nextInAEL!, pt);
+			  OutPt op2 = AddOutPt(ae.nextInAEL, pt);
 			  AddJoin(op, op2);
 			}
 
@@ -2055,9 +2071,9 @@ public class ClipperBase {
 		  if (IsHotEdge(horz)) {
 			AddOutPt(horz, horz.top);
 			if (IsFront(horz)) {
-			  horz.outrec!.frontEdge = null;
+			  horz.outrec.frontEdge = null;
 			} else {
-			  horz.outrec!.backEdge = null;
+			  horz.outrec.backEdge = null;
 			}
 		  }
 		  horz.outrec = null;
@@ -2104,16 +2120,16 @@ public class ClipperBase {
 		}
 
 		if (isLeftToRight && TestJoinWithNext1(horz)) {
-		  OutPt op2 = AddOutPt(horz.nextInAEL!, horz.bot);
-		  AddJoin(op!, op2);
+		  OutPt op2 = AddOutPt(horz.nextInAEL, horz.bot);
+		  AddJoin(op, op2);
 		} else if (!isLeftToRight && TestJoinWithPrev1(horz)) {
-		  OutPt op2 = AddOutPt(horz.prevInAEL!, horz.bot);
-		  AddJoin(op2, op!);
+		  OutPt op2 = AddOutPt(horz.prevInAEL, horz.bot);
+		  AddJoin(op2, op);
 		}
 	  } else if (IsHotEdge(horz)) {
-		AddLocalMaxPoly(horz, maxPair!, horz.top);
+		AddLocalMaxPoly(horz, maxPair, horz.top);
 	  } else {
-		DeleteFromAEL(maxPair!);
+		DeleteFromAEL(maxPair);
 		DeleteFromAEL(horz);
 	  }
 	 }
@@ -2163,9 +2179,9 @@ public class ClipperBase {
 		if (!IsHorizontal(ae)) {
 		  if (IsHotEdge(ae)) {
 			if (IsFront(ae)) {
-			  ae.outrec!.frontEdge = null;
+			  ae.outrec.frontEdge = null;
 			} else {
-			  ae.outrec!.backEdge = null;
+			  ae.outrec.backEdge = null;
 			}
 			ae.outrec = null;
 		  }
@@ -2182,8 +2198,8 @@ public class ClipperBase {
 	  // only non-horizontal maxima here.
 	  // process any edges between maxima pair ...
 	  while (!nextE.equals(maxPair)) {
-		IntersectEdges(ae, nextE!, ae.top);
-		SwapPositionsInAEL(ae, nextE!);
+		IntersectEdges(ae, nextE, ae.top);
+		SwapPositionsInAEL(ae, nextE);
 		nextE = ae.nextInAEL;
 	  }
 
@@ -2221,7 +2237,8 @@ public class ClipperBase {
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static bool IsValidClosedPath(System.Nullable<OutPt> op)
 	private static boolean IsValidClosedPath(OutPt op) {
-	  return (op != null && !op.equals(op.next) && op.next != op.prev && !(op.next!.next == op.prev && (AreReallyClose(op.pt, op.next.pt) || AreReallyClose(op.pt, op.prev.pt))));
+		return (op != null && !op.equals(op.next) && op.next != op.prev
+				&& !(op.next.next == op.prev && (AreReallyClose(op.pt, op.next.pt) || AreReallyClose(op.pt, op.prev.pt))));
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
@@ -2363,42 +2380,42 @@ public class ClipperBase {
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static OutPt InsertOp(Point64 pt, OutPt insertAfter)
 	private static OutPt InsertOp(Point64 pt, OutPt insertAfter) {
-	  OutPt result = new OutPt(pt, insertAfter.outrec);
-	  result.next = insertAfter.next;
-	  insertAfter.next!.prev = result;
-	  insertAfter.next = result;
-	  result.prev = insertAfter;
-	  return result;
+		OutPt result = new OutPt(pt, insertAfter.outrec);
+		result.next = insertAfter.next;
+		insertAfter.next.prev = result;
+		insertAfter.next = result;
+		result.prev = insertAfter;
+		return result;
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static System.Nullable<OutPt> DisposeOutPt(OutPt op)
 	private static OutPt DisposeOutPt(OutPt op) {
-	  OutPt result = (op.next == op ? null : op.next);
-	  op.prev.next = op.next;
-	  op.next!.prev = op.prev;
-	  // op == null;
-	  return result;
+		OutPt result = (op.next == op ? null : op.next);
+		op.prev.next = op.next;
+		op.next.prev = op.prev;
+		// op == null;
+		return result;
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void SafeDisposeOutPts(ref OutPt op)
 	private void SafeDisposeOutPts(tangible.RefObject<OutPt> op) {
-	  OutRec outRec = GetRealOutRec(op.argValue.outrec);
-	  if (outRec!.frontEdge != null) {
-		outRec.frontEdge.outrec = null;
-	  }
-	  if (outRec.backEdge != null) {
-		outRec.backEdge.outrec = null;
-	  }
+		OutRec outRec = GetRealOutRec(op.argValue.outrec);
+		if (outRec.frontEdge != null) {
+			outRec.frontEdge.outrec = null;
+		}
+		if (outRec.backEdge != null) {
+			outRec.backEdge.outrec = null;
+		}
 
-	  op.argValue.prev.next = null;
-	  OutPt op2 = op.argValue;
-	  while (op2 != null) {
-		SafeDeleteOutPtJoiners(op2);
-		op2 = op2.next;
-	  }
-	  outRec.pts = null;
+		op.argValue.prev.next = null;
+		OutPt op2 = op.argValue;
+		while (op2 != null) {
+			SafeDeleteOutPtJoiners(op2);
+			op2 = op2.next;
+		}
+		outRec.pts = null;
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
@@ -2462,76 +2479,76 @@ public class ClipperBase {
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void DeleteTrialHorzJoin(OutPt op)
 	private void DeleteTrialHorzJoin(OutPt op) {
-	  if (_horzJoiners == null) {
-		  return;
-	  }
-
-	  Joiner joiner = op.joiner;
-	  Joiner parentH, parentOp = null;
-	  while (joiner != null) {
-		if (joiner.idx < 0) {
-		  // first remove joiner from FHorzTrials
-		  if (_horzJoiners.equals(joiner)) {
-			_horzJoiners = joiner.nextH;
-		  } else {
-			parentH = _horzJoiners;
-			while (!joiner.equals(parentH!.nextH)) {
-			  parentH = parentH.nextH;
-			}
-			parentH.nextH = joiner.nextH;
-		  }
-
-		  // now remove joiner from op's joiner list
-		  if (parentOp == null) {
-			// joiner must be first one in list
-			op.joiner = joiner.next1;
-			// joiner == null;
-			joiner = op.joiner;
-		  } else {
-			// the trial joiner isn't first
-			if (op == parentOp.op1) {
-			  parentOp.next1 = joiner.next1;
-			} else {
-			  parentOp.next2 = joiner.next1;
-			}
-			// joiner = null;
-			joiner = parentOp;
-		  }
-		} else {
-		  // not a trial join so look further along the linked list
-		  tangible.RefObject<Joiner> tempRef_joiner = new tangible.RefObject<>(joiner);
-		  parentOp = FindTrialJoinParent(tempRef_joiner, op);
-		  joiner = tempRef_joiner.argValue;
-		  if (parentOp == null) {
-			  break;
-		  }
+		if (_horzJoiners == null) {
+			return;
 		}
-		// loop in case there's more than one trial join
-	  }
+
+		Joiner joiner = op.joiner;
+		Joiner parentH, parentOp = null;
+		while (joiner != null) {
+			if (joiner.idx < 0) {
+				// first remove joiner from FHorzTrials
+				if (_horzJoiners.equals(joiner)) {
+					_horzJoiners = joiner.nextH;
+				} else {
+					parentH = _horzJoiners;
+					while (!joiner.equals(parentH.nextH)) {
+						parentH = parentH.nextH;
+					}
+					parentH.nextH = joiner.nextH;
+				}
+
+				// now remove joiner from op's joiner list
+				if (parentOp == null) {
+					// joiner must be first one in list
+					op.joiner = joiner.next1;
+					// joiner == null;
+					joiner = op.joiner;
+				} else {
+					// the trial joiner isn't first
+					if (op == parentOp.op1) {
+						parentOp.next1 = joiner.next1;
+					} else {
+						parentOp.next2 = joiner.next1;
+					}
+					// joiner = null;
+					joiner = parentOp;
+				}
+			} else {
+				// not a trial join so look further along the linked list
+				tangible.RefObject<Joiner> tempRef_joiner = new tangible.RefObject<>(joiner);
+				parentOp = FindTrialJoinParent(tempRef_joiner, op);
+				joiner = tempRef_joiner.argValue;
+				if (parentOp == null) {
+					break;
+				}
+			}
+			// loop in case there's more than one trial join
+		}
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private bool GetHorzExtendedHorzSeg(ref OutPt op, out OutPt op2)
 	private boolean GetHorzExtendedHorzSeg(tangible.RefObject<OutPt> op, tangible.OutObject<OutPt> op2) {
-	  OutRec outRec = GetRealOutRec(op.argValue.outrec)!;
-	  op2.argValue = op.argValue;
-	  if (outRec.frontEdge != null) {
-		while (op.argValue.prev != outRec.pts && op.argValue.prev.pt.Y == op.argValue.pt.Y) {
+		OutRec outRec = GetRealOutRec(op.argValue.outrec);
+		op2.argValue = op.argValue;
+		if (outRec.frontEdge != null) {
+			while (op.argValue.prev != outRec.pts && op.argValue.prev.pt.Y == op.argValue.pt.Y) {
+				op.argValue = op.argValue.prev;
+			}
+			while (op2.argValue != outRec.pts && op2.argValue.next.pt.Y == op2.argValue.pt.Y) {
+				op2.argValue = op2.argValue.next;
+			}
+			return op2.argValue != op.argValue;
+		}
+
+		while (op.argValue.prev != op2.argValue && op.argValue.prev.pt.Y == op.argValue.pt.Y) {
 			op.argValue = op.argValue.prev;
 		}
-		while (op2.argValue != outRec.pts && op2.argValue.next!.pt.Y == op2.argValue.pt.Y) {
+		while (op2.argValue.next != op.argValue && op2.argValue.next.pt.Y == op2.argValue.pt.Y) {
 			op2.argValue = op2.argValue.next;
 		}
-		return op2.argValue != op.argValue;
-	  }
-
-	  while (op.argValue.prev != op2.argValue && op.argValue.prev.pt.Y == op.argValue.pt.Y) {
-		op.argValue = op.argValue.prev;
-	  }
-	  while (op2.argValue.next != op.argValue && op2.argValue.next!.pt.Y == op2.argValue.pt.Y) {
-		op2.argValue = op2.argValue.next;
-	  }
-	  return op2.argValue != op.argValue && op2.argValue.next != op.argValue;
+		return op2.argValue != op.argValue && op2.argValue.next != op.argValue;
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
@@ -2627,53 +2644,53 @@ public class ClipperBase {
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static Joiner FindJoinParent(Joiner joiner, OutPt op)
 	private static Joiner FindJoinParent(Joiner joiner, OutPt op) {
-	  Joiner result = op.joiner!;
-	  for (; ;) {
-		if (op == result.op1) {
-		  if (result.next1 == joiner) {
-			  return result;
-		  }
-		  result = result.next1!;
-		} else {
-		  if (result.next2 == joiner) {
-			  return result;
-		  }
-		  result = result.next2!;
+		Joiner result = op.joiner;
+		for (;;) {
+			if (op == result.op1) {
+				if (result.next1 == joiner) {
+					return result;
+				}
+				result = result.next1;
+			} else {
+				if (result.next2 == joiner) {
+					return result;
+				}
+				result = result.next2;
+			}
 		}
-	  }
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void DeleteJoin(Joiner joiner)
 	private void DeleteJoin(Joiner joiner) {
-	  // This method deletes a single join, and it doesn't check for or
-	  // delete trial horz. joins. For that, use the following method.
-	  OutPt op1 = joiner.op1, op2 = joiner.op2!;
+		// This method deletes a single join, and it doesn't check for or
+		// delete trial horz. joins. For that, use the following method.
+		OutPt op1 = joiner.op1, op2 = joiner.op2;
 
-	  Joiner parentJnr;
-	  if (op1.joiner != joiner) {
-		parentJnr = FindJoinParent(joiner, op1);
-		if (parentJnr.op1 == op1) {
-		  parentJnr.next1 = joiner.next1;
+		Joiner parentJnr;
+		if (op1.joiner != joiner) {
+			parentJnr = FindJoinParent(joiner, op1);
+			if (parentJnr.op1 == op1) {
+				parentJnr.next1 = joiner.next1;
+			} else {
+				parentJnr.next2 = joiner.next1;
+			}
 		} else {
-		  parentJnr.next2 = joiner.next1;
+			op1.joiner = joiner.next1;
 		}
-	  } else {
-		op1.joiner = joiner.next1;
-	  }
 
-	  if (op2.joiner != joiner) {
-		parentJnr = FindJoinParent(joiner, op2);
-		if (parentJnr.op1 == op2) {
-		  parentJnr.next1 = joiner.next2;
+		if (op2.joiner != joiner) {
+			parentJnr = FindJoinParent(joiner, op2);
+			if (parentJnr.op1 == op2) {
+				parentJnr.next1 = joiner.next2;
+			} else {
+				parentJnr.next2 = joiner.next2;
+			}
 		} else {
-		  parentJnr.next2 = joiner.next2;
+			op2.joiner = joiner.next2;
 		}
-	  } else {
-		op2.joiner = joiner.next2;
-	  }
 
-	  _joinerList.set(joiner.idx, null);
+		_joinerList.set(joiner.idx, null);
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
@@ -2695,31 +2712,33 @@ public class ClipperBase {
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static bool CheckDisposeAdjacent(ref OutPt op, OutPt guard, OutRec outRec)
 	private static boolean CheckDisposeAdjacent(tangible.RefObject<OutPt> op, OutPt guard, OutRec outRec) {
-	  boolean result = false;
-	  while (op.argValue.prev != op.argValue) {
-		if (op.argValue.pt == op.argValue.prev.pt && op.argValue != guard && op.argValue.prev.joiner != null && op.argValue.joiner == null) {
-		  if (op.argValue == outRec.pts) {
-			  outRec.pts = op.argValue.prev;
-		  }
-		  op.argValue = DisposeOutPt(op.argValue)!;
-		  op.argValue = op.argValue.prev;
-		} else {
-		  break;
+		boolean result = false;
+		while (op.argValue.prev != op.argValue) {
+			if (op.argValue.pt == op.argValue.prev.pt && op.argValue != guard && op.argValue.prev.joiner != null
+					&& op.argValue.joiner == null) {
+				if (op.argValue == outRec.pts) {
+					outRec.pts = op.argValue.prev;
+				}
+				op.argValue = DisposeOutPt(op.argValue);
+				op.argValue = op.argValue.prev;
+			} else {
+				break;
+			}
 		}
-	  }
 
-	  while (op.argValue.next != op.argValue) {
-		if (op.argValue.pt == op.argValue.next!.pt && op.argValue != guard && op.argValue.next.joiner != null && op.argValue.joiner == null) {
-		  if (op.argValue == outRec.pts) {
-			  outRec.pts = op.argValue.prev;
-		  }
-		  op.argValue = DisposeOutPt(op.argValue)!;
-		  op.argValue = op.argValue.prev;
-		} else {
-		  break;
+		while (op.argValue.next != op.argValue) {
+			if (op.argValue.pt == op.argValue.next.pt && op.argValue != guard && op.argValue.next.joiner != null
+					&& op.argValue.joiner == null) {
+				if (op.argValue == outRec.pts) {
+					outRec.pts = op.argValue.prev;
+				}
+				op.argValue = DisposeOutPt(op.argValue);
+				op.argValue = op.argValue.prev;
+			} else {
+				break;
+			}
 		}
-	  }
-	  return result;
+		return result;
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
@@ -2742,230 +2761,232 @@ public class ClipperBase {
 	}
 
 	private OutRec ProcessJoin(Joiner j) {
-	  OutPt op1 = j.op1, op2 = j.op2!;
-	  OutRec or1 = GetRealOutRec(op1.outrec)!;
-	  OutRec or2 = GetRealOutRec(op2.outrec)!;
-	  DeleteJoin(j);
+		OutPt op1 = j.op1, op2 = j.op2;
+		OutRec or1 = GetRealOutRec(op1.outrec);
+		OutRec or2 = GetRealOutRec(op2.outrec);
+		DeleteJoin(j);
 
-	  if (or2.pts == null) {
-		  return or1;
-	  }
-	  if (!IsValidClosedPath(op2)) {
-		tangible.RefObject<OutPt> tempRef_op2 = new tangible.RefObject<>(op2);
-		SafeDisposeOutPts(tempRef_op2);
-		op2 = tempRef_op2.argValue;
-		return or1;
-	  }
-	  if ((or1.pts == null) || !IsValidClosedPath(op1)) {
-		tangible.RefObject<OutPt> tempRef_op1 = new tangible.RefObject<>(op1);
-		SafeDisposeOutPts(tempRef_op1);
-		op1 = tempRef_op1.argValue;
-		return or2;
-	  }
-	  if (or1 == or2 && ((op1 == op2) || (op1.next == op2) || (op1.prev == op2))) {
-		  return or1;
-	  }
-
-	  tangible.RefObject<OutPt> tempRef_op12 = new tangible.RefObject<>(op1);
-	  CheckDisposeAdjacent(tempRef_op12, op2, or1);
-	  op1 = tempRef_op12.argValue;
-	  tangible.RefObject<OutPt> tempRef_op22 = new tangible.RefObject<>(op2);
-	  CheckDisposeAdjacent(tempRef_op22, op1, or2);
-	  op2 = tempRef_op22.argValue;
-	  if (op1.next == op2 || op2.next == op1) {
-		  return or1;
-	  }
-
-	  OutRec result = or1;
-	  for (; ;) {
-		if (!IsValidPath(op1) || !IsValidPath(op2) || (or1 == or2 && (op1.prev == op2 || op1.next == op2))) {
+		if (or2.pts == null) {
+			return or1;
+		}
+		if (!IsValidClosedPath(op2)) {
+			tangible.RefObject<OutPt> tempRef_op2 = new tangible.RefObject<>(op2);
+			SafeDisposeOutPts(tempRef_op2);
+			op2 = tempRef_op2.argValue;
+			return or1;
+		}
+		if ((or1.pts == null) || !IsValidClosedPath(op1)) {
+			tangible.RefObject<OutPt> tempRef_op1 = new tangible.RefObject<>(op1);
+			SafeDisposeOutPts(tempRef_op1);
+			op1 = tempRef_op1.argValue;
+			return or2;
+		}
+		if (or1 == or2 && ((op1 == op2) || (op1.next == op2) || (op1.prev == op2))) {
 			return or1;
 		}
 
-		if (op1.prev.pt == op2.next!.pt || ((InternalClipper.CrossProduct(op1.prev.pt, op1.pt, op2.next.pt) == 0) && CollinearSegsOverlap(op1.prev.pt, op1.pt, op2.pt, op2.next.pt))) {
-		  if (or1 == or2) {
-			// SPLIT REQUIRED
-			// make sure op1.prev and op2.next match positions
-			// by inserting an extra vertex if needed
-			if (op1.prev.pt != op2.next.pt) {
-			  if (PointBetween(op1.prev.pt, op2.pt, op2.next.pt)) {
-				op2.next = InsertOp(op1.prev.pt, op2);
-			  } else {
-				op1.prev = InsertOp(op2.next.pt, op1.prev);
-			  }
+		tangible.RefObject<OutPt> tempRef_op12 = new tangible.RefObject<>(op1);
+		CheckDisposeAdjacent(tempRef_op12, op2, or1);
+		op1 = tempRef_op12.argValue;
+		tangible.RefObject<OutPt> tempRef_op22 = new tangible.RefObject<>(op2);
+		CheckDisposeAdjacent(tempRef_op22, op1, or2);
+		op2 = tempRef_op22.argValue;
+		if (op1.next == op2 || op2.next == op1) {
+			return or1;
+		}
+
+		OutRec result = or1;
+		for (;;) {
+			if (!IsValidPath(op1) || !IsValidPath(op2) || (or1 == or2 && (op1.prev == op2 || op1.next == op2))) {
+				return or1;
 			}
 
-			// current              to     new
-			// op1.p[opA] >>> op1   ...    opA \   / op1
-			// op2.n[opB] <<< op2   ...    opB /   \ op2
-			OutPt opA = op1.prev, opB = op2.next;
-			opA.next = opB;
-			opB.prev = opA;
-			op1.prev = op2;
-			op2.next = op1;
-			CompleteSplit(op1, opA, or1);
-		  } else {
-			// JOIN, NOT SPLIT
-			OutPt opA = op1.prev, opB = op2.next;
-			opA.next = opB;
-			opB.prev = opA;
-			op1.prev = op2;
-			op2.next = op1;
+			if (op1.prev.pt == op2.next.pt || ((InternalClipper.CrossProduct(op1.prev.pt, op1.pt, op2.next.pt) == 0)
+					&& CollinearSegsOverlap(op1.prev.pt, op1.pt, op2.pt, op2.next.pt))) {
+				if (or1 == or2) {
+					// SPLIT REQUIRED
+					// make sure op1.prev and op2.next match positions
+					// by inserting an extra vertex if needed
+					if (op1.prev.pt != op2.next.pt) {
+						if (PointBetween(op1.prev.pt, op2.pt, op2.next.pt)) {
+							op2.next = InsertOp(op1.prev.pt, op2);
+						} else {
+							op1.prev = InsertOp(op2.next.pt, op1.prev);
+						}
+					}
 
-			//SafeDeleteOutPtJoiners(op2);
-			//DisposeOutPt(op2);
+					// current to new
+					// op1.p[opA] >>> op1 ... opA \ / op1
+					// op2.n[opB] <<< op2 ... opB / \ op2
+					OutPt opA = op1.prev, opB = op2.next;
+					opA.next = opB;
+					opB.prev = opA;
+					op1.prev = op2;
+					op2.next = op1;
+					CompleteSplit(op1, opA, or1);
+				} else {
+					// JOIN, NOT SPLIT
+					OutPt opA = op1.prev, opB = op2.next;
+					opA.next = opB;
+					opB.prev = opA;
+					op1.prev = op2;
+					op2.next = op1;
 
-			if (or1.idx < or2.idx) {
-			  or1.pts = op1;
-			  or2.pts = null;
-			  if (or1.owner != null && (or2.owner == null || or2.owner.idx < or1.owner.idx)) {
-				or1.owner = or2.owner;
-			  }
-			  or2.owner = or1;
+					// SafeDeleteOutPtJoiners(op2);
+					// DisposeOutPt(op2);
+
+					if (or1.idx < or2.idx) {
+						or1.pts = op1;
+						or2.pts = null;
+						if (or1.owner != null && (or2.owner == null || or2.owner.idx < or1.owner.idx)) {
+							or1.owner = or2.owner;
+						}
+						or2.owner = or1;
+					} else {
+						result = or2;
+						or2.pts = op1;
+						or1.pts = null;
+						if (or2.owner != null && (or1.owner == null || or1.owner.idx < or2.owner.idx)) {
+							or2.owner = or1.owner;
+						}
+						or1.owner = or2;
+					}
+				}
+				break;
+			}
+			if (op1.next.pt == op2.prev.pt || ((InternalClipper.CrossProduct(op1.next.pt, op2.pt, op2.prev.pt) == 0)
+					&& CollinearSegsOverlap(op1.next.pt, op1.pt, op2.pt, op2.prev.pt))) {
+				if (or1 == or2) {
+					// SPLIT REQUIRED
+					// make sure op2.prev and op1.next match positions
+					// by inserting an extra vertex if needed
+					if (op2.prev.pt != op1.next.pt) {
+						if (PointBetween(op2.prev.pt, op1.pt, op1.next.pt)) {
+							op1.next = InsertOp(op2.prev.pt, op1);
+						} else {
+							op2.prev = InsertOp(op1.next.pt, op2.prev);
+						}
+					}
+
+					// current to new
+					// op2.p[opA] >>> op2 ... opA \ / op2
+					// op1.n[opB] <<< op1 ... opB / \ op1
+					OutPt opA = op2.prev, opB = op1.next;
+					opA.next = opB;
+					opB.prev = opA;
+					op2.prev = op1;
+					op1.next = op2;
+					CompleteSplit(op1, opA, or1);
+				} else {
+					// JOIN, NOT SPLIT
+					OutPt opA = op1.next, opB = op2.prev;
+					opA.prev = opB;
+					opB.next = opA;
+					op1.next = op2;
+					op2.prev = op1;
+
+					// SafeDeleteOutPtJoiners(op2);
+					// DisposeOutPt(op2);
+
+					if (or1.idx < or2.idx) {
+						or1.pts = op1;
+						or2.pts = null;
+						if (or1.owner != null && (or2.owner == null || or2.owner.idx < or1.owner.idx)) {
+							or1.owner = or2.owner;
+						}
+						or2.owner = or1;
+					} else {
+						result = or2;
+						or2.pts = op1;
+						or1.pts = null;
+						if (or2.owner != null && (or1.owner == null || or1.owner.idx < or2.owner.idx)) {
+							or2.owner = or1.owner;
+						}
+						or1.owner = or2;
+					}
+				}
+				break;
+			}
+
+			if (PointBetween(op1.next.pt, op2.pt, op2.prev.pt) && DistanceFromLineSqrd(op1.next.pt, op2.pt, op2.prev.pt) < 2.01) {
+				InsertOp(op1.next.pt, op2.prev);
+				continue;
+			}
+			if (PointBetween(op2.next.pt, op1.pt, op1.prev.pt) && DistanceFromLineSqrd(op2.next.pt, op1.pt, op1.prev.pt) < 2.01) {
+				InsertOp(op2.next.pt, op1.prev);
+				continue;
+			}
+			if (PointBetween(op1.prev.pt, op2.pt, op2.next.pt) && DistanceFromLineSqrd(op1.prev.pt, op2.pt, op2.next.pt) < 2.01) {
+				InsertOp(op1.prev.pt, op2);
+				continue;
+			}
+			if (PointBetween(op2.prev.pt, op1.pt, op1.next.pt) && DistanceFromLineSqrd(op2.prev.pt, op1.pt, op1.next.pt) < 2.01) {
+				InsertOp(op2.prev.pt, op1);
+				continue;
+			}
+
+			// something odd needs tidying up
+			tangible.RefObject<OutPt> tempRef_op13 = new tangible.RefObject<>(op1);
+			if (CheckDisposeAdjacent(tempRef_op13, op2, or1)) {
+				op1 = tempRef_op13.argValue;
+				continue;
 			} else {
-			  result = or2;
-			  or2.pts = op1;
-			  or1.pts = null;
-			  if (or2.owner != null && (or1.owner == null || or1.owner.idx < or2.owner.idx)) {
-				or2.owner = or1.owner;
-			  }
-			  or1.owner = or2;
+				op1 = tempRef_op13.argValue;
 			}
-		  }
-		  break;
-		}
-		if (op1.next!.pt == op2.prev.pt || ((InternalClipper.CrossProduct(op1.next.pt, op2.pt, op2.prev.pt) == 0) && CollinearSegsOverlap(op1.next.pt, op1.pt, op2.pt, op2.prev.pt))) {
-		  if (or1 == or2) {
-			// SPLIT REQUIRED
-			// make sure op2.prev and op1.next match positions
-			// by inserting an extra vertex if needed
-			if (op2.prev.pt != op1.next.pt) {
-			  if (PointBetween(op2.prev.pt, op1.pt, op1.next.pt)) {
-				op1.next = InsertOp(op2.prev.pt, op1);
-			  } else {
-				op2.prev = InsertOp(op1.next.pt, op2.prev);
-			  }
-			}
-
-			// current              to     new
-			// op2.p[opA] >>> op2   ...    opA \   / op2
-			// op1.n[opB] <<< op1   ...    opB /   \ op1
-			OutPt opA = op2.prev, opB = op1.next;
-			opA.next = opB;
-			opB.prev = opA;
-			op2.prev = op1;
-			op1.next = op2;
-			CompleteSplit(op1, opA, or1);
-		  } else {
-			// JOIN, NOT SPLIT
-			OutPt opA = op1.next, opB = op2.prev;
-			opA.prev = opB;
-			opB.next = opA;
-			op1.next = op2;
-			op2.prev = op1;
-
-			//SafeDeleteOutPtJoiners(op2);
-			//DisposeOutPt(op2);
-
-			if (or1.idx < or2.idx) {
-			  or1.pts = op1;
-			  or2.pts = null;
-			  if (or1.owner != null && (or2.owner == null || or2.owner.idx < or1.owner.idx)) {
-				or1.owner = or2.owner;
-			  }
-			  or2.owner = or1;
+			tangible.RefObject<OutPt> tempRef_op23 = new tangible.RefObject<>(op2);
+			if (CheckDisposeAdjacent(tempRef_op23, op1, or1)) {
+				op2 = tempRef_op23.argValue;
+				continue;
 			} else {
-			  result = or2;
-			  or2.pts = op1;
-			  or1.pts = null;
-			  if (or2.owner != null && (or1.owner == null || or1.owner.idx < or2.owner.idx)) {
-				or2.owner = or1.owner;
-			  }
-			  or1.owner = or2;
+				op2 = tempRef_op23.argValue;
 			}
-		  }
-		  break;
+			if (op1.prev.pt != op2.next.pt && (DistanceSqr(op1.prev.pt, op2.next.pt) < 2.01)) {
+				op1.prev.pt = op2.next.pt;
+				continue;
+			}
+			if (op1.next.pt != op2.prev.pt && (DistanceSqr(op1.next.pt, op2.prev.pt) < 2.01)) {
+				op2.prev.pt = op1.next.pt;
+				continue;
+			}
+			// OK, there doesn't seem to be a way to join after all
+			// so just tidy up the polygons
+			or1.pts = op1;
+			if (or2 != or1) {
+				or2.pts = op2;
+				CleanCollinear(or2);
+			}
+			break;
 		}
-
-		if (PointBetween(op1.next.pt, op2.pt, op2.prev.pt) && DistanceFromLineSqrd(op1.next.pt, op2.pt, op2.prev.pt) < 2.01) {
-		  InsertOp(op1.next.pt, op2.prev);
-		  continue;
-		}
-		if (PointBetween(op2.next.pt, op1.pt, op1.prev.pt) && DistanceFromLineSqrd(op2.next.pt, op1.pt, op1.prev.pt) < 2.01) {
-		  InsertOp(op2.next.pt, op1.prev);
-		  continue;
-		}
-		if (PointBetween(op1.prev.pt, op2.pt, op2.next.pt) && DistanceFromLineSqrd(op1.prev.pt, op2.pt, op2.next.pt) < 2.01) {
-		  InsertOp(op1.prev.pt, op2);
-		  continue;
-		}
-		if (PointBetween(op2.prev.pt, op1.pt, op1.next.pt) && DistanceFromLineSqrd(op2.prev.pt, op1.pt, op1.next.pt) < 2.01) {
-		  InsertOp(op2.prev.pt, op1);
-		  continue;
-		}
-
-		// something odd needs tidying up
-		tangible.RefObject<OutPt> tempRef_op13 = new tangible.RefObject<>(op1);
-		if (CheckDisposeAdjacent(tempRef_op13, op2, or1)) {
-			op1 = tempRef_op13.argValue;
-			continue;
-		} else {
-			op1 = tempRef_op13.argValue;
-		}
-		tangible.RefObject<OutPt> tempRef_op23 = new tangible.RefObject<>(op2);
-		if (CheckDisposeAdjacent(tempRef_op23, op1, or1)) {
-			op2 = tempRef_op23.argValue;
-			continue;
-		} else {
-			op2 = tempRef_op23.argValue;
-		}
-		if (op1.prev.pt != op2.next!.pt && (DistanceSqr(op1.prev.pt, op2.next.pt) < 2.01)) {
-		  op1.prev.pt = op2.next.pt;
-		  continue;
-		}
-		if (op1.next!.pt != op2.prev.pt && (DistanceSqr(op1.next.pt, op2.prev.pt) < 2.01)) {
-		  op2.prev.pt = op1.next.pt;
-		  continue;
-		}
-		// OK, there doesn't seem to be a way to join after all
-		// so just tidy up the polygons
-		or1.pts = op1;
-		if (or2 != or1) {
-		  or2.pts = op2;
-		  CleanCollinear(or2);
-		}
-		break;
-	  }
-	  return result;
+		return result;
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static void UpdateOutrecOwner(OutRec outrec)
 	private static void UpdateOutrecOwner(OutRec outrec) {
-	  OutPt opCurr = outrec.pts!;
-	  for (;;) {
-		opCurr.outrec = outrec;
-		opCurr = opCurr.next!;
-		if (opCurr == outrec.pts) {
-			return;
+		OutPt opCurr = outrec.pts;
+		for (;;) {
+			opCurr.outrec = outrec;
+			opCurr = opCurr.next;
+			if (opCurr == outrec.pts) {
+				return;
+			}
 		}
-	  }
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void CompleteSplit(System.Nullable<OutPt> op1, System.Nullable<OutPt> op2, OutRec outrec)
 	private void CompleteSplit(OutPt op1, OutPt op2, OutRec outrec) {
-	  double area1 = Area(op1!);
-	  double area2 = Area(op2!);
+	  double area1 = Area(op1);
+	  double area2 = Area(op2);
 	  boolean signs_change = (area1 > 0) == (area2 < 0);
 
 	  // delete trivial splits (with zero or almost zero areas)
 	  if (area1 == 0 || (signs_change && Math.abs(area1) < 2)) {
-		tangible.RefObject<OutPt> tempRef_Object = new tangible.RefObject<>(op1!);
+		tangible.RefObject<OutPt> tempRef_Object = new tangible.RefObject<>(op1);
 		SafeDisposeOutPts(tempRef_Object);
 		outrec.pts = op2;
 	  } else if (area2 == 0 || (signs_change && Math.abs(area2) < 2)) {
-		tangible.RefObject<OutPt> tempRef_Object2 = new tangible.RefObject<>(op2!);
+		tangible.RefObject<OutPt> tempRef_Object2 = new tangible.RefObject<>(op2);
 		SafeDisposeOutPts(tempRef_Object2);
 		outrec.pts = op1;
 	  } else {
@@ -3012,14 +3033,14 @@ public class ClipperBase {
 		  outrec.pts = tempRef_pts.argValue;
 	  }
 
-	  OutPt startOp = outrec.pts!;
+	  OutPt startOp = outrec.pts;
 	  OutPt op2 = startOp;
 	  for (; ;) {
-		if (op2!.joiner != null) {
+		if (op2.joiner != null) {
 			return;
 		}
 		// NB if preserveCollinear == true, then only remove 180 deg. spikes
-		if ((InternalClipper.CrossProduct(op2.prev.pt, op2.pt, op2.next!.pt) == 0) && ((op2.pt == op2.prev.pt) || (op2.pt == op2.next.pt) || !getPreserveCollinear() || (InternalClipper.DotProduct(op2.prev.pt, op2.pt, op2.next.pt) < 0))) {
+		if ((InternalClipper.CrossProduct(op2.prev.pt, op2.pt, op2.next.pt) == 0) && ((op2.pt == op2.prev.pt) || (op2.pt == op2.next.pt) || !getPreserveCollinear() || (InternalClipper.DotProduct(op2.prev.pt, op2.pt, op2.next.pt) < 0))) {
 		  if (op2.equals(outrec.pts)) {
 			outrec.pts = op2.prev;
 		  }
@@ -3032,7 +3053,7 @@ public class ClipperBase {
 		  } else {
 			  op2 = tempRef_op2.argValue;
 		  }
-		  startOp = op2!;
+		  startOp = op2;
 		  continue;
 		}
 		op2 = op2.next;
@@ -3047,7 +3068,7 @@ public class ClipperBase {
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private OutPt DoSplitOp(ref OutPt outRecOp, OutPt splitOp)
 	private OutPt DoSplitOp(tangible.RefObject<OutPt> outRecOp, OutPt splitOp) {
-	  OutPt prevOp = splitOp.prev, nextNextOp = splitOp.next!.next!;
+	  OutPt prevOp = splitOp.prev, nextNextOp = splitOp.next.next;
 	  OutPt result = prevOp;
 	  PointD ipD;
 //C# TO JAVA CONVERTER TODO TASK: The following method call contained an unresolved 'out' keyword - these cannot be converted using the 'OutObject' helper class unless the method is within the code being modified:
@@ -3093,113 +3114,111 @@ public class ClipperBase {
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void FixSelfIntersects(ref OutPt op)
 	private void FixSelfIntersects(tangible.RefObject<OutPt> op) {
-	  if (!IsValidClosedPath(op.argValue)) {
-		  return;
-	  }
-	  OutPt op2 = op.argValue;
-	  for (; ;) {
-		// triangles can't self-intersect
-		if (op2.prev == op2.next!.next) {
-			break;
+		if (!IsValidClosedPath(op.argValue)) {
+			return;
 		}
-		if (InternalClipper.SegmentsIntersect(op2.prev.pt, op2.pt, op2.next.pt, op2.next.next!.pt)) {
-		  if (op2 == op.argValue || op2.next == op.argValue) {
-			  op.argValue = op2.prev;
-		  }
-		  op2 = DoSplitOp(op, op2);
-		  op.argValue = op2;
-		  continue;
-		}
+		OutPt op2 = op.argValue;
+		for (;;) {
+			// triangles can't self-intersect
+			if (op2.prev == op2.next.next) {
+				break;
+			}
+			if (InternalClipper.SegmentsIntersect(op2.prev.pt, op2.pt, op2.next.pt, op2.next.next.pt)) {
+				if (op2 == op.argValue || op2.next == op.argValue) {
+					op.argValue = op2.prev;
+				}
+				op2 = DoSplitOp(op, op2);
+				op.argValue = op2;
+				continue;
+			}
 
-		op2 = op2.next;
+			op2 = op2.next;
 
-		if (op2 == op.argValue) {
-			break;
+			if (op2 == op.argValue) {
+				break;
+			}
 		}
-	  }
 	}
 
-	public final boolean BuildPath(OutPt op, boolean reverse, boolean isOpen, Path64 path) {
-	  if (op.next == op || (!isOpen && op.next == op.prev)) {
-		  return false;
-	  }
-	  path.Clear();
-
-	  Point64 lastPt;
-	  OutPt op2;
-	  if (reverse) {
-		lastPt = op.pt;
-		op2 = op.prev;
-	  } else {
-		op = op.next!;
-		lastPt = op.pt;
-		op2 = op.next!;
-	  }
-	  path.Add(lastPt);
-
-	  while (op2 != op) {
-		if (op2.pt != lastPt) {
-		  lastPt = op2.pt;
-		  path.Add(lastPt);
+	public final boolean BuildPath(OutPt op, boolean reverse, boolean isOpen, List<Point64> path) {
+		if (op.next == op || (!isOpen && op.next == op.prev)) {
+			return false;
 		}
+		path.clear();
+
+		Point64 lastPt;
+		OutPt op2;
 		if (reverse) {
-		  op2 = op2.prev;
+			lastPt = op.pt;
+			op2 = op.prev;
 		} else {
-		  op2 = op2.next!;
+			op = op.next;
+			lastPt = op.pt;
+			op2 = op.next;
 		}
-	  }
-	  return true;
+		path.add(lastPt);
+
+		while (op2 != op) {
+			if (op2.pt != lastPt) {
+				lastPt = op2.pt;
+				path.add(lastPt);
+			}
+			if (reverse) {
+				op2 = op2.prev;
+			} else {
+				op2 = op2.next;
+			}
+		}
+		return true;
 	}
 
-	protected final boolean BuildPaths(Paths64 solutionClosed, Paths64 solutionOpen) {
-	  solutionClosed.Clear();
-	  solutionOpen.Clear();
-	  solutionClosed.Capacity = _outrecList.size();
-	  solutionOpen.Capacity = _outrecList.size();
+	protected final boolean BuildPaths(List<List<Point64>> solutionClosed, List<List<Point64>> solutionOpen) {
+		solutionClosed.clear();
+		solutionOpen.clear();
 
-	  for (OutRec outrec : _outrecList) {
-		if (outrec.pts == null) {
-			continue;
-		}
+		for (OutRec outrec : _outrecList) {
+			if (outrec.pts == null) {
+				continue;
+			}
 
-		Path64 path = new Path64();
-		if (outrec.isOpen) {
-		  if (BuildPath(outrec.pts!, getReverseSolution(), true, path)) {
-			  solutionOpen.Add(path);
-		  }
-		} else {
-		  // closed paths should always return a Positive orientation
-		  // except when ReverseSolution == true
-		  if (BuildPath(outrec.pts!, getReverseSolution(), false, path)) {
-			solutionClosed.Add(path);
-		  }
+			List<Point64> path = new ArrayList<Point64>();
+			if (outrec.isOpen) {
+				if (BuildPath(outrec.pts, getReverseSolution(), true, path)) {
+					solutionOpen.add(path);
+				}
+			} else {
+				// closed paths should always return a Positive orientation
+				// except when ReverseSolution == true
+				if (BuildPath(outrec.pts, getReverseSolution(), false, path)) {
+					solutionClosed.add(path);
+				}
+			}
 		}
-	  }
-	  return true;
+		return true;
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private bool Path1InsidePath2(OutRec or1, OutRec or2)
 	private boolean Path1InsidePath2(OutRec or1, OutRec or2) {
 	  PointInPolygonResult result;
-	  OutPt op = or1.pts!;
+	  OutPt op = or1.pts;
 	  do {
 		result = InternalClipper.PointInPolygon(op.pt, or2.path);
 		if (result != PointInPolygonResult.IsOn) {
 			break;
 		}
-		op = op.next!;
+		op = op.next;
 	  } while (op != or1.pts);
 	  if (result == PointInPolygonResult.IsOn) {
-		return Area(op) < Area(or2.pts!);
+		return Area(op) < Area(or2.pts);
 	  }
 	  return result == PointInPolygonResult.IsInside;
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private Rect64 GetBounds(Path64 path)
-	private Rect64 GetBounds(Path64 path) {
-		if (path.Count == 0) {
+//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private Rect64 GetBounds(List<Point64> path)
+	private Rect64 GetBounds(List<Point64> path) {
+		if (path.size() == 0) {
 			return new Rect64();
 		}
 		Rect64 result = new Rect64(Long.MAX_VALUE, Long.MAX_VALUE, -Long.MAX_VALUE, -Long.MAX_VALUE);
@@ -3233,7 +3252,7 @@ public class ClipperBase {
 	  // splits can occur internally, and checking the owner
 	  // first would miss the inner split's true ownership
 	  if (owner.splits != null) {
-		for (OutRec asplit : owner.splits!) {
+		for (OutRec asplit : owner.splits) {
 		  OutRec split = GetRealOutRec(asplit);
 		  if (split == null || split.idx <= owner.idx || split.equals(outrec)) {
 			  continue;
@@ -3243,7 +3262,7 @@ public class ClipperBase {
 		  }
 
 		  if (split.path.Count == 0) {
-			BuildPath(split.pts!, getReverseSolution(), false, split.path);
+			BuildPath(split.pts, getReverseSolution(), false, split.path);
 		  }
 		  if (split.bounds.IsEmpty()) {
 			  split.bounds = GetBounds(split.path);
@@ -3262,11 +3281,11 @@ public class ClipperBase {
 	  }
 
 	  for (;;) {
-		if (isInsideOwnerBounds && Path1InsidePath2(outrec, outrec.owner!)) {
+		if (isInsideOwnerBounds && Path1InsidePath2(outrec, outrec.owner)) {
 		  return true;
 		}
 
-		outrec.owner = outrec.owner!.owner;
+		outrec.owner = outrec.owner.owner;
 		if (outrec.owner == null) {
 			return false;
 		}
@@ -3275,89 +3294,89 @@ public class ClipperBase {
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] protected bool BuildTree(PolyPathBase polytree, Paths64 solutionOpen)
-	protected final boolean BuildTree(PolyPathBase polytree, Paths64 solutionOpen) {
-	  polytree.Clear();
-	  solutionOpen.Clear();
-	  solutionOpen.Capacity = _outrecList.size();
+//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] protected bool BuildTree(PolyPathBase polytree, List<List<Point64>> solutionOpen)
+	protected final boolean BuildTree(PolyPathBase polytree, List<List<Point64>> solutionOpen) {
+		polytree.Clear();
+		solutionOpen.Clear();
+		solutionOpen.Capacity = _outrecList.size();
 
-	  for (int i = 0; i < _outrecList.size(); i++) {
-		OutRec outrec = _outrecList.get(i);
-		if (outrec.pts == null) {
-			continue;
-		}
+		for (int i = 0; i < _outrecList.size(); i++) {
+			OutRec outrec = _outrecList.get(i);
+			if (outrec.pts == null) {
+				continue;
+			}
 
-		if (outrec.isOpen) {
-		  Path64 open_path = new Path64();
-		  if (BuildPath(outrec.pts!, getReverseSolution(), true, open_path)) {
-			solutionOpen.Add(open_path);
-		  }
-		  continue;
-		}
+			if (outrec.isOpen) {
+				List<Point64> open_path = new List<Point64>();
+				if (BuildPath(outrec.pts, getReverseSolution(), true, open_path)) {
+					solutionOpen.Add(open_path);
+				}
+				continue;
+			}
 
-		if (!BuildPath(outrec.pts!, getReverseSolution(), false, outrec.path)) {
-			continue;
-		}
-		if (outrec.bounds.IsEmpty()) {
-			outrec.bounds = GetBounds(outrec.path);
-		}
-		outrec.owner = GetRealOutRec(outrec.owner);
-		if (outrec.owner != null) {
-		  DeepCheckOwner(outrec, outrec.owner);
-		}
+			if (!BuildPath(outrec.pts, getReverseSolution(), false, outrec.path)) {
+				continue;
+			}
+			if (outrec.bounds.IsEmpty()) {
+				outrec.bounds = GetBounds(outrec.path);
+			}
+			outrec.owner = GetRealOutRec(outrec.owner);
+			if (outrec.owner != null) {
+				DeepCheckOwner(outrec, outrec.owner);
+			}
 
-		// swap order if outer/owner paths are preceeded by their inner paths
-		if (outrec.owner != null && outrec.owner.idx > outrec.idx) {
-		  int j = outrec.owner.idx;
-		  outrec.owner.idx = i;
-		  outrec.idx = j;
-		  _outrecList.set(i, _outrecList.get(j));
-		  _outrecList.set(j, outrec);
-		  outrec = _outrecList.get(i);
-		  outrec.owner = GetRealOutRec(outrec.owner);
-		  BuildPath(outrec.pts!, getReverseSolution(), false, outrec.path);
-		  if (outrec.bounds.IsEmpty()) {
-			  outrec.bounds = GetBounds(outrec.path);
-		  }
-		  if (outrec.owner != null) {
-			DeepCheckOwner(outrec, outrec.owner);
-		  }
-		}
+			// swap order if outer/owner paths are preceeded by their inner paths
+			if (outrec.owner != null && outrec.owner.idx > outrec.idx) {
+				int j = outrec.owner.idx;
+				outrec.owner.idx = i;
+				outrec.idx = j;
+				_outrecList.set(i, _outrecList.get(j));
+				_outrecList.set(j, outrec);
+				outrec = _outrecList.get(i);
+				outrec.owner = GetRealOutRec(outrec.owner);
+				BuildPath(outrec.pts, getReverseSolution(), false, outrec.path);
+				if (outrec.bounds.IsEmpty()) {
+					outrec.bounds = GetBounds(outrec.path);
+				}
+				if (outrec.owner != null) {
+					DeepCheckOwner(outrec, outrec.owner);
+				}
+			}
 
-		PolyPathBase ownerPP;
-		if (outrec.owner != null && outrec.owner.polypath != null) {
-		  ownerPP = outrec.owner.polypath;
-		} else {
-		  ownerPP = polytree;
+			PolyPathBase ownerPP;
+			if (outrec.owner != null && outrec.owner.polypath != null) {
+				ownerPP = outrec.owner.polypath;
+			} else {
+				ownerPP = polytree;
+			}
+			outrec.polypath = ownerPP.AddChild(outrec.path);
 		}
-		outrec.polypath = ownerPP.AddChild(outrec.path);
-	  }
-	  return true;
+		return true;
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] public Rect64 GetBounds()
 	public final Rect64 GetBounds() {
-	  Rect64 bounds = Clipper.MaxInvalidRect64;
-	  for (Vertex t : _vertexList) {
-		Vertex v = t;
-		do {
-		  if (v.pt.X < bounds.left) {
-			  bounds.left = v.pt.X;
-		  }
-		  if (v.pt.X > bounds.right) {
-			  bounds.right = v.pt.X;
-		  }
-		  if (v.pt.Y < bounds.top) {
-			  bounds.top = v.pt.Y;
-		  }
-		  if (v.pt.Y > bounds.bottom) {
-			  bounds.bottom = v.pt.Y;
-		  }
-		  v = v.next!;
-		} while (v != t);
-	  }
-	  return bounds.IsEmpty() ? new Rect64(0, 0, 0, 0) : bounds;
+		Rect64 bounds = Clipper.MaxInvalidRect64;
+		for (Vertex t : _vertexList) {
+			Vertex v = t;
+			do {
+				if (v.pt.X < bounds.left) {
+					bounds.left = v.pt.X;
+				}
+				if (v.pt.X > bounds.right) {
+					bounds.right = v.pt.X;
+				}
+				if (v.pt.Y < bounds.top) {
+					bounds.top = v.pt.Y;
+				}
+				if (v.pt.Y > bounds.bottom) {
+					bounds.bottom = v.pt.Y;
+				}
+				v = v.next;
+			} while (v != t);
+		}
+		return bounds.IsEmpty() ? new Rect64(0, 0, 0, 0) : bounds;
 	}
 
-} // ClipperBase class
+}
