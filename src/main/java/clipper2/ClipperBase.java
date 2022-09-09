@@ -58,12 +58,12 @@ public class ClipperBase {
 	}
 
 	public ClipperBase() {
-		_minimaList = new ArrayList<LocalMinima>();
-		_intersectList = new ArrayList<IntersectNode>();
-		_vertexList = new ArrayList<Vertex>();
-		_outrecList = new ArrayList<OutRec>();
-		_joinerList = new ArrayList<Joiner>();
-		_scanlineList = new ArrayList<Long>();
+		_minimaList = new ArrayList<>();
+		_intersectList = new ArrayList<>();
+		_vertexList = new ArrayList<>();
+		_outrecList = new ArrayList<>();
+		_joinerList = new ArrayList<>();
+		_scanlineList = new ArrayList<>();
 		setPreserveCollinear(true);
 	}
 
@@ -88,7 +88,7 @@ public class ClipperBase {
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static bool IsOpenEnd(Active ae)
 	private static boolean IsOpenEnd(Active ae) {
-	  return ae.localMin.isOpen && IsOpenEnd(ae.vertexTop);
+		return ae.localMin.isOpen && IsOpenEnd(ae.vertexTop);
 	}
 
 	private static boolean IsOpenEnd(Vertex v) {
@@ -628,7 +628,7 @@ public class ClipperBase {
 //C# TO JAVA CONVERTER NOTE: Java does not support optional parameters. Overloaded method(s) are created above:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] protected void AddPath(List<Point64> path, PathType polytype, bool isOpen = false)
 	protected final void AddPath(List<Point64> path, PathType polytype, boolean isOpen) {
-	  List<List<Point64>> tmp = new List<List<Point64>>(1) { path };
+	  List<List<Point64>> tmp = new List<>() { path };
 	  AddPaths(tmp, polytype, isOpen);
 	}
 
@@ -653,17 +653,17 @@ public class ClipperBase {
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private bool IsContributingClosed(Active ae)
 	private boolean IsContributingClosed(Active ae) {
 		switch (_fillrule) {
-			case FillRule.Positive :
+			case Positive :
 				if (ae.windCount != 1) {
 					return false;
 				}
 				break;
-			case FillRule.Negative :
+			case Negative :
 				if (ae.windCount != -1) {
 					return false;
 				}
 				break;
-			case FillRule.NonZero :
+			case NonZero :
 				if (Math.abs(ae.windCount) != 1) {
 					return false;
 				}
@@ -671,7 +671,7 @@ public class ClipperBase {
 		}
 
 		switch (_cliptype) {
-			case ClipType.Intersection :
+			case Intersection :
 //C# TO JAVA CONVERTER TODO TASK: 'switch expressions' are not converted by C# to Java Converter:
 //		  return _fillrule switch
 //		  {
@@ -680,7 +680,7 @@ public class ClipperBase {
 //			_ => ae.windCount2 != 0,
 //		  };
 
-			case ClipType.Union :
+			case Union :
 //C# TO JAVA CONVERTER TODO TASK: 'switch expressions' are not converted by C# to Java Converter:
 //		  return _fillrule switch
 //		  {
@@ -689,7 +689,7 @@ public class ClipperBase {
 //			_ => ae.windCount2 == 0,
 //		  };
 
-			case ClipType.Difference :
+			case Difference :
 //C# TO JAVA CONVERTER TODO TASK: 'switch expressions' are not converted by C# to Java Converter:
 //		  bool result = _fillrule switch
 //		  {
@@ -699,7 +699,7 @@ public class ClipperBase {
 //		  };
 				return (GetPolyType(ae) == PathType.Subject) ? result : !result;
 
-			case ClipType.Xor :
+			case Xor :
 				return true; // XOr is always contributing unless open
 
 			default :
@@ -726,118 +726,115 @@ public class ClipperBase {
 				break;
 		}
 
-//C# TO JAVA CONVERTER TODO TASK: 'switch expressions' are not converted by C# to Java Converter:
-//	  bool result = _cliptype switch
-//	  {
-//		ClipType.Intersection => isInClip,
-//		ClipType.Union => !isInSubj && !isInClip,
-//		_ => !isInClip
-//	  };
+		boolean result = switch (_cliptype) {
+			case Intersection -> isInClip;
+			case Union -> !isInSubj && !isInClip;
+			default -> !isInClip;
+		};
+
 		return result;
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void SetWindCountForClosedPathEdge(Active ae)
 	private void SetWindCountForClosedPathEdge(Active ae) {
-	  // Wind counts refer to polygon regions not edges, so here an edge's WindCnt
-	  // indicates the higher of the wind counts for the two regions touching the
-	  // edge. (nb: Adjacent regions can only ever have their wind counts differ by
-	  // one. Also, open paths have no meaningful wind directions or counts.)
+		// Wind counts refer to polygon regions not edges, so here an edge's WindCnt
+		// indicates the higher of the wind counts for the two regions touching the
+		// edge. (nb: Adjacent regions can only ever have their wind counts differ by
+		// one. Also, open paths have no meaningful wind directions or counts.)
 
-	  Active ae2 = ae.prevInAEL;
-	  // find the nearest closed path edge of the same PolyType in AEL (heading left)
-	  PathType pt = GetPolyType(ae);
-	  while (ae2 != null && (GetPolyType(ae2) != pt || IsOpen(ae2))) {
-		  ae2 = ae2.prevInAEL;
-	  }
+		Active ae2 = ae.prevInAEL;
+		// find the nearest closed path edge of the same PolyType in AEL (heading left)
+		PathType pt = GetPolyType(ae);
+		while (ae2 != null && (GetPolyType(ae2) != pt || IsOpen(ae2))) {
+			ae2 = ae2.prevInAEL;
+		}
 
-	  if (ae2 == null) {
-		ae.windCount = ae.windDx;
-		ae2 = _actives;
-	  } else if (_fillrule == FillRule.EvenOdd) {
-		ae.windCount = ae.windDx;
-		ae.windCount2 = ae2.windCount2;
-		ae2 = ae2.nextInAEL;
-	  } else {
-		// NonZero, positive, or negative filling here ...
-		// when e2's WindCnt is in the SAME direction as its WindDx,
-		// then polygon will fill on the right of 'e2' (and 'e' will be inside)
-		// nb: neither e2.WindCnt nor e2.WindDx should ever be 0.
-		if (ae2.windCount * ae2.windDx < 0) {
-		  // opposite directions so 'ae' is outside 'ae2' ...
-		  if (Math.abs(ae2.windCount) > 1) {
-			// outside prev poly but still inside another.
-			if (ae2.windDx * ae.windDx < 0) {
-			  // reversing direction so use the same WC
-			  ae.windCount = ae2.windCount;
-			} else {
-			  // otherwise keep 'reducing' the WC by 1 (i.e. towards 0) ...
-			  ae.windCount = ae2.windCount + ae.windDx;
-			}
-		  } else {
-			// now outside all polys of same polytype so set own WC ...
-			ae.windCount = (IsOpen(ae) ? 1 : ae.windDx);
-		  }
+		if (ae2 == null) {
+			ae.windCount = ae.windDx;
+			ae2 = _actives;
+		} else if (_fillrule == FillRule.EvenOdd) {
+			ae.windCount = ae.windDx;
+			ae.windCount2 = ae2.windCount2;
+			ae2 = ae2.nextInAEL;
 		} else {
-		  //'ae' must be inside 'ae2'
-		  if (ae2.windDx * ae.windDx < 0) {
-			// reversing direction so use the same WC
-			ae.windCount = ae2.windCount;
-		  } else {
-			// otherwise keep 'increasing' the WC by 1 (i.e. away from 0) ...
-			ae.windCount = ae2.windCount + ae.windDx;
-		  }
+			// NonZero, positive, or negative filling here ...
+			// when e2's WindCnt is in the SAME direction as its WindDx,
+			// then polygon will fill on the right of 'e2' (and 'e' will be inside)
+			// nb: neither e2.WindCnt nor e2.WindDx should ever be 0.
+			if (ae2.windCount * ae2.windDx < 0) {
+				// opposite directions so 'ae' is outside 'ae2' ...
+				if (Math.abs(ae2.windCount) > 1) {
+					// outside prev poly but still inside another.
+					if (ae2.windDx * ae.windDx < 0) {
+						// reversing direction so use the same WC
+						ae.windCount = ae2.windCount;
+					} else {
+						// otherwise keep 'reducing' the WC by 1 (i.e. towards 0) ...
+						ae.windCount = ae2.windCount + ae.windDx;
+					}
+				} else {
+					// now outside all polys of same polytype so set own WC ...
+					ae.windCount = (IsOpen(ae) ? 1 : ae.windDx);
+				}
+			} else // 'ae' must be inside 'ae2'
+			if (ae2.windDx * ae.windDx < 0) {
+				// reversing direction so use the same WC
+				ae.windCount = ae2.windCount;
+			} else {
+				// otherwise keep 'increasing' the WC by 1 (i.e. away from 0) ...
+				ae.windCount = ae2.windCount + ae.windDx;
+			}
+
+			ae.windCount2 = ae2.windCount2;
+			ae2 = ae2.nextInAEL; // i.e. get ready to calc WindCnt2
 		}
 
-		ae.windCount2 = ae2.windCount2;
-		ae2 = ae2.nextInAEL; // i.e. get ready to calc WindCnt2
-	  }
-
-	  // update windCount2 ...
-	  if (_fillrule == FillRule.EvenOdd) {
-		while (!ae2.equals(ae)) {
-		  if (GetPolyType(ae2) != pt && !IsOpen(ae2)) {
-			ae.windCount2 = (ae.windCount2 == 0 ? 1 : 0);
-		  }
-		  ae2 = ae2.nextInAEL;
+		// update windCount2 ...
+		if (_fillrule == FillRule.EvenOdd) {
+			while (!ae2.equals(ae)) {
+				if (GetPolyType(ae2) != pt && !IsOpen(ae2)) {
+					ae.windCount2 = (ae.windCount2 == 0 ? 1 : 0);
+				}
+				ae2 = ae2.nextInAEL;
+			}
+		} else {
+			while (!ae2.equals(ae)) {
+				if (GetPolyType(ae2) != pt && !IsOpen(ae2)) {
+					ae.windCount2 += ae2.windDx;
+				}
+				ae2 = ae2.nextInAEL;
+			}
 		}
-	  } else {
-		while (!ae2.equals(ae)) {
-		  if (GetPolyType(ae2) != pt && !IsOpen(ae2)) {
-			ae.windCount2 += ae2.windDx;
-		  }
-		  ae2 = ae2.nextInAEL;
-		}
-	  }
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void SetWindCountForOpenPathEdge(Active ae)
 	private void SetWindCountForOpenPathEdge(Active ae) {
-	  Active ae2 = _actives;
-	  if (_fillrule == FillRule.EvenOdd) {
-		int cnt1 = 0, cnt2 = 0;
-		while (!ae2.equals(ae)) {
-		  if (GetPolyType(ae2) == PathType.Clip) {
-			cnt2++;
-		  } else if (!IsOpen(ae2)) {
-			cnt1++;
-		  }
-		  ae2 = ae2.nextInAEL;
-		}
+		Active ae2 = _actives;
+		if (_fillrule == FillRule.EvenOdd) {
+			int cnt1 = 0, cnt2 = 0;
+			while (!ae2.equals(ae)) {
+				if (GetPolyType(ae2) == PathType.Clip) {
+					cnt2++;
+				} else if (!IsOpen(ae2)) {
+					cnt1++;
+				}
+				ae2 = ae2.nextInAEL;
+			}
 
-		ae.windCount = (IsOdd(cnt1) ? 1 : 0);
-		ae.windCount2 = (IsOdd(cnt2) ? 1 : 0);
-	  } else {
-		while (!ae2.equals(ae)) {
-		  if (GetPolyType(ae2) == PathType.Clip) {
-			ae.windCount2 += ae2.windDx;
-		  } else if (!IsOpen(ae2)) {
-			ae.windCount += ae2.windDx;
-		  }
-		  ae2 = ae2.nextInAEL;
+			ae.windCount = (IsOdd(cnt1) ? 1 : 0);
+			ae.windCount2 = (IsOdd(cnt2) ? 1 : 0);
+		} else {
+			while (!ae2.equals(ae)) {
+				if (GetPolyType(ae2) == PathType.Clip) {
+					ae.windCount2 += ae2.windDx;
+				} else if (!IsOpen(ae2)) {
+					ae.windCount += ae2.windDx;
+				}
+				ae2 = ae2.nextInAEL;
+			}
 		}
-	  }
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
@@ -922,123 +919,123 @@ public class ClipperBase {
 	}
 
 	private void InsertLocalMinimaIntoAEL(long botY) {
-	  LocalMinima localMinima;
-	  Active leftBound, rightBound = null;
-	  // Add any local minima (if any) at BotY ...
-	  // NB horizontal local minima edges should contain locMin.vertex.prev
-	  while (HasLocMinAtY(botY)) {
-		localMinima = PopLocalMinima();
-		if ((localMinima.vertex.flags & VertexFlags.OpenStart) != VertexFlags.None) {
-		  leftBound = null;
-		} else {
-		  leftBound = new Active();
-		  leftBound.bot = localMinima.vertex.pt;
-		  leftBound.curX = localMinima.vertex.pt.X;
-		  leftBound.windDx = -1;
-		  leftBound.vertexTop = localMinima.vertex.prev;
-		  leftBound.top = localMinima.vertex.prev.pt;
-		  leftBound.outrec = null;
-		  leftBound.localMin = localMinima;
-		  SetDx(leftBound);
-		}
-
-		if ((localMinima.vertex.flags & VertexFlags.OpenEnd) != VertexFlags.None) {
-		  rightBound = null;
-		} else {
-		  rightBound = new Active();
-		  rightBound.bot = localMinima.vertex.pt;
-		  rightBound.curX = localMinima.vertex.pt.X;
-		  rightBound.windDx = 1;
-		  rightBound.vertexTop = localMinima.vertex.next;
-		  rightBound.top = localMinima.vertex.next.pt;
-		  rightBound.outrec = null;
-		  rightBound.localMin = localMinima;
-		  SetDx(rightBound);
-		}
-
-		// Currently LeftB is just the descending bound and RightB is the ascending.
-		// Now if the LeftB isn't on the left of RightB then we need swap them.
-		if (leftBound != null && rightBound != null) {
-		  if (IsHorizontal(leftBound)) {
-			if (IsHeadingRightHorz(leftBound)) {
-				tangible.RefObject<Active> tempRef_leftBound = new tangible.RefObject<>(leftBound);
-				tangible.RefObject<Active> tempRef_rightBound = new tangible.RefObject<>(rightBound);
-				SwapActives(tempRef_leftBound, tempRef_rightBound);
-				rightBound = tempRef_rightBound.argValue;
-				leftBound = tempRef_leftBound.argValue;
+		LocalMinima localMinima;
+		Active leftBound, rightBound = null;
+		// Add any local minima (if any) at BotY ...
+		// NB horizontal local minima edges should contain locMin.vertex.prev
+		while (HasLocMinAtY(botY)) {
+			localMinima = PopLocalMinima();
+			if ((localMinima.vertex.flags & VertexFlags.OpenStart) != VertexFlags.None) {
+				leftBound = null;
+			} else {
+				leftBound = new Active();
+				leftBound.bot = localMinima.vertex.pt;
+				leftBound.curX = localMinima.vertex.pt.X;
+				leftBound.windDx = -1;
+				leftBound.vertexTop = localMinima.vertex.prev;
+				leftBound.top = localMinima.vertex.prev.pt;
+				leftBound.outrec = null;
+				leftBound.localMin = localMinima;
+				SetDx(leftBound);
 			}
-		  } else if (IsHorizontal(rightBound)) {
-			if (IsHeadingLeftHorz(rightBound)) {
-				tangible.RefObject<Active> tempRef_leftBound2 = new tangible.RefObject<>(leftBound);
-				tangible.RefObject<Active> tempRef_rightBound2 = new tangible.RefObject<>(rightBound);
-				SwapActives(tempRef_leftBound2, tempRef_rightBound2);
-				rightBound = tempRef_rightBound2.argValue;
-				leftBound = tempRef_leftBound2.argValue;
+
+			if ((localMinima.vertex.flags & VertexFlags.OpenEnd) != VertexFlags.None) {
+				rightBound = null;
+			} else {
+				rightBound = new Active();
+				rightBound.bot = localMinima.vertex.pt;
+				rightBound.curX = localMinima.vertex.pt.X;
+				rightBound.windDx = 1;
+				rightBound.vertexTop = localMinima.vertex.next;
+				rightBound.top = localMinima.vertex.next.pt;
+				rightBound.outrec = null;
+				rightBound.localMin = localMinima;
+				SetDx(rightBound);
 			}
-		  } else if (leftBound.dx < rightBound.dx) {
-			tangible.RefObject<Active> tempRef_leftBound3 = new tangible.RefObject<>(leftBound);
-			tangible.RefObject<Active> tempRef_rightBound3 = new tangible.RefObject<>(rightBound);
-			SwapActives(tempRef_leftBound3, tempRef_rightBound3);
-			rightBound = tempRef_rightBound3.argValue;
-			leftBound = tempRef_leftBound3.argValue;
-		  }
-		  //so when leftBound has windDx == 1, the polygon will be oriented
-		  //counter-clockwise in Cartesian coords (clockwise with inverted Y).
-		} else if (leftBound == null) {
-		  leftBound = rightBound;
-		  rightBound = null;
-		}
 
-		boolean contributing;
-		leftBound.isLeftBound = true;
-		InsertLeftEdge(leftBound);
-
-		if (IsOpen(leftBound)) {
-		  SetWindCountForOpenPathEdge(leftBound);
-		  contributing = IsContributingOpen(leftBound);
-		} else {
-		  SetWindCountForClosedPathEdge(leftBound);
-		  contributing = IsContributingClosed(leftBound);
-		}
-
-		if (rightBound != null) {
-		  rightBound.windCount = leftBound.windCount;
-		  rightBound.windCount2 = leftBound.windCount2;
-		  InsertRightEdge(leftBound, rightBound); ///////
-
-		  if (contributing) {
-			AddLocalMinPoly(leftBound, rightBound, leftBound.bot, true);
-			if (!IsHorizontal(leftBound) && TestJoinWithPrev1(leftBound)) {
-			  OutPt op = AddOutPt(leftBound.prevInAEL, leftBound.bot);
-			  AddJoin(op, leftBound.outrec.pts);
+			// Currently LeftB is just the descending bound and RightB is the ascending.
+			// Now if the LeftB isn't on the left of RightB then we need swap them.
+			if (leftBound != null && rightBound != null) {
+				if (IsHorizontal(leftBound)) {
+					if (IsHeadingRightHorz(leftBound)) {
+						tangible.RefObject<Active> tempRef_leftBound = new tangible.RefObject<>(leftBound);
+						tangible.RefObject<Active> tempRef_rightBound = new tangible.RefObject<>(rightBound);
+						SwapActives(tempRef_leftBound, tempRef_rightBound);
+						rightBound = tempRef_rightBound.argValue;
+						leftBound = tempRef_leftBound.argValue;
+					}
+				} else if (IsHorizontal(rightBound)) {
+					if (IsHeadingLeftHorz(rightBound)) {
+						tangible.RefObject<Active> tempRef_leftBound2 = new tangible.RefObject<>(leftBound);
+						tangible.RefObject<Active> tempRef_rightBound2 = new tangible.RefObject<>(rightBound);
+						SwapActives(tempRef_leftBound2, tempRef_rightBound2);
+						rightBound = tempRef_rightBound2.argValue;
+						leftBound = tempRef_leftBound2.argValue;
+					}
+				} else if (leftBound.dx < rightBound.dx) {
+					tangible.RefObject<Active> tempRef_leftBound3 = new tangible.RefObject<>(leftBound);
+					tangible.RefObject<Active> tempRef_rightBound3 = new tangible.RefObject<>(rightBound);
+					SwapActives(tempRef_leftBound3, tempRef_rightBound3);
+					rightBound = tempRef_rightBound3.argValue;
+					leftBound = tempRef_leftBound3.argValue;
+				}
+				// so when leftBound has windDx == 1, the polygon will be oriented
+				// counter-clockwise in Cartesian coords (clockwise with inverted Y).
+			} else if (leftBound == null) {
+				leftBound = rightBound;
+				rightBound = null;
 			}
-		  }
 
-		  while (rightBound.nextInAEL != null && IsValidAelOrder(rightBound.nextInAEL, rightBound)) {
-			IntersectEdges(rightBound, rightBound.nextInAEL, rightBound.bot);
-			SwapPositionsInAEL(rightBound, rightBound.nextInAEL);
-		  }
+			boolean contributing;
+			leftBound.isLeftBound = true;
+			InsertLeftEdge(leftBound);
 
-		  if (!IsHorizontal(rightBound) && TestJoinWithNext1(rightBound)) {
-			OutPt op = AddOutPt(rightBound.nextInAEL, rightBound.bot);
-			AddJoin(rightBound.outrec.pts, op);
-		  }
+			if (IsOpen(leftBound)) {
+				SetWindCountForOpenPathEdge(leftBound);
+				contributing = IsContributingOpen(leftBound);
+			} else {
+				SetWindCountForClosedPathEdge(leftBound);
+				contributing = IsContributingClosed(leftBound);
+			}
 
-		  if (IsHorizontal(rightBound)) {
-			PushHorz(rightBound);
-		  } else {
-			InsertScanline(rightBound.top.Y);
-		  }
-		} else if (contributing) {
-		  StartOpenPath(leftBound, leftBound.bot);
-		}
+			if (rightBound != null) {
+				rightBound.windCount = leftBound.windCount;
+				rightBound.windCount2 = leftBound.windCount2;
+				InsertRightEdge(leftBound, rightBound); ///////
 
-		if (IsHorizontal(leftBound)) {
-		  PushHorz(leftBound);
-		} else {
-		  InsertScanline(leftBound.top.Y);
-		}
-	  } // while (HasLocMinAtY())
+				if (contributing) {
+					AddLocalMinPoly(leftBound, rightBound, leftBound.bot, true);
+					if (!IsHorizontal(leftBound) && TestJoinWithPrev1(leftBound)) {
+						OutPt op = AddOutPt(leftBound.prevInAEL, leftBound.bot);
+						AddJoin(op, leftBound.outrec.pts);
+					}
+				}
+
+				while (rightBound.nextInAEL != null && IsValidAelOrder(rightBound.nextInAEL, rightBound)) {
+					IntersectEdges(rightBound, rightBound.nextInAEL, rightBound.bot);
+					SwapPositionsInAEL(rightBound, rightBound.nextInAEL);
+				}
+
+				if (!IsHorizontal(rightBound) && TestJoinWithNext1(rightBound)) {
+					OutPt op = AddOutPt(rightBound.nextInAEL, rightBound.bot);
+					AddJoin(rightBound.outrec.pts, op);
+				}
+
+				if (IsHorizontal(rightBound)) {
+					PushHorz(rightBound);
+				} else {
+					InsertScanline(rightBound.top.Y);
+				}
+			} else if (contributing) {
+				StartOpenPath(leftBound, leftBound.bot);
+			}
+
+			if (IsHorizontal(leftBound)) {
+				PushHorz(leftBound);
+			} else {
+				InsertScanline(leftBound.top.Y);
+			}
+		} // while (HasLocMinAtY())
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
@@ -1612,51 +1609,51 @@ public class ClipperBase {
 	}
 
 	protected final void ExecuteInternal(ClipType ct, FillRule fillRule) {
-	  if (ct == ClipType.None) {
-		  return;
-	  }
-	  _fillrule = fillRule;
-	  _cliptype = ct;
-	  Reset();
-	  long y;
-	  tangible.OutObject<Long> tempOut_y = new tangible.OutObject<>();
-	  if (!PopScanline(tempOut_y)) {
-		  y = tempOut_y.argValue;
-		  return;
-	  } else {
-		  y = tempOut_y.argValue;
-	  }
-	  while (_succeeded) {
-		InsertLocalMinimaIntoAEL(y);
-		Active ae = null;
-		tangible.OutObject<Active> tempOut_ae = new tangible.OutObject<>();
-		while (PopHorz(tempOut_ae)) {
-			ae = tempOut_ae.argValue;
-			DoHorizontal(ae);
+		if (ct == ClipType.None) {
+			return;
 		}
-		ae = tempOut_ae.argValue;
-		ConvertHorzTrialsToJoins();
-		_currentBotY = y; // bottom of scanbeam
-		tangible.OutObject<Long> tempOut_y2 = new tangible.OutObject<>();
-		if (!PopScanline(tempOut_y2)) {
-			y = tempOut_y2.argValue;
-		  break; // y new top of scanbeam
+		_fillrule = fillRule;
+		_cliptype = ct;
+		Reset();
+		long y;
+		tangible.OutObject<Long> tempOut_y = new tangible.OutObject<>();
+		if (!PopScanline(tempOut_y)) {
+			y = tempOut_y.argValue;
+			return;
 		} else {
-			y = tempOut_y2.argValue;
+			y = tempOut_y.argValue;
 		}
-		DoIntersections(y);
-		DoTopOfScanbeam(y);
-		tangible.OutObject<Active> tempOut_ae2 = new tangible.OutObject<>();
-		while (PopHorz(tempOut_ae2)) {
+		while (_succeeded) {
+			InsertLocalMinimaIntoAEL(y);
+			Active ae = null;
+			tangible.OutObject<Active> tempOut_ae = new tangible.OutObject<>();
+			while (PopHorz(tempOut_ae)) {
+				ae = tempOut_ae.argValue;
+				DoHorizontal(ae);
+			}
+			ae = tempOut_ae.argValue;
+			ConvertHorzTrialsToJoins();
+			_currentBotY = y; // bottom of scanbeam
+			tangible.OutObject<Long> tempOut_y2 = new tangible.OutObject<>();
+			if (!PopScanline(tempOut_y2)) {
+				y = tempOut_y2.argValue;
+				break; // y new top of scanbeam
+			} else {
+				y = tempOut_y2.argValue;
+			}
+			DoIntersections(y);
+			DoTopOfScanbeam(y);
+			tangible.OutObject<Active> tempOut_ae2 = new tangible.OutObject<>();
+			while (PopHorz(tempOut_ae2)) {
+				ae = tempOut_ae2.argValue;
+				DoHorizontal(ae);
+			}
 			ae = tempOut_ae2.argValue;
-			DoHorizontal(ae);
 		}
-		ae = tempOut_ae2.argValue;
-	  }
 
-	  if (_succeeded) {
-		  ProcessJoinList();
-	  }
+		if (_succeeded) {
+			ProcessJoinList();
+		}
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
@@ -1914,225 +1911,220 @@ public class ClipperBase {
 
 	private void DoHorizontal(Active horz)
 	/*******************************************************************************
-	 * Notes: Horizontal edges (HEs) at scanline intersections (i.e. at the top or    *
-	 * bottom of a scanbeam) are processed as if layered.The order in which HEs     *
-	 * are processed doesn't matter. HEs intersect with the bottom vertices of      *
-	 * other HEs[#] and with non-horizontal edges [*]. Once these intersections     *
-	 * are completed, intermediate HEs are 'promoted' to the next edge in their     *
-	 * bounds, and they in turn may be intersected[%] by other HEs.                 *
-	 *                                                                              *
-	 * eg: 3 horizontals at a scanline:    /   |                     /           /  *
-	 *              |                     /    |     (HE3)o ========%========== o   *
-	 *              o ======= o(HE2)     /     |         /         /                *
-	 *          o ============#=========*======*========#=========o (HE1)           *
-	 *         /              |        /       |       /                            *
-	 *******************************************************************************/ {
-	  Point64 pt;
-	  boolean horzIsOpen = IsOpen(horz);
-	  long Y = horz.bot.Y;
+	 * Notes: Horizontal edges (HEs) at scanline intersections (i.e. at the top or *
+	 * bottom of a scanbeam) are processed as if layered.The order in which HEs *
+	 * are processed doesn't matter. HEs intersect with the bottom vertices of *
+	 * other HEs[#] and with non-horizontal edges [*]. Once these intersections *
+	 * are completed, intermediate HEs are 'promoted' to the next edge in their *
+	 * bounds, and they in turn may be intersected[%] by other HEs. * * eg: 3
+	 * horizontals at a scanline: / | / / * | / | (HE3)o ========%========== o * o
+	 * ======= o(HE2) / | / / * o ============#=========*======*========#=========o
+	 * (HE1) * / | / | / *
+	 *******************************************************************************/
+	{
+		Point64 pt;
+		boolean horzIsOpen = IsOpen(horz);
+		long Y = horz.bot.Y;
 
-	  Vertex vertex_max = null;
-	  Active maxPair = null;
+		Vertex vertex_max = null;
+		Active maxPair = null;
 
-	  if (!horzIsOpen) {
-		vertex_max = GetCurrYMaximaVertex(horz);
-		if (vertex_max != null) {
-		  maxPair = GetHorzMaximaPair(horz, vertex_max);
-		  // remove 180 deg.spikes and also simplify
-		  // consecutive horizontals when PreserveCollinear = true
-		  if (!vertex_max.equals(horz.vertexTop)) {
-			TrimHorz(horz, getPreserveCollinear());
-		  }
-		}
-	  }
-
-	  long leftX;
-	  tangible.OutObject<Long> tempOut_leftX = new tangible.OutObject<>();
-	  long rightX;
-	  tangible.OutObject<Long> tempOut_rightX = new tangible.OutObject<>();
-	  boolean isLeftToRight = ResetHorzDirection(horz, maxPair, tempOut_leftX, tempOut_rightX);
-	  rightX = tempOut_rightX.argValue;
-	  leftX = tempOut_leftX.argValue;
-
-	  if (IsHotEdge(horz)) {
-		AddOutPt(horz, new Point64(horz.curX, Y));
-	  }
-
-	  OutPt op = null;
-	  for (; ;) {
-		if (horzIsOpen && IsMaxima(horz) && !IsOpenEnd(horz)) {
-		  vertex_max = GetCurrYMaximaVertex(horz);
-		  if (vertex_max != null) {
-			maxPair = GetHorzMaximaPair(horz, vertex_max);
-		  }
+		if (!horzIsOpen) {
+			vertex_max = GetCurrYMaximaVertex(horz);
+			if (vertex_max != null) {
+				maxPair = GetHorzMaximaPair(horz, vertex_max);
+				// remove 180 deg.spikes and also simplify
+				// consecutive horizontals when PreserveCollinear = true
+				if (!vertex_max.equals(horz.vertexTop)) {
+					TrimHorz(horz, getPreserveCollinear());
+				}
+			}
 		}
 
-		// loops through consec. horizontal edges (if open)
-		Active ae = null;
-		if (isLeftToRight) {
-			ae = horz.nextInAEL;
-		} else {
-			ae = horz.prevInAEL;
+		long leftX;
+		tangible.OutObject<Long> tempOut_leftX = new tangible.OutObject<>();
+		long rightX;
+		tangible.OutObject<Long> tempOut_rightX = new tangible.OutObject<>();
+		boolean isLeftToRight = ResetHorzDirection(horz, maxPair, tempOut_leftX, tempOut_rightX);
+		rightX = tempOut_rightX.argValue;
+		leftX = tempOut_leftX.argValue;
+
+		if (IsHotEdge(horz)) {
+			AddOutPt(horz, new Point64(horz.curX, Y));
 		}
 
-		while (ae != null) {
-		  if (maxPair.equals(ae)) {
-			if (IsHotEdge(horz)) {
-			  while (horz.vertexTop != ae.vertexTop) {
-				AddOutPt(horz, horz.top);
-				UpdateEdgeIntoAEL(horz);
-			  }
-			  op = AddLocalMaxPoly(horz, ae, horz.top);
-			  if (op != null && !IsOpen(horz) && op.pt == horz.top) {
-				AddTrialHorzJoin(op);
-			  }
+		OutPt op = null;
+		for (;;) {
+			if (horzIsOpen && IsMaxima(horz) && !IsOpenEnd(horz)) {
+				vertex_max = GetCurrYMaximaVertex(horz);
+				if (vertex_max != null) {
+					maxPair = GetHorzMaximaPair(horz, vertex_max);
+				}
 			}
 
-			DeleteFromAEL(ae);
-			DeleteFromAEL(horz);
-			return;
-		  }
+			// loops through consec. horizontal edges (if open)
+			Active ae = null;
+			if (isLeftToRight) {
+				ae = horz.nextInAEL;
+			} else {
+				ae = horz.prevInAEL;
+			}
 
-		  // if horzEdge is a maxima, keep going until we reach
-		  // its maxima pair, otherwise check for break conditions
-		  if (!vertex_max.equals(horz.vertexTop) || IsOpenEnd(horz)) {
-			// otherwise stop when 'ae' is beyond the end of the horizontal line
-			if ((isLeftToRight && ae.curX > rightX) || (!isLeftToRight && ae.curX < leftX)) {
+			while (ae != null) {
+				if (maxPair.equals(ae)) {
+					if (IsHotEdge(horz)) {
+						while (horz.vertexTop != ae.vertexTop) {
+							AddOutPt(horz, horz.top);
+							UpdateEdgeIntoAEL(horz);
+						}
+						op = AddLocalMaxPoly(horz, ae, horz.top);
+						if (op != null && !IsOpen(horz) && op.pt == horz.top) {
+							AddTrialHorzJoin(op);
+						}
+					}
+
+					DeleteFromAEL(ae);
+					DeleteFromAEL(horz);
+					return;
+				}
+
+				// if horzEdge is a maxima, keep going until we reach
+				// its maxima pair, otherwise check for break conditions
+				if (!vertex_max.equals(horz.vertexTop) || IsOpenEnd(horz)) {
+					// otherwise stop when 'ae' is beyond the end of the horizontal line
+					if ((isLeftToRight && ae.curX > rightX) || (!isLeftToRight && ae.curX < leftX)) {
+						break;
+					}
+
+					if (ae.curX == horz.top.X && !IsHorizontal(ae)) {
+						pt = NextVertex(horz).pt;
+						if (isLeftToRight) {
+							// with open paths we'll only break once past horz's end
+							if (IsOpen(ae) && !IsSamePolyType(ae, horz) && !IsHotEdge(ae)) {
+								if (TopX(ae, pt.Y) > pt.X) {
+									break;
+								}
+							}
+							// otherwise we'll only break when horz's outslope is greater than e's
+							else if (TopX(ae, pt.Y) >= pt.X) {
+								break;
+							}
+						} else // with open paths we'll only break once past horz's end
+						if (IsOpen(ae) && !IsSamePolyType(ae, horz) && !IsHotEdge(ae)) {
+							if (TopX(ae, pt.Y) < pt.X) {
+								break;
+							}
+						}
+						// otherwise we'll only break when horz's outslope is greater than e's
+						else if (TopX(ae, pt.Y) <= pt.X) {
+							break;
+						}
+					}
+				}
+
+				pt = new Point64(ae.curX, Y);
+
+				if (isLeftToRight) {
+					op = IntersectEdges(horz, ae, pt);
+					SwapPositionsInAEL(horz, ae);
+
+					if (IsHotEdge(horz) && op != null && !IsOpen(horz) && op.pt == pt) {
+						AddTrialHorzJoin(op);
+					}
+
+					if (!IsHorizontal(ae) && TestJoinWithPrev1(ae)) {
+						op = AddOutPt(ae.prevInAEL, pt);
+						OutPt op2 = AddOutPt(ae, pt);
+						AddJoin(op, op2);
+					}
+
+					horz.curX = ae.curX;
+					ae = horz.nextInAEL;
+				} else {
+					op = IntersectEdges(ae, horz, pt);
+					SwapPositionsInAEL(ae, horz);
+
+					if (IsHotEdge(horz) && op != null && !IsOpen(horz) && op.pt == pt) {
+						AddTrialHorzJoin(op);
+					}
+
+					if (!IsHorizontal(ae) && TestJoinWithNext1(ae)) {
+						op = AddOutPt(ae, pt);
+						OutPt op2 = AddOutPt(ae.nextInAEL, pt);
+						AddJoin(op, op2);
+					}
+
+					horz.curX = ae.curX;
+					ae = horz.prevInAEL;
+				}
+			} // we've reached the end of this horizontal
+
+			// check if we've finished looping through consecutive horizontals
+			if (horzIsOpen && IsOpenEnd(horz)) {
+				if (IsHotEdge(horz)) {
+					AddOutPt(horz, horz.top);
+					if (IsFront(horz)) {
+						horz.outrec.frontEdge = null;
+					} else {
+						horz.outrec.backEdge = null;
+					}
+				}
+				horz.outrec = null;
+				DeleteFromAEL(horz); // ie open at top
+				return;
+			}
+
+			if (NextVertex(horz).pt.Y != horz.top.Y) {
 				break;
 			}
 
-			if (ae.curX == horz.top.X && !IsHorizontal(ae)) {
-			  pt = NextVertex(horz).pt;
-			  if (isLeftToRight) {
-				// with open paths we'll only break once past horz's end
-				if (IsOpen(ae) && !IsSamePolyType(ae, horz) && !IsHotEdge(ae)) {
-				  if (TopX(ae, pt.Y) > pt.X) {
-					  break;
-				  }
-				}
-				// otherwise we'll only break when horz's outslope is greater than e's
-				else if (TopX(ae, pt.Y) >= pt.X) {
-					break;
-				}
-			  } else {
-				// with open paths we'll only break once past horz's end
-				if (IsOpen(ae) && !IsSamePolyType(ae, horz) && !IsHotEdge(ae)) {
-				  if (TopX(ae, pt.Y) < pt.X) {
-					  break;
-				  }
-				}
-				// otherwise we'll only break when horz's outslope is greater than e's
-				else if (TopX(ae, pt.Y) <= pt.X) {
-					break;
-				}
-			  }
+			// there must be a following (consecutive) horizontal
+			if (IsHotEdge(horz)) {
+				AddOutPt(horz, horz.top);
 			}
-		  }
+			UpdateEdgeIntoAEL(horz);
 
-		  pt = new Point64(ae.curX, Y);
-
-		  if (isLeftToRight) {
-			op = IntersectEdges(horz, ae, pt);
-			SwapPositionsInAEL(horz, ae);
-
-			if (IsHotEdge(horz) && op != null && !IsOpen(horz) && op.pt == pt) {
-			  AddTrialHorzJoin(op);
+			if (getPreserveCollinear() && HorzIsSpike(horz)) {
+				TrimHorz(horz, true);
 			}
 
-			if (!IsHorizontal(ae) && TestJoinWithPrev1(ae)) {
-			  op = AddOutPt(ae.prevInAEL, pt);
-			  OutPt op2 = AddOutPt(ae, pt);
-			  AddJoin(op, op2);
-			}
+			tangible.OutObject<Long> tempOut_leftX2 = new tangible.OutObject<>();
+			tangible.OutObject<Long> tempOut_rightX2 = new tangible.OutObject<>();
+			isLeftToRight = ResetHorzDirection(horz, maxPair, tempOut_leftX2, tempOut_rightX2);
+			rightX = tempOut_rightX2.argValue;
+			leftX = tempOut_leftX2.argValue;
 
-			horz.curX = ae.curX;
-			ae = horz.nextInAEL;
-		  } else {
-			op = IntersectEdges(ae, horz, pt);
-			SwapPositionsInAEL(ae, horz);
+		} // end for loop and end of (possible consecutive) horizontals
 
-			if (IsHotEdge(horz) && op != null && !IsOpen(horz) && op.pt == pt) {
-			  AddTrialHorzJoin(op);
-			}
-
-			if (!IsHorizontal(ae) && TestJoinWithNext1(ae)) {
-			  op = AddOutPt(ae, pt);
-			  OutPt op2 = AddOutPt(ae.nextInAEL, pt);
-			  AddJoin(op, op2);
-			}
-
-			horz.curX = ae.curX;
-			ae = horz.prevInAEL;
-		  }
-		} // we've reached the end of this horizontal
-
-		// check if we've finished looping through consecutive horizontals
-		if (horzIsOpen && IsOpenEnd(horz)) {
-		  if (IsHotEdge(horz)) {
-			AddOutPt(horz, horz.top);
-			if (IsFront(horz)) {
-			  horz.outrec.frontEdge = null;
-			} else {
-			  horz.outrec.backEdge = null;
-			}
-		  }
-		  horz.outrec = null;
-		  DeleteFromAEL(horz); // ie open at top
-		  return;
-		}
-
-		if (NextVertex(horz).pt.Y != horz.top.Y) {
-			break;
-		}
-
-
-		// there must be a following (consecutive) horizontal
 		if (IsHotEdge(horz)) {
-		  AddOutPt(horz, horz.top);
-		}
-		UpdateEdgeIntoAEL(horz);
-
-		if (getPreserveCollinear() && HorzIsSpike(horz)) {
-		  TrimHorz(horz, true);
-		}
-
-		tangible.OutObject<Long> tempOut_leftX2 = new tangible.OutObject<>();
-		tangible.OutObject<Long> tempOut_rightX2 = new tangible.OutObject<>();
-		isLeftToRight = ResetHorzDirection(horz, maxPair, tempOut_leftX2, tempOut_rightX2);
-		rightX = tempOut_rightX2.argValue;
-		leftX = tempOut_leftX2.argValue;
-
-	  } // end for loop and end of (possible consecutive) horizontals
-
-	  if (IsHotEdge(horz)) {
-		op = AddOutPt(horz, horz.top);
-		if (!IsOpen(horz)) {
-		  AddTrialHorzJoin(op);
-		}
-	  } else {
-		op = null;
-	  }
-
-	  if ((horzIsOpen && !IsOpenEnd(horz)) || (!horzIsOpen && !vertex_max.equals(horz.vertexTop))) {
-		UpdateEdgeIntoAEL(horz); // this is the end of an intermediate horiz.
-		if (IsOpen(horz)) {
-			return;
+			op = AddOutPt(horz, horz.top);
+			if (!IsOpen(horz)) {
+				AddTrialHorzJoin(op);
+			}
+		} else {
+			op = null;
 		}
 
-		if (isLeftToRight && TestJoinWithNext1(horz)) {
-		  OutPt op2 = AddOutPt(horz.nextInAEL, horz.bot);
-		  AddJoin(op, op2);
-		} else if (!isLeftToRight && TestJoinWithPrev1(horz)) {
-		  OutPt op2 = AddOutPt(horz.prevInAEL, horz.bot);
-		  AddJoin(op2, op);
+		if ((horzIsOpen && !IsOpenEnd(horz)) || (!horzIsOpen && !vertex_max.equals(horz.vertexTop))) {
+			UpdateEdgeIntoAEL(horz); // this is the end of an intermediate horiz.
+			if (IsOpen(horz)) {
+				return;
+			}
+
+			if (isLeftToRight && TestJoinWithNext1(horz)) {
+				OutPt op2 = AddOutPt(horz.nextInAEL, horz.bot);
+				AddJoin(op, op2);
+			} else if (!isLeftToRight && TestJoinWithPrev1(horz)) {
+				OutPt op2 = AddOutPt(horz.prevInAEL, horz.bot);
+				AddJoin(op2, op);
+			}
+		} else if (IsHotEdge(horz)) {
+			AddLocalMaxPoly(horz, maxPair, horz.top);
+		} else {
+			DeleteFromAEL(maxPair);
+			DeleteFromAEL(horz);
 		}
-	  } else if (IsHotEdge(horz)) {
-		AddLocalMaxPoly(horz, maxPair, horz.top);
-	  } else {
-		DeleteFromAEL(maxPair);
-		DeleteFromAEL(horz);
-	  }
-	 }
+	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void DoTopOfScanbeam(long y)
@@ -2167,59 +2159,59 @@ public class ClipperBase {
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private System.Nullable<Active> DoMaxima(Active ae)
 	private Active DoMaxima(Active ae) {
-	  Active prevE = null;
-	  Active nextE, maxPair = null;
-	  prevE = ae.prevInAEL;
-	  nextE = ae.nextInAEL;
-
-	  if (IsOpenEnd(ae)) {
-		if (IsHotEdge(ae)) {
-			AddOutPt(ae, ae.top);
-		}
-		if (!IsHorizontal(ae)) {
-		  if (IsHotEdge(ae)) {
-			if (IsFront(ae)) {
-			  ae.outrec.frontEdge = null;
-			} else {
-			  ae.outrec.backEdge = null;
-			}
-			ae.outrec = null;
-		  }
-		  DeleteFromAEL(ae);
-		}
-		return nextE;
-	  }
-
-	  maxPair = GetMaximaPair(ae);
-	  if (maxPair == null) {
-		  return nextE; // eMaxPair is horizontal
-	  }
-
-	  // only non-horizontal maxima here.
-	  // process any edges between maxima pair ...
-	  while (!nextE.equals(maxPair)) {
-		IntersectEdges(ae, nextE, ae.top);
-		SwapPositionsInAEL(ae, nextE);
+		Active prevE = null;
+		Active nextE, maxPair = null;
+		prevE = ae.prevInAEL;
 		nextE = ae.nextInAEL;
-	  }
 
-	  if (IsOpen(ae)) {
-		if (IsHotEdge(ae)) {
-		  AddLocalMaxPoly(ae, maxPair, ae.top);
+		if (IsOpenEnd(ae)) {
+			if (IsHotEdge(ae)) {
+				AddOutPt(ae, ae.top);
+			}
+			if (!IsHorizontal(ae)) {
+				if (IsHotEdge(ae)) {
+					if (IsFront(ae)) {
+						ae.outrec.frontEdge = null;
+					} else {
+						ae.outrec.backEdge = null;
+					}
+					ae.outrec = null;
+				}
+				DeleteFromAEL(ae);
+			}
+			return nextE;
 		}
-		DeleteFromAEL(maxPair);
+
+		maxPair = GetMaximaPair(ae);
+		if (maxPair == null) {
+			return nextE; // eMaxPair is horizontal
+		}
+
+		// only non-horizontal maxima here.
+		// process any edges between maxima pair ...
+		while (!nextE.equals(maxPair)) {
+			IntersectEdges(ae, nextE, ae.top);
+			SwapPositionsInAEL(ae, nextE);
+			nextE = ae.nextInAEL;
+		}
+
+		if (IsOpen(ae)) {
+			if (IsHotEdge(ae)) {
+				AddLocalMaxPoly(ae, maxPair, ae.top);
+			}
+			DeleteFromAEL(maxPair);
+			DeleteFromAEL(ae);
+			return (prevE != null ? prevE.nextInAEL : _actives);
+		}
+
+		// here ae.nextInAel == ENext == EMaxPair ...
+		if (IsHotEdge(ae)) {
+			AddLocalMaxPoly(ae, maxPair, ae.top);
+		}
+
 		DeleteFromAEL(ae);
+		DeleteFromAEL(maxPair);
 		return (prevE != null ? prevE.nextInAEL : _actives);
-	  }
-
-	  // here ae.nextInAel == ENext == EMaxPair ...
-	  if (IsHotEdge(ae)) {
-		AddLocalMaxPoly(ae, maxPair, ae.top);
-	  }
-
-	  DeleteFromAEL(ae);
-	  DeleteFromAEL(maxPair);
-	  return (prevE != null ? prevE.nextInAEL : _actives);
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
@@ -2274,21 +2266,15 @@ public class ClipperBase {
 				if (seg2a.X >= seg1b.X || seg2b.X <= seg1a.X) {
 					return false;
 				}
-			} else {
-				if (seg2b.X >= seg1b.X || seg2a.X <= seg1a.X) {
-					return false;
-				}
+			} else if (seg2b.X >= seg1b.X || seg2a.X <= seg1a.X) {
+				return false;
 			}
-		} else {
-			if (seg2a.X < seg2b.X) {
-				if (seg2a.X >= seg1a.X || seg2b.X <= seg1b.X) {
-					return false;
-				}
-			} else {
-				if (seg2b.X >= seg1a.X || seg2a.X <= seg1b.X) {
-					return false;
-				}
+		} else if (seg2a.X < seg2b.X) {
+			if (seg2a.X >= seg1a.X || seg2b.X <= seg1b.X) {
+				return false;
 			}
+		} else if (seg2b.X >= seg1a.X || seg2a.X <= seg1b.X) {
+			return false;
 		}
 
 		if (seg1a.Y == seg1b.Y) {
@@ -2300,21 +2286,15 @@ public class ClipperBase {
 				if (seg2a.Y >= seg1b.Y || seg2b.Y <= seg1a.Y) {
 					return false;
 				}
-			} else {
-				if (seg2b.Y >= seg1b.Y || seg2a.Y <= seg1a.Y) {
-					return false;
-				}
+			} else if (seg2b.Y >= seg1b.Y || seg2a.Y <= seg1a.Y) {
+				return false;
 			}
-		} else {
-			if (seg2a.Y < seg2b.Y) {
-				if (seg2a.Y >= seg1a.Y || seg2b.Y <= seg1b.Y) {
-					return false;
-				}
-			} else {
-				if (seg2b.Y >= seg1a.Y || seg2a.Y <= seg1b.Y) {
-					return false;
-				}
+		} else if (seg2a.Y < seg2b.Y) {
+			if (seg2a.Y >= seg1a.Y || seg2b.Y <= seg1b.Y) {
+				return false;
 			}
+		} else if (seg2b.Y >= seg1a.Y || seg2a.Y <= seg1b.Y) {
+			return false;
 		}
 		return true;
 	}
@@ -2698,8 +2678,7 @@ public class ClipperBase {
 	private void ProcessJoinList() {
 		// NB can't use foreach here because list may
 		// contain nulls which can't be enumerated
-		for (int i = 0; i < _joinerList.size(); i++) {
-			Joiner j = _joinerList.get(i);
+		for (Joiner j : _joinerList) {
 			if (j == null) {
 				continue;
 			}
@@ -2976,49 +2955,49 @@ public class ClipperBase {
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void CompleteSplit(System.Nullable<OutPt> op1, System.Nullable<OutPt> op2, OutRec outrec)
 	private void CompleteSplit(OutPt op1, OutPt op2, OutRec outrec) {
-	  double area1 = Area(op1);
-	  double area2 = Area(op2);
-	  boolean signs_change = (area1 > 0) == (area2 < 0);
+		double area1 = Area(op1);
+		double area2 = Area(op2);
+		boolean signs_change = (area1 > 0) == (area2 < 0);
 
-	  // delete trivial splits (with zero or almost zero areas)
-	  if (area1 == 0 || (signs_change && Math.abs(area1) < 2)) {
-		tangible.RefObject<OutPt> tempRef_Object = new tangible.RefObject<>(op1);
-		SafeDisposeOutPts(tempRef_Object);
-		outrec.pts = op2;
-	  } else if (area2 == 0 || (signs_change && Math.abs(area2) < 2)) {
-		tangible.RefObject<OutPt> tempRef_Object2 = new tangible.RefObject<>(op2);
-		SafeDisposeOutPts(tempRef_Object2);
-		outrec.pts = op1;
-	  } else {
-		OutRec newOr = new OutRec();
-		newOr.idx = _outrecList.size();
-		_outrecList.add(newOr);
-		newOr.polypath = null;
-
-		if (_using_polytree) {
-		  if (outrec.splits == null) {
-			outrec.splits = new ArrayList<OutRec>();
-		  }
-		  outrec.splits.Add(newOr);
-		}
-
-		if (Math.abs(area1) >= Math.abs(area2)) {
-		  outrec.pts = op1;
-		  newOr.pts = op2;
+		// delete trivial splits (with zero or almost zero areas)
+		if (area1 == 0 || (signs_change && Math.abs(area1) < 2)) {
+			tangible.RefObject<OutPt> tempRef_Object = new tangible.RefObject<>(op1);
+			SafeDisposeOutPts(tempRef_Object);
+			outrec.pts = op2;
+		} else if (area2 == 0 || (signs_change && Math.abs(area2) < 2)) {
+			tangible.RefObject<OutPt> tempRef_Object2 = new tangible.RefObject<>(op2);
+			SafeDisposeOutPts(tempRef_Object2);
+			outrec.pts = op1;
 		} else {
-		  outrec.pts = op2;
-		  newOr.pts = op1;
-		}
+			OutRec newOr = new OutRec();
+			newOr.idx = _outrecList.size();
+			_outrecList.add(newOr);
+			newOr.polypath = null;
 
-		if ((area1 > 0) == (area2 > 0)) {
-		  newOr.owner = outrec.owner;
-		} else {
-		  newOr.owner = outrec;
-		}
+			if (_using_polytree) {
+				if (outrec.splits == null) {
+					outrec.splits = new ArrayList<>();
+				}
+				outrec.splits.Add(newOr);
+			}
 
-		UpdateOutrecOwner(newOr);
-		CleanCollinear(newOr);
-	  }
+			if (Math.abs(area1) >= Math.abs(area2)) {
+				outrec.pts = op1;
+				newOr.pts = op2;
+			} else {
+				outrec.pts = op2;
+				newOr.pts = op1;
+			}
+
+			if ((area1 > 0) == (area2 > 0)) {
+				newOr.owner = outrec.owner;
+			} else {
+				newOr.owner = outrec;
+			}
+
+			UpdateOutrecOwner(newOr);
+			CleanCollinear(newOr);
+		}
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
@@ -3181,17 +3160,15 @@ public class ClipperBase {
 				continue;
 			}
 
-			List<Point64> path = new ArrayList<Point64>();
+			List<Point64> path = new ArrayList<>();
 			if (outrec.isOpen) {
 				if (BuildPath(outrec.pts, getReverseSolution(), true, path)) {
 					solutionOpen.add(path);
 				}
-			} else {
-				// closed paths should always return a Positive orientation
-				// except when ReverseSolution == true
-				if (BuildPath(outrec.pts, getReverseSolution(), false, path)) {
-					solutionClosed.add(path);
-				}
+			} else // closed paths should always return a Positive orientation
+			// except when ReverseSolution == true
+			if (BuildPath(outrec.pts, getReverseSolution(), false, path)) {
+				solutionClosed.add(path);
 			}
 		}
 		return true;
@@ -3200,19 +3177,19 @@ public class ClipperBase {
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private bool Path1InsidePath2(OutRec or1, OutRec or2)
 	private boolean Path1InsidePath2(OutRec or1, OutRec or2) {
-	  PointInPolygonResult result;
-	  OutPt op = or1.pts;
-	  do {
-		result = InternalClipper.PointInPolygon(op.pt, or2.path);
-		if (result != PointInPolygonResult.IsOn) {
-			break;
+		PointInPolygonResult result;
+		OutPt op = or1.pts;
+		do {
+			result = InternalClipper.PointInPolygon(op.pt, or2.path);
+			if (result != PointInPolygonResult.IsOn) {
+				break;
+			}
+			op = op.next;
+		} while (op != or1.pts);
+		if (result == PointInPolygonResult.IsOn) {
+			return Area(op) < Area(or2.pts);
 		}
-		op = op.next;
-	  } while (op != or1.pts);
-	  if (result == PointInPolygonResult.IsOn) {
-		return Area(op) < Area(or2.pts);
-	  }
-	  return result == PointInPolygonResult.IsInside;
+		return result == PointInPolygonResult.IsInside;
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
@@ -3242,55 +3219,55 @@ public class ClipperBase {
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private bool DeepCheckOwner(OutRec outrec, OutRec owner)
 	private boolean DeepCheckOwner(OutRec outrec, OutRec owner) {
-	  if (owner.bounds.IsEmpty()) {
-		owner.bounds = GetBounds(owner.path);
-	  }
-	  boolean isInsideOwnerBounds = owner.bounds.Contains(outrec.bounds);
+		if (owner.bounds.IsEmpty()) {
+			owner.bounds = GetBounds(owner.path);
+		}
+		boolean isInsideOwnerBounds = owner.bounds.Contains(outrec.bounds);
 
-	  // while looking for the correct owner, check the owner's
-	  // splits **before** checking the owner itself because
-	  // splits can occur internally, and checking the owner
-	  // first would miss the inner split's true ownership
-	  if (owner.splits != null) {
-		for (OutRec asplit : owner.splits) {
-		  OutRec split = GetRealOutRec(asplit);
-		  if (split == null || split.idx <= owner.idx || split.equals(outrec)) {
-			  continue;
-		  }
-		  if (split.splits != null && DeepCheckOwner(outrec, split)) {
-			  return true;
-		  }
+		// while looking for the correct owner, check the owner's
+		// splits **before** checking the owner itself because
+		// splits can occur internally, and checking the owner
+		// first would miss the inner split's true ownership
+		if (owner.splits != null) {
+			for (OutRec asplit : owner.splits) {
+				OutRec split = GetRealOutRec(asplit);
+				if (split == null || split.idx <= owner.idx || split.equals(outrec)) {
+					continue;
+				}
+				if (split.splits != null && DeepCheckOwner(outrec, split)) {
+					return true;
+				}
 
-		  if (split.path.Count == 0) {
-			BuildPath(split.pts, getReverseSolution(), false, split.path);
-		  }
-		  if (split.bounds.IsEmpty()) {
-			  split.bounds = GetBounds(split.path);
-		  }
+				if (split.path.Count == 0) {
+					BuildPath(split.pts, getReverseSolution(), false, split.path);
+				}
+				if (split.bounds.IsEmpty()) {
+					split.bounds = GetBounds(split.path);
+				}
 
-		  if (split.bounds.Contains(outrec.bounds) && Path1InsidePath2(outrec, split)) {
+				if (split.bounds.Contains(outrec.bounds) && Path1InsidePath2(outrec, split)) {
 					outrec.owner = split;
 					return true;
-		  }
-		}
-	  }
-
-	  // only continue when not inside recursion
-	  if (owner != outrec.owner) {
-		  return false;
-	  }
-
-	  for (;;) {
-		if (isInsideOwnerBounds && Path1InsidePath2(outrec, outrec.owner)) {
-		  return true;
+				}
+			}
 		}
 
-		outrec.owner = outrec.owner.owner;
-		if (outrec.owner == null) {
+		// only continue when not inside recursion
+		if (owner != outrec.owner) {
 			return false;
 		}
-		isInsideOwnerBounds = outrec.owner.bounds.Contains(outrec.bounds);
-	  }
+
+		for (;;) {
+			if (isInsideOwnerBounds && Path1InsidePath2(outrec, outrec.owner)) {
+				return true;
+			}
+
+			outrec.owner = outrec.owner.owner;
+			if (outrec.owner == null) {
+				return false;
+			}
+			isInsideOwnerBounds = outrec.owner.bounds.Contains(outrec.bounds);
+		}
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
