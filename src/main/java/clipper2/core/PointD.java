@@ -1,6 +1,7 @@
 package clipper2.core;
 
 public final class PointD {
+	
 	public double x;
 	public double y;
 

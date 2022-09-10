@@ -1,8 +1,7 @@
 package clipper2.core;
 
-//C# TO JAVA CONVERTER WARNING: Java does not allow user-defined value types. The behavior of this class may differ from the original:
-//ORIGINAL LINE: public struct RectD
 public final class RectD {
+	
 	public double left;
 	public double top;
 	public double right;

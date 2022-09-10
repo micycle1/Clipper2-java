@@ -1,7 +1,7 @@
-package clipper2;
+package clipper2.offset;
 
-public enum EndType {
-	Polygon, Joined, Butt, Square, Round;
+public enum JoinType {
+	Square, Round, Miter;
 
 	public static final int SIZE = java.lang.Integer.SIZE;
 
@@ -9,7 +9,7 @@ public enum EndType {
 		return this.ordinal();
 	}
 
-	public static EndType forValue(int value) {
+	public static JoinType forValue(int value) {
 		return values()[value];
 	}
 }

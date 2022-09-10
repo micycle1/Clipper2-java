@@ -32,6 +32,6 @@ public class OutRec {
 
 	public OutRec() {
 		bounds = new Rect64();
-		path = new ArrayList<Point64>();
+		path = new ArrayList<>();
 	}
 }

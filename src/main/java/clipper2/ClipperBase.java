@@ -7,6 +7,7 @@ import clipper2.core.FillRule;
 import clipper2.core.InternalClipper;
 import clipper2.core.PathType;
 import clipper2.core.Point64;
+import clipper2.core.PointD;
 import clipper2.core.Rect64;
 import clipper2.engine.Active;
 import clipper2.engine.IntersectNode;
@@ -15,8 +16,11 @@ import clipper2.engine.LocalMinima;
 import clipper2.engine.OutPt;
 import clipper2.engine.OutRec;
 import clipper2.engine.PointInPolygonResult;
+import clipper2.engine.PolyPathBase;
 import clipper2.engine.Vertex;
 import clipper2.engine.VertexFlags;
+import tangible.OutObject;
+import tangible.RefObject;
 
 public class ClipperBase {
 
@@ -39,6 +43,16 @@ public class ClipperBase {
 	public boolean _succeeded;
 	private boolean PreserveCollinear;
 
+	public ClipperBase() {
+		_minimaList = new ArrayList<>();
+		_intersectList = new ArrayList<>();
+		_vertexList = new ArrayList<>();
+		_outrecList = new ArrayList<>();
+		_joinerList = new ArrayList<>();
+		_scanlineList = new ArrayList<>();
+		setPreserveCollinear(true);
+	}
+
 	public final boolean getPreserveCollinear() {
 		return PreserveCollinear;
 	}
@@ -57,36 +71,18 @@ public class ClipperBase {
 		ReverseSolution = value;
 	}
 
-	public ClipperBase() {
-		_minimaList = new ArrayList<>();
-		_intersectList = new ArrayList<>();
-		_vertexList = new ArrayList<>();
-		_outrecList = new ArrayList<>();
-		_joinerList = new ArrayList<>();
-		_scanlineList = new ArrayList<>();
-		setPreserveCollinear(true);
-	}
-
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static bool IsOdd(int val)
 	private static boolean IsOdd(int val) {
 		return ((val & 1) != 0);
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static bool IsHotEdge(Active ae)
 	private static boolean IsHotEdge(Active ae) {
 		return ae.outrec != null;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static bool IsOpen(Active ae)
 	private static boolean IsOpen(Active ae) {
 		return ae.localMin.isOpen;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static bool IsOpenEnd(Active ae)
 	private static boolean IsOpenEnd(Active ae) {
 		return ae.localMin.isOpen && IsOpenEnd(ae.vertexTop);
 	}
@@ -95,8 +91,6 @@ public class ClipperBase {
 		return (v.flags.getValue() & (VertexFlags.OpenStart.getValue() | VertexFlags.OpenEnd.getValue())) != VertexFlags.None.getValue();
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static System.Nullable<Active> GetPrevHotEdge(Active ae)
 	private static Active GetPrevHotEdge(Active ae) {
 		Active prev = ae.prevInAEL;
 		while (prev != null && (IsOpen(prev) || !IsHotEdge(prev))) {
@@ -105,8 +99,6 @@ public class ClipperBase {
 		return prev;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static bool IsFront(Active ae)
 	private static boolean IsFront(Active ae) {
 		return (ae == ae.outrec.frontEdge);
 	}
@@ -115,8 +107,6 @@ public class ClipperBase {
 	 * Dx: 0(90deg) * | * +inf (180deg) <--- o --. -inf (0deg) *
 	 *******************************************************************************/
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static double GetDx(Point64 pt1, Point64 pt2)
 	private static double GetDx(Point64 pt1, Point64 pt2) {
 		double dy = pt2.Y - pt1.Y;
 		if (dy != 0) {
@@ -128,8 +118,6 @@ public class ClipperBase {
 		return Double.POSITIVE_INFINITY;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static long TopX(Active ae, long currentY)
 	private static long TopX(Active ae, long currentY) {
 		if ((currentY == ae.top.Y) || (ae.top.X == ae.bot.X)) {
 			return ae.top.X;
@@ -140,45 +128,32 @@ public class ClipperBase {
 		return ae.bot.X + (long) Math.rint(ae.dx * (currentY - ae.bot.Y));
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static bool IsHorizontal(Active ae)
 	private static boolean IsHorizontal(Active ae) {
 		return (ae.top.Y == ae.bot.Y);
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static bool IsHeadingRightHorz(Active ae)
 	private static boolean IsHeadingRightHorz(Active ae) {
 		return (Double.isInfinite(ae.dx));
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static bool IsHeadingLeftHorz(Active ae)
 	private static boolean IsHeadingLeftHorz(Active ae) {
 		return (Double.isInfinite(ae.dx));
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static void SwapActives(ref Active ae1, ref Active ae2)
-	private static void SwapActives(tangible.RefObject<Active> ae1, tangible.RefObject<Active> ae2) {
-//C# TO JAVA CONVERTER TODO TASK: Java has no equivalent to the C# deconstruction assignments:
-	  (ae2, ae1) = (ae1, ae2);
+	private static void SwapActives(RefObject<Active> ae1, RefObject<Active> ae2) {
+		Active temp = ae1.argValue;
+		ae1.argValue = ae2.argValue;
+		ae2.argValue = temp;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static PathType GetPolyType(Active ae)
 	private static PathType GetPolyType(Active ae) {
 		return ae.localMin.polytype;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static bool IsSamePolyType(Active ae1, Active ae2)
 	private static boolean IsSamePolyType(Active ae1, Active ae2) {
 		return ae1.localMin.polytype == ae2.localMin.polytype;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static Point64 GetIntersectPoint(Active ae1, Active ae2)
 	private static Point64 GetIntersectPoint(Active ae1, Active ae2) {
 		double b1, b2;
 		if (InternalClipper.IsAlmostZero(ae1.dx - ae2.dx)) {
@@ -207,14 +182,10 @@ public class ClipperBase {
 				: new Point64((long) Math.rint(ae2.dx * q + b2), (long) Math.rint(q));
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static void SetDx(Active ae)
 	private static void SetDx(Active ae) {
 		ae.dx = GetDx(ae.bot, ae.top);
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static Vertex NextVertex(Active ae)
 	private static Vertex NextVertex(Active ae) {
 		if (ae.windDx > 0) {
 			return ae.vertexTop.next;
@@ -222,8 +193,6 @@ public class ClipperBase {
 		return ae.vertexTop.prev;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private Vertex PrevPrevVertex(Active ae)
 	private Vertex PrevPrevVertex(Active ae) {
 		if (ae.windDx > 0) {
 			return ae.vertexTop.prev.prev;
@@ -231,20 +200,14 @@ public class ClipperBase {
 		return ae.vertexTop.next.next;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static bool IsMaxima(Vertex vertex)
 	private static boolean IsMaxima(Vertex vertex) {
-		return ((vertex.flags & VertexFlags.LocalMax) != VertexFlags.None);
+		return ((vertex.flags.getValue() & VertexFlags.LocalMax.getValue()) != VertexFlags.None.getValue());
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static bool IsMaxima(Active ae)
 	private static boolean IsMaxima(Active ae) {
 		return IsMaxima(ae.vertexTop);
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private System.Nullable<Active> GetMaximaPair(Active ae)
 	private Active GetMaximaPair(Active ae) {
 		Active ae2 = null;
 		ae2 = ae.nextInAEL;
@@ -257,8 +220,6 @@ public class ClipperBase {
 		return null;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static System.Nullable<Vertex> GetCurrYMaximaVertex(Active ae)
 	private static Vertex GetCurrYMaximaVertex(Active ae) {
 		Vertex result = ae.vertexTop;
 		if (ae.windDx > 0) {
@@ -276,8 +237,6 @@ public class ClipperBase {
 		return result;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static System.Nullable<Active> GetHorzMaximaPair(Active horz, Vertex maxVert)
 	private static Active GetHorzMaximaPair(Active horz, Vertex maxVert) {
 		// we can't be sure whether the MaximaPair is on the left or right, so ...
 		Active result = horz.prevInAEL;
@@ -297,10 +256,8 @@ public class ClipperBase {
 		return null;
 	}
 
-//C# TO JAVA CONVERTER WARNING: Java does not allow user-defined value types. The behavior of this class may differ from the original:
-//ORIGINAL LINE: private struct IntersectListSort : IComparer<IntersectNode>
 	private final static class IntersectListSort implements Comparator<IntersectNode> {
-		public int Compare(IntersectNode a, IntersectNode b) {
+		public int compare(IntersectNode a, IntersectNode b) {
 			if (a.pt.Y == b.pt.Y) {
 				return (a.pt.X < b.pt.X) ? -1 : 1;
 			}
@@ -309,15 +266,17 @@ public class ClipperBase {
 		}
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static void SetSides(OutRec outrec, Active startEdge, Active endEdge)
+	private final static class LocMinSorter implements Comparator<LocalMinima> {
+		public int compare(LocalMinima locMin1, LocalMinima locMin2) {
+			return Long.compare(locMin2.vertex.pt.Y, locMin1.vertex.pt.Y);
+		}
+	}
+
 	private static void SetSides(OutRec outrec, Active startEdge, Active endEdge) {
 		outrec.frontEdge = startEdge;
 		outrec.backEdge = endEdge;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static void SwapOutrecs(Active ae1, Active ae2)
 	private static void SwapOutrecs(Active ae1, Active ae2) {
 		OutRec or1 = ae1.outrec; // at least one edge has
 		OutRec or2 = ae2.outrec; // an assigned outrec
@@ -348,8 +307,6 @@ public class ClipperBase {
 		ae2.outrec = or1;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static double Area(OutPt op)
 	private static double Area(OutPt op) {
 		// https://en.wikipedia.org/wiki/Shoelace_formula
 		double area = 0.0;
@@ -361,15 +318,11 @@ public class ClipperBase {
 		return area * 0.5;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static double AreaTriangle(Point64 pt1, Point64 pt2, Point64 pt3)
 	private static double AreaTriangle(Point64 pt1, Point64 pt2, Point64 pt3) {
 		return (double) (pt3.Y + pt1.Y) * (pt3.X - pt1.X) + (double) (pt1.Y + pt2.Y) * (pt1.X - pt2.X)
 				+ (double) (pt2.Y + pt3.Y) * (pt2.X - pt3.X);
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static System.Nullable<OutRec> GetRealOutRec(System.Nullable<OutRec> outRec)
 	private static OutRec GetRealOutRec(OutRec outRec) {
 		while ((outRec != null) && (outRec.pts == null)) {
 			outRec = outRec.owner;
@@ -377,8 +330,6 @@ public class ClipperBase {
 		return outRec;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static void UncoupleOutRec(Active ae)
 	private static void UncoupleOutRec(Active ae) {
 		OutRec outrec = ae.outrec;
 		if (outrec == null) {
@@ -390,14 +341,10 @@ public class ClipperBase {
 		outrec.backEdge = null;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private bool OutrecIsAscending(Active hotEdge)
 	private boolean OutrecIsAscending(Active hotEdge) {
 		return (hotEdge == hotEdge.outrec.frontEdge);
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static void SwapFrontBackSides(OutRec outrec)
 	private static void SwapFrontBackSides(OutRec outrec) {
 		// while this proc. is needed for open paths
 		// it's almost never needed for closed paths
@@ -407,14 +354,10 @@ public class ClipperBase {
 		outrec.pts = outrec.pts.next;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static bool EdgesAdjacentInAEL(IntersectNode inode)
 	private static boolean EdgesAdjacentInAEL(IntersectNode inode) {
 		return (inode.edge1.nextInAEL == inode.edge2) || (inode.edge1.prevInAEL == inode.edge2);
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] protected void ClearSolution()
 	protected final void ClearSolution() {
 		while (_actives != null) {
 			DeleteFromAEL(_actives);
@@ -426,8 +369,6 @@ public class ClipperBase {
 		_outrecList.clear();
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] public void Clear()
 	public final void Clear() {
 		ClearSolution();
 		_minimaList.clear();
@@ -437,8 +378,6 @@ public class ClipperBase {
 		_hasOpenPaths = false;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] protected void Reset()
 	protected final void Reset() {
 		if (!_isSortedMinimaList) {
 			Collections.sort(_minimaList, new LocMinSorter());
@@ -457,10 +396,8 @@ public class ClipperBase {
 		_succeeded = true;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void InsertScanline(long y)
 	private void InsertScanline(long y) {
-		int index = _scanlineList.BinarySearch(y);
+		int index = _scanlineList.indexOf(y);
 		if (index >= 0) {
 			return;
 		}
@@ -468,12 +405,10 @@ public class ClipperBase {
 		_scanlineList.add(index, y);
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private bool PopScanline(out long y)
-	private boolean PopScanline(tangible.OutObject<Long> y) {
+	private boolean PopScanline(OutObject<Long> y) {
 		int cnt = _scanlineList.size() - 1;
 		if (cnt < 0) {
-			y.argValue = 0;
+			y.argValue = 0L;
 			return false;
 		}
 
@@ -485,26 +420,20 @@ public class ClipperBase {
 		return true;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private bool HasLocMinAtY(long y)
 	private boolean HasLocMinAtY(long y) {
 		return (_currentLocMin < _minimaList.size() && _minimaList.get(_currentLocMin).vertex.pt.Y == y);
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private LocalMinima PopLocalMinima()
 	private LocalMinima PopLocalMinima() {
 		return _minimaList.get(_currentLocMin++);
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void AddLocMin(Vertex vert, PathType polytype, bool isOpen)
 	private void AddLocMin(Vertex vert, PathType polytype, boolean isOpen) {
 		// make sure the vertex is added only once ...
-		if ((vert.flags & VertexFlags.LocalMin) != VertexFlags.None) {
+		if ((vert.flags.getValue() & VertexFlags.LocalMin.getValue()) != VertexFlags.None.getValue()) {
 			return;
 		}
-		vert.flags |= VertexFlags.LocalMin;
+		vert.flags = VertexFlags.forValue(vert.flags.getValue() | VertexFlags.LocalMin.getValue());
 
 		LocalMinima lm = new LocalMinima(vert, polytype, isOpen);
 		_minimaList.add(lm);
@@ -534,7 +463,7 @@ public class ClipperBase {
 			if (prev_v == null || prev_v.prev == null) {
 				continue;
 			}
-			if (!isOpen && v0.equals(prev_v.pt).pt) {
+			if (!isOpen && v0.pt.equals(prev_v.pt)) {
 				prev_v = prev_v.prev;
 			}
 			prev_v.next = v0;
@@ -555,7 +484,7 @@ public class ClipperBase {
 					v0.flags = VertexFlags.OpenStart;
 					AddLocMin(v0, polytype, true);
 				} else {
-					v0.flags = VertexFlags.OpenStart | VertexFlags.LocalMax;
+					v0.flags = VertexFlags.forValue(VertexFlags.OpenStart.getValue() | VertexFlags.LocalMax.getValue());
 				}
 			} else { // closed path
 				prev_v = v0.prev;
@@ -573,7 +502,7 @@ public class ClipperBase {
 			curr_v = v0.next;
 			while (!v0.equals(curr_v)) {
 				if (curr_v.pt.Y > prev_v.pt.Y && going_up) {
-					prev_v.flags |= VertexFlags.LocalMax;
+					prev_v.flags = VertexFlags.forValue(prev_v.flags.getValue() | VertexFlags.LocalMax.getValue());
 					going_up = false;
 				} else if (curr_v.pt.Y < prev_v.pt.Y && !going_up) {
 					going_up = true;
@@ -584,9 +513,9 @@ public class ClipperBase {
 			}
 
 			if (isOpen) {
-				prev_v.flags |= VertexFlags.OpenEnd;
+				prev_v.flags = VertexFlags.forValue(prev_v.flags.getValue() | VertexFlags.OpenEnd.getValue());
 				if (going_up) {
-					prev_v.flags |= VertexFlags.LocalMax;
+					prev_v.flags = VertexFlags.forValue(prev_v.flags.getValue() | VertexFlags.LocalMax.getValue());
 				} else {
 					AddLocMin(prev_v, polytype, isOpen);
 				}
@@ -594,53 +523,38 @@ public class ClipperBase {
 				if (going_up0) {
 					AddLocMin(prev_v, polytype, false);
 				} else {
-					prev_v.flags |= VertexFlags.LocalMax;
+					prev_v.flags = VertexFlags.forValue(prev_v.flags.getValue() | VertexFlags.LocalMax.getValue());
 				}
 			}
 		}
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] public void AddSubject(List<Point64> path)
 	public final void AddSubject(List<Point64> path) {
 		AddPath(path, PathType.Subject);
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] public void AddOpenSubject(List<Point64> path)
 	public final void AddOpenSubject(List<Point64> path) {
 		AddPath(path, PathType.Subject, true);
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] public void AddClip(List<Point64> path)
 	public final void AddClip(List<Point64> path) {
 		AddPath(path, PathType.Clip);
 	}
-
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] protected void AddPath(List<Point64> path, PathType polytype, bool isOpen = false)
 
 	protected final void AddPath(List<Point64> path, PathType polytype) {
 		AddPath(path, polytype, false);
 	}
 
-//C# TO JAVA CONVERTER NOTE: Java does not support optional parameters. Overloaded method(s) are created above:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] protected void AddPath(List<Point64> path, PathType polytype, bool isOpen = false)
 	protected final void AddPath(List<Point64> path, PathType polytype, boolean isOpen) {
-	  List<List<Point64>> tmp = new List<>() { path };
-	  AddPaths(tmp, polytype, isOpen);
+		List<List<Point64>> tmp = new ArrayList<>();
+		tmp.add(path);
+		AddPaths(tmp, polytype, isOpen);
 	}
-
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] protected void AddPaths(List<List<Point64>> paths, PathType polytype, bool isOpen = false)
 
 	protected final void AddPaths(List<List<Point64>> paths, PathType polytype) {
 		AddPaths(paths, polytype, false);
 	}
 
-//C# TO JAVA CONVERTER NOTE: Java does not support optional parameters. Overloaded method(s) are created above:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] protected void AddPaths(List<List<Point64>> paths, PathType polytype, bool isOpen = false)
 	protected final void AddPaths(List<List<Point64>> paths, PathType polytype, boolean isOpen) {
 		if (isOpen) {
 			_hasOpenPaths = true;
@@ -649,8 +563,6 @@ public class ClipperBase {
 		AddPathsToVertexList(paths, polytype, isOpen);
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private bool IsContributingClosed(Active ae)
 	private boolean IsContributingClosed(Active ae) {
 		switch (_fillrule) {
 			case Positive :
@@ -672,31 +584,24 @@ public class ClipperBase {
 
 		switch (_cliptype) {
 			case Intersection :
-//C# TO JAVA CONVERTER TODO TASK: 'switch expressions' are not converted by C# to Java Converter:
-//		  return _fillrule switch
-//		  {
-//			FillRule.Positive => ae.windCount2 > 0,
-//			FillRule.Negative => ae.windCount2 < 0,
-//			_ => ae.windCount2 != 0,
-//		  };
-
+				return switch (_fillrule) {
+					case Positive -> ae.windCount2 > 0;
+					case Negative -> ae.windCount2 < 0;
+					default -> ae.windCount2 != 0;
+				};
 			case Union :
-//C# TO JAVA CONVERTER TODO TASK: 'switch expressions' are not converted by C# to Java Converter:
-//		  return _fillrule switch
-//		  {
-//			FillRule.Positive => ae.windCount2 <= 0,
-//			FillRule.Negative => ae.windCount2 >= 0,
-//			_ => ae.windCount2 == 0,
-//		  };
+				return switch (_fillrule) {
+					case Positive -> ae.windCount2 <= 0;
+					case Negative -> ae.windCount2 >= 0;
+					default -> ae.windCount2 == 0;
+				};
 
 			case Difference :
-//C# TO JAVA CONVERTER TODO TASK: 'switch expressions' are not converted by C# to Java Converter:
-//		  bool result = _fillrule switch
-//		  {
-//			FillRule.Positive => (ae.windCount2 <= 0),
-//			FillRule.Negative => (ae.windCount2 >= 0),
-//			_ => (ae.windCount2 == 0),
-//		  };
+				boolean result = switch (_fillrule) {
+					case Positive -> ae.windCount2 <= 0;
+					case Negative -> ae.windCount2 >= 0;
+					default -> ae.windCount2 == 0;
+				};
 				return (GetPolyType(ae) == PathType.Subject) ? result : !result;
 
 			case Xor :
@@ -707,8 +612,6 @@ public class ClipperBase {
 		}
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private bool IsContributingOpen(Active ae)
 	private boolean IsContributingOpen(Active ae) {
 		boolean isInClip, isInSubj;
 		switch (_fillrule) {
@@ -735,8 +638,6 @@ public class ClipperBase {
 		return result;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void SetWindCountForClosedPathEdge(Active ae)
 	private void SetWindCountForClosedPathEdge(Active ae) {
 		// Wind counts refer to polygon regions not edges, so here an edge's WindCnt
 		// indicates the higher of the wind counts for the two regions touching the
@@ -808,8 +709,6 @@ public class ClipperBase {
 		}
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void SetWindCountForOpenPathEdge(Active ae)
 	private void SetWindCountForOpenPathEdge(Active ae) {
 		Active ae2 = _actives;
 		if (_fillrule == FillRule.EvenOdd) {
@@ -837,8 +736,6 @@ public class ClipperBase {
 		}
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private bool IsValidAelOrder(Active resident, Active newcomer)
 	private boolean IsValidAelOrder(Active resident, Active newcomer) {
 		if (newcomer.curX != resident.curX) {
 			return newcomer.curX > resident.curX;
@@ -879,8 +776,6 @@ public class ClipperBase {
 		return (InternalClipper.CrossProduct(PrevPrevVertex(resident).pt, newcomer.bot, PrevPrevVertex(newcomer).pt) > 0) == newcomerIsLeft;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void InsertLeftEdge(Active ae)
 	private void InsertLeftEdge(Active ae) {
 		Active ae2;
 
@@ -907,8 +802,6 @@ public class ClipperBase {
 		}
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void InsertRightEdge(Active ae, Active ae2)
 	private void InsertRightEdge(Active ae, Active ae2) {
 		ae2.nextInAEL = ae.nextInAEL;
 		if (ae.nextInAEL != null) {
@@ -925,7 +818,7 @@ public class ClipperBase {
 		// NB horizontal local minima edges should contain locMin.vertex.prev
 		while (HasLocMinAtY(botY)) {
 			localMinima = PopLocalMinima();
-			if ((localMinima.vertex.flags & VertexFlags.OpenStart) != VertexFlags.None) {
+			if ((localMinima.vertex.flags.getValue() & VertexFlags.OpenStart.getValue()) != VertexFlags.None.getValue()) {
 				leftBound = null;
 			} else {
 				leftBound = new Active();
@@ -939,7 +832,7 @@ public class ClipperBase {
 				SetDx(leftBound);
 			}
 
-			if ((localMinima.vertex.flags & VertexFlags.OpenEnd) != VertexFlags.None) {
+			if ((localMinima.vertex.flags.getValue() & VertexFlags.OpenEnd.getValue()) != VertexFlags.None.getValue()) {
 				rightBound = null;
 			} else {
 				rightBound = new Active();
@@ -958,23 +851,23 @@ public class ClipperBase {
 			if (leftBound != null && rightBound != null) {
 				if (IsHorizontal(leftBound)) {
 					if (IsHeadingRightHorz(leftBound)) {
-						tangible.RefObject<Active> tempRef_leftBound = new tangible.RefObject<>(leftBound);
-						tangible.RefObject<Active> tempRef_rightBound = new tangible.RefObject<>(rightBound);
+						RefObject<Active> tempRef_leftBound = new RefObject<>(leftBound);
+						RefObject<Active> tempRef_rightBound = new RefObject<>(rightBound);
 						SwapActives(tempRef_leftBound, tempRef_rightBound);
 						rightBound = tempRef_rightBound.argValue;
 						leftBound = tempRef_leftBound.argValue;
 					}
 				} else if (IsHorizontal(rightBound)) {
 					if (IsHeadingLeftHorz(rightBound)) {
-						tangible.RefObject<Active> tempRef_leftBound2 = new tangible.RefObject<>(leftBound);
-						tangible.RefObject<Active> tempRef_rightBound2 = new tangible.RefObject<>(rightBound);
+						RefObject<Active> tempRef_leftBound2 = new RefObject<>(leftBound);
+						RefObject<Active> tempRef_rightBound2 = new RefObject<>(rightBound);
 						SwapActives(tempRef_leftBound2, tempRef_rightBound2);
 						rightBound = tempRef_rightBound2.argValue;
 						leftBound = tempRef_leftBound2.argValue;
 					}
 				} else if (leftBound.dx < rightBound.dx) {
-					tangible.RefObject<Active> tempRef_leftBound3 = new tangible.RefObject<>(leftBound);
-					tangible.RefObject<Active> tempRef_rightBound3 = new tangible.RefObject<>(rightBound);
+					RefObject<Active> tempRef_leftBound3 = new RefObject<>(leftBound);
+					RefObject<Active> tempRef_rightBound3 = new RefObject<>(rightBound);
 					SwapActives(tempRef_leftBound3, tempRef_rightBound3);
 					rightBound = tempRef_rightBound3.argValue;
 					leftBound = tempRef_leftBound3.argValue;
@@ -1038,16 +931,12 @@ public class ClipperBase {
 		} // while (HasLocMinAtY())
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void PushHorz(Active ae)
 	private void PushHorz(Active ae) {
 		ae.nextInSEL = _sel;
 		_sel = ae;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private bool PopHorz(out System.Nullable<Active> ae)
-	private boolean PopHorz(tangible.OutObject<Active> ae) {
+	private boolean PopHorz(OutObject<Active> ae) {
 		ae.argValue = _sel;
 		if (_sel == null) {
 			return false;
@@ -1056,8 +945,6 @@ public class ClipperBase {
 		return true;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private bool TestJoinWithPrev1(Active e)
 	private boolean TestJoinWithPrev1(Active e) {
 		// this is marginally quicker than TestJoinWithPrev2
 		// but can only be used when e.PrevInAEL.currX is accurate
@@ -1065,16 +952,12 @@ public class ClipperBase {
 				&& !IsOpen(e.prevInAEL) && (InternalClipper.CrossProduct(e.prevInAEL.top, e.bot, e.top) == 0);
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private bool TestJoinWithPrev2(Active e, Point64 currPt)
 	private boolean TestJoinWithPrev2(Active e, Point64 currPt) {
 		return IsHotEdge(e) && !IsOpen(e) && (e.prevInAEL != null) && !IsOpen(e.prevInAEL) && IsHotEdge(e.prevInAEL)
 				&& (e.prevInAEL.top.Y < e.bot.Y) && (Math.abs(TopX(e.prevInAEL, currPt.Y) - currPt.X) < 2)
 				&& (InternalClipper.CrossProduct(e.prevInAEL.top, currPt, e.top) == 0);
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private bool TestJoinWithNext1(Active e)
 	private boolean TestJoinWithNext1(Active e) {
 		// this is marginally quicker than TestJoinWithNext2
 		// but can only be used when e.NextInAEL.currX is accurate
@@ -1082,23 +965,17 @@ public class ClipperBase {
 				&& !IsOpen(e.nextInAEL) && (InternalClipper.CrossProduct(e.nextInAEL.top, e.bot, e.top) == 0);
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private bool TestJoinWithNext2(Active e, Point64 currPt)
 	private boolean TestJoinWithNext2(Active e, Point64 currPt) {
 		return IsHotEdge(e) && !IsOpen(e) && (e.nextInAEL != null) && !IsOpen(e.nextInAEL) && IsHotEdge(e.nextInAEL)
 				&& (e.nextInAEL.top.Y < e.bot.Y) && (Math.abs(TopX(e.nextInAEL, currPt.Y) - currPt.X) < 2)
 				&& (InternalClipper.CrossProduct(e.nextInAEL.top, currPt, e.top) == 0);
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private OutPt AddLocalMinPoly(Active ae1, Active ae2, Point64 pt, bool isNew = false)
-
 	private OutPt AddLocalMinPoly(Active ae1, Active ae2, Point64 pt) {
 		return AddLocalMinPoly(ae1, ae2, pt, false);
 	}
 
 //C# TO JAVA CONVERTER NOTE: Java does not support optional parameters. Overloaded method(s) are created above:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private OutPt AddLocalMinPoly(Active ae1, Active ae2, Point64 pt, bool isNew = false)
 	private OutPt AddLocalMinPoly(Active ae1, Active ae2, Point64 pt, boolean isNew) {
 		OutRec outrec = new OutRec();
 		_outrecList.add(outrec);
@@ -1149,55 +1026,51 @@ public class ClipperBase {
 		return op;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private System.Nullable<OutPt> AddLocalMaxPoly(Active ae1, Active ae2, Point64 pt)
 	private OutPt AddLocalMaxPoly(Active ae1, Active ae2, Point64 pt) {
-	  if (IsFront(ae1) == IsFront(ae2)) {
-		if (IsOpenEnd(ae1)) {
-		  SwapFrontBackSides(ae1.outrec);
-		} else if (IsOpenEnd(ae2)) {
-		  SwapFrontBackSides(ae2.outrec);
-		} else {
-		  _succeeded = false;
-		  return null;
+		if (IsFront(ae1) == IsFront(ae2)) {
+			if (IsOpenEnd(ae1)) {
+				SwapFrontBackSides(ae1.outrec);
+			} else if (IsOpenEnd(ae2)) {
+				SwapFrontBackSides(ae2.outrec);
+			} else {
+				_succeeded = false;
+				return null;
+			}
 		}
-	  }
 
-	  OutPt result = AddOutPt(ae1, pt);
-	  if (ae1.outrec == ae2.outrec) {
-		OutRec outrec = ae1.outrec;
-		outrec.pts = result;
-		UncoupleOutRec(ae1);
-		if (!IsOpen(ae1)) {
-		  CleanCollinear(outrec);
-		}
-		result = outrec.pts;
+		OutPt result = AddOutPt(ae1, pt);
+		if (ae1.outrec == ae2.outrec) {
+			OutRec outrec = ae1.outrec;
+			outrec.pts = result;
+			UncoupleOutRec(ae1);
+			if (!IsOpen(ae1)) {
+				CleanCollinear(outrec);
+			}
+			result = outrec.pts;
 
-		outrec.owner = GetRealOutRec(outrec.owner);
+			outrec.owner = GetRealOutRec(outrec.owner);
 //C# TO JAVA CONVERTER TODO TASK: C# to Java Converter could not resolve the named parameters in the following line:
 //ORIGINAL LINE: if (_using_polytree && outrec.owner is { frontEdge: null })
-		if (_using_polytree && outrec.owner instanceof { frontEdge: null }) {
-			outrec.owner = GetRealOutRec(outrec.owner.owner);
+			if (_using_polytree && outrec.owner.frontEdge == null) { // NOTE strange c# syntax
+				outrec.owner = GetRealOutRec(outrec.owner.owner);
+			}
 		}
-	  }
-	  // and to preserve the winding orientation of outrec ...
-	  else if (IsOpen(ae1)) {
-		if (ae1.windDx < 0) {
-		  JoinOutrecPaths(ae1, ae2);
+		// and to preserve the winding orientation of outrec ...
+		else if (IsOpen(ae1)) {
+			if (ae1.windDx < 0) {
+				JoinOutrecPaths(ae1, ae2);
+			} else {
+				JoinOutrecPaths(ae2, ae1);
+			}
+		} else if (ae1.outrec.idx < ae2.outrec.idx) {
+			JoinOutrecPaths(ae1, ae2);
 		} else {
-		  JoinOutrecPaths(ae2, ae1);
+			JoinOutrecPaths(ae2, ae1);
 		}
-	  } else if (ae1.outrec.idx < ae2.outrec.idx) {
-		JoinOutrecPaths(ae1, ae2);
-	  } else {
-		JoinOutrecPaths(ae2, ae1);
-	  }
 
-	  return result;
+		return result;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void JoinOutrecPaths(Active ae1, Active ae2)
 	private void JoinOutrecPaths(Active ae1, Active ae2) {
 		// join ae2 outrec path onto ae1 outrec path and then delete ae2 outrec path
 		// pointers. (NB Only very rarely do the joining ends share the same coords.)
@@ -1252,8 +1125,6 @@ public class ClipperBase {
 		ae2.outrec = null;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private OutPt AddOutPt(Active ae, Point64 pt)
 	private OutPt AddOutPt(Active ae, Point64 pt) {
 		OutPt newOp;
 
@@ -1281,8 +1152,6 @@ public class ClipperBase {
 		return newOp;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private OutPt StartOpenPath(Active ae, Point64 pt)
 	private OutPt StartOpenPath(Active ae, Point64 pt) {
 		OutRec outrec = new OutRec();
 		_outrecList.add(outrec);
@@ -1305,8 +1174,6 @@ public class ClipperBase {
 		return op;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void UpdateEdgeIntoAEL(Active ae)
 	private void UpdateEdgeIntoAEL(Active ae) {
 		ae.bot = ae.top;
 		ae.vertexTop = NextVertex(ae);
@@ -1324,8 +1191,6 @@ public class ClipperBase {
 		}
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private System.Nullable<Active> FindEdgeWithMatchingLocMin(Active e)
 	private Active FindEdgeWithMatchingLocMin(Active e) {
 		Active result = e.nextInAEL;
 		while (result != null) {
@@ -1361,8 +1226,8 @@ public class ClipperBase {
 			}
 			// the following line avoids duplicating quite a bit of code
 			if (IsOpen(ae2)) {
-				tangible.RefObject<Active> tempRef_ae1 = new tangible.RefObject<>(ae1);
-				tangible.RefObject<Active> tempRef_ae2 = new tangible.RefObject<>(ae2);
+				RefObject<Active> tempRef_ae1 = new RefObject<>(ae1);
+				RefObject<Active> tempRef_ae2 = new RefObject<>(ae2);
 				SwapActives(tempRef_ae1, tempRef_ae2);
 				ae2 = tempRef_ae2.argValue;
 				ae1 = tempRef_ae1.argValue;
@@ -1377,12 +1242,12 @@ public class ClipperBase {
 			}
 
 			switch (_fillrule) {
-				case FillRule.Positive :
+				case Positive :
 					if (ae2.windCount != 1) {
 						return null;
 					}
 					break;
-				case FillRule.Negative :
+				case Negative :
 					if (ae2.windCount != -1) {
 						return null;
 					}
@@ -1464,11 +1329,11 @@ public class ClipperBase {
 		}
 
 		switch (_fillrule) {
-			case FillRule.Positive :
+			case Positive :
 				oldE1WindCount = ae1.windCount;
 				oldE2WindCount = ae2.windCount;
 				break;
-			case FillRule.Negative :
+			case Negative :
 				oldE1WindCount = -ae1.windCount;
 				oldE2WindCount = -ae2.windCount;
 				break;
@@ -1523,11 +1388,11 @@ public class ClipperBase {
 		else {
 			long e1Wc2, e2Wc2;
 			switch (_fillrule) {
-				case FillRule.Positive :
+				case Positive :
 					e1Wc2 = ae1.windCount2;
 					e2Wc2 = ae2.windCount2;
 					break;
-				case FillRule.Negative :
+				case Negative :
 					e1Wc2 = -ae1.windCount2;
 					e2Wc2 = -ae2.windCount2;
 					break;
@@ -1542,14 +1407,14 @@ public class ClipperBase {
 			} else if (oldE1WindCount == 1 && oldE2WindCount == 1) {
 				resultOp = null;
 				switch (_cliptype) {
-					case ClipType.Union :
+					case Union :
 						if (e1Wc2 > 0 && e2Wc2 > 0) {
 							return null;
 						}
 						resultOp = AddLocalMinPoly(ae1, ae2, pt);
 						break;
 
-					case ClipType.Difference :
+					case Difference :
 						if (((GetPolyType(ae1) == PathType.Clip) && (e1Wc2 > 0) && (e2Wc2 > 0))
 								|| ((GetPolyType(ae1) == PathType.Subject) && (e1Wc2 <= 0) && (e2Wc2 <= 0))) {
 							resultOp = AddLocalMinPoly(ae1, ae2, pt);
@@ -1557,7 +1422,7 @@ public class ClipperBase {
 
 						break;
 
-					case ClipType.Xor :
+					case Xor :
 						resultOp = AddLocalMinPoly(ae1, ae2, pt);
 						break;
 
@@ -1574,8 +1439,6 @@ public class ClipperBase {
 		return resultOp;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void DeleteFromAEL(Active ae)
 	private void DeleteFromAEL(Active ae) {
 		Active prev = ae.prevInAEL;
 		Active next = ae.nextInAEL;
@@ -1593,8 +1456,6 @@ public class ClipperBase {
 		// delete &ae;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void AdjustCurrXAndCopyToSEL(long topY)
 	private void AdjustCurrXAndCopyToSEL(long topY) {
 		Active ae = _actives;
 		_sel = ae;
@@ -1616,7 +1477,7 @@ public class ClipperBase {
 		_cliptype = ct;
 		Reset();
 		long y;
-		tangible.OutObject<Long> tempOut_y = new tangible.OutObject<>();
+		OutObject<Long> tempOut_y = new OutObject<>();
 		if (!PopScanline(tempOut_y)) {
 			y = tempOut_y.argValue;
 			return;
@@ -1626,7 +1487,7 @@ public class ClipperBase {
 		while (_succeeded) {
 			InsertLocalMinimaIntoAEL(y);
 			Active ae = null;
-			tangible.OutObject<Active> tempOut_ae = new tangible.OutObject<>();
+			OutObject<Active> tempOut_ae = new OutObject<>();
 			while (PopHorz(tempOut_ae)) {
 				ae = tempOut_ae.argValue;
 				DoHorizontal(ae);
@@ -1634,7 +1495,7 @@ public class ClipperBase {
 			ae = tempOut_ae.argValue;
 			ConvertHorzTrialsToJoins();
 			_currentBotY = y; // bottom of scanbeam
-			tangible.OutObject<Long> tempOut_y2 = new tangible.OutObject<>();
+			OutObject<Long> tempOut_y2 = new OutObject<>();
 			if (!PopScanline(tempOut_y2)) {
 				y = tempOut_y2.argValue;
 				break; // y new top of scanbeam
@@ -1643,7 +1504,7 @@ public class ClipperBase {
 			}
 			DoIntersections(y);
 			DoTopOfScanbeam(y);
-			tangible.OutObject<Active> tempOut_ae2 = new tangible.OutObject<>();
+			OutObject<Active> tempOut_ae2 = new OutObject<>();
 			while (PopHorz(tempOut_ae2)) {
 				ae = tempOut_ae2.argValue;
 				DoHorizontal(ae);
@@ -1656,8 +1517,6 @@ public class ClipperBase {
 		}
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void DoIntersections(long topY)
 	private void DoIntersections(long topY) {
 		if (BuildIntersectList(topY)) {
 			ProcessIntersectList();
@@ -1665,14 +1524,10 @@ public class ClipperBase {
 		}
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void DisposeIntersectNodes()
 	private void DisposeIntersectNodes() {
 		_intersectList.clear();
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void AddNewIntersectNode(Active ae1, Active ae2, long topY)
 	private void AddNewIntersectNode(Active ae1, Active ae2, long topY) {
 		Point64 pt = GetIntersectPoint(ae1, ae2);
 
@@ -1703,8 +1558,6 @@ public class ClipperBase {
 		_intersectList.add(node);
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private System.Nullable<Active> ExtractFromSEL(Active ae)
 	private Active ExtractFromSEL(Active ae) {
 		Active res = ae.nextInSEL;
 		if (res != null) {
@@ -1714,8 +1567,6 @@ public class ClipperBase {
 		return res;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void Insert1Before2InSEL(Active ae1, Active ae2)
 	private void Insert1Before2InSEL(Active ae1, Active ae2) {
 		ae1.prevInSEL = ae2.prevInSEL;
 		if (ae1.prevInSEL != null) {
@@ -1787,52 +1638,47 @@ public class ClipperBase {
 		return !_intersectList.isEmpty();
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void ProcessIntersectList()
 	private void ProcessIntersectList() {
-	  // We now have a list of intersections required so that edges will be
-	  // correctly positioned at the top of the scanbeam. However, it's important
-	  // that edge intersections are processed from the bottom up, but it's also
-	  // crucial that intersections only occur between adjacent edges.
+		// We now have a list of intersections required so that edges will be
+		// correctly positioned at the top of the scanbeam. However, it's important
+		// that edge intersections are processed from the bottom up, but it's also
+		// crucial that intersections only occur between adjacent edges.
 
-	  // First we do a quicksort so intersections proceed in a bottom up order ...
-	  Collections.sort(_intersectList, new IntersectListSort());
+		// First we do a quicksort so intersections proceed in a bottom up order ...
+		_intersectList.sort(new IntersectListSort());
 
-	  // Now as we process these intersections, we must sometimes adjust the order
-	  // to ensure that intersecting edges are always adjacent ...
-	  for (int i = 0; i < _intersectList.size(); ++i) {
-		if (!EdgesAdjacentInAEL(_intersectList.get(i))) {
-		  int j = i + 1;
-		  while (!EdgesAdjacentInAEL(_intersectList.get(j))) {
-			  j++;
-		  }
-		  // swap
-//C# TO JAVA CONVERTER TODO TASK: Java has no equivalent to the C# deconstruction assignments:
-		  (_intersectList[j], _intersectList[i]) = (_intersectList[i], _intersectList[j]);
+		// Now as we process these intersections, we must sometimes adjust the order
+		// to ensure that intersecting edges are always adjacent ...
+		for (int i = 0; i < _intersectList.size(); ++i) {
+			if (!EdgesAdjacentInAEL(_intersectList.get(i))) {
+				int j = i + 1;
+				while (!EdgesAdjacentInAEL(_intersectList.get(j))) {
+					j++;
+				}
+				// swap
+				Collections.swap(_intersectList, i, j);
+			}
+
+			IntersectNode node = _intersectList.get(i);
+			IntersectEdges(node.edge1, node.edge2, node.pt);
+			SwapPositionsInAEL(node.edge1, node.edge2);
+
+			if (TestJoinWithPrev2(node.edge2, node.pt)) {
+				OutPt op1 = AddOutPt(node.edge2.prevInAEL, node.pt);
+				OutPt op2 = AddOutPt(node.edge2, node.pt);
+				if (op1 != op2) {
+					AddJoin(op1, op2);
+				}
+			} else if (TestJoinWithNext2(node.edge1, node.pt)) {
+				OutPt op1 = AddOutPt(node.edge1, node.pt);
+				OutPt op2 = AddOutPt(node.edge1.nextInAEL, node.pt);
+				if (op1 != op2) {
+					AddJoin(op1, op2);
+				}
+			}
 		}
-
-		IntersectNode node = _intersectList.get(i);
-		IntersectEdges(node.edge1, node.edge2, node.pt);
-		SwapPositionsInAEL(node.edge1, node.edge2);
-
-		if (TestJoinWithPrev2(node.edge2, node.pt)) {
-		  OutPt op1 = AddOutPt(node.edge2.prevInAEL, node.pt);
-		  OutPt op2 = AddOutPt(node.edge2, node.pt);
-		  if (op1 != op2) {
-			  AddJoin(op1, op2);
-		  }
-		} else if (TestJoinWithNext2(node.edge1, node.pt)) {
-		  OutPt op1 = AddOutPt(node.edge1, node.pt);
-		  OutPt op2 = AddOutPt(node.edge1.nextInAEL, node.pt);
-		  if (op1 != op2) {
-			  AddJoin(op1, op2);
-		  }
-		}
-	  }
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void SwapPositionsInAEL(Active ae1, Active ae2)
 	private void SwapPositionsInAEL(Active ae1, Active ae2) {
 		// preconditon: ae1 must be immediately to the left of ae2
 		Active next = ae2.nextInAEL;
@@ -1852,9 +1698,7 @@ public class ClipperBase {
 		}
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private bool ResetHorzDirection(Active horz, System.Nullable<Active> maxPair, out long leftX, out long rightX)
-	private boolean ResetHorzDirection(Active horz, Active maxPair, tangible.OutObject<Long> leftX, tangible.OutObject<Long> rightX) {
+	private boolean ResetHorzDirection(Active horz, Active maxPair, OutObject<Long> leftX, OutObject<Long> rightX) {
 		if (horz.bot.X == horz.top.X) {
 			// the horizontal edge is going nowhere ...
 			leftX.argValue = horz.curX;
@@ -1876,15 +1720,11 @@ public class ClipperBase {
 		return false; // right to left
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private bool HorzIsSpike(Active horz)
 	private boolean HorzIsSpike(Active horz) {
 		Point64 nextPt = NextVertex(horz).pt;
 		return (horz.bot.X < horz.top.X) != (horz.top.X < nextPt.X);
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void TrimHorz(Active horzEdge, bool preserveCollinear)
 	private void TrimHorz(Active horzEdge, boolean preserveCollinear) {
 		boolean wasTrimmed = false;
 		Point64 pt = NextVertex(horzEdge).pt;
@@ -1942,9 +1782,9 @@ public class ClipperBase {
 		}
 
 		long leftX;
-		tangible.OutObject<Long> tempOut_leftX = new tangible.OutObject<>();
+		OutObject<Long> tempOut_leftX = new OutObject<>();
 		long rightX;
-		tangible.OutObject<Long> tempOut_rightX = new tangible.OutObject<>();
+		OutObject<Long> tempOut_rightX = new OutObject<>();
 		boolean isLeftToRight = ResetHorzDirection(horz, maxPair, tempOut_leftX, tempOut_rightX);
 		rightX = tempOut_rightX.argValue;
 		leftX = tempOut_leftX.argValue;
@@ -2088,8 +1928,8 @@ public class ClipperBase {
 				TrimHorz(horz, true);
 			}
 
-			tangible.OutObject<Long> tempOut_leftX2 = new tangible.OutObject<>();
-			tangible.OutObject<Long> tempOut_rightX2 = new tangible.OutObject<>();
+			OutObject<Long> tempOut_leftX2 = new OutObject<>();
+			OutObject<Long> tempOut_rightX2 = new OutObject<>();
 			isLeftToRight = ResetHorzDirection(horz, maxPair, tempOut_leftX2, tempOut_rightX2);
 			rightX = tempOut_rightX2.argValue;
 			leftX = tempOut_leftX2.argValue;
@@ -2126,8 +1966,6 @@ public class ClipperBase {
 		}
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void DoTopOfScanbeam(long y)
 	private void DoTopOfScanbeam(long y) {
 		_sel = null; // sel_ is reused to flag horizontals (see PushHorz below)
 		Active ae = _actives;
@@ -2156,8 +1994,6 @@ public class ClipperBase {
 		}
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private System.Nullable<Active> DoMaxima(Active ae)
 	private Active DoMaxima(Active ae) {
 		Active prevE = null;
 		Active nextE, maxPair = null;
@@ -2214,47 +2050,33 @@ public class ClipperBase {
 		return (prevE != null ? prevE.nextInAEL : _actives);
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static bool IsValidPath(OutPt op)
 	private static boolean IsValidPath(OutPt op) {
 		return (op.next != op);
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static bool AreReallyClose(Point64 pt1, Point64 pt2)
 	private static boolean AreReallyClose(Point64 pt1, Point64 pt2) {
 		return (Math.abs(pt1.X - pt2.X) < 2) && (Math.abs(pt1.Y - pt2.Y) < 2);
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static bool IsValidClosedPath(System.Nullable<OutPt> op)
 	private static boolean IsValidClosedPath(OutPt op) {
 		return (op != null && !op.equals(op.next) && op.next != op.prev
 				&& !(op.next.next == op.prev && (AreReallyClose(op.pt, op.next.pt) || AreReallyClose(op.pt, op.prev.pt))));
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static bool ValueBetween(long val, long end1, long end2)
 	private static boolean ValueBetween(long val, long end1, long end2) {
 		// NB accommodates axis aligned between where end1 == end2
 		return ((val != end1) == (val != end2)) && ((val > end1) == (val < end2));
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static bool ValueEqualOrBetween(long val, long end1, long end2)
 	private static boolean ValueEqualOrBetween(long val, long end1, long end2) {
 		return (val == end1) || (val == end2) || ((val > end1) == (val < end2));
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static bool PointBetween(Point64 pt, Point64 corner1, Point64 corner2)
 	private static boolean PointBetween(Point64 pt, Point64 corner1, Point64 corner2) {
 		// NB points may not be collinear
 		return ValueEqualOrBetween(pt.X, corner1.X, corner2.X) && ValueEqualOrBetween(pt.Y, corner1.Y, corner2.Y);
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static bool CollinearSegsOverlap(Point64 seg1a, Point64 seg1b, Point64 seg2a, Point64 seg2b)
 	private static boolean CollinearSegsOverlap(Point64 seg1a, Point64 seg1b, Point64 seg2a, Point64 seg2b) {
 		// precondition: seg1 and seg2 are collinear
 		if (seg1a.X == seg1b.X) {
@@ -2299,8 +2121,6 @@ public class ClipperBase {
 		return true;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static bool HorzEdgesOverlap(long x1a, long x1b, long x2a, long x2b)
 	private static boolean HorzEdgesOverlap(long x1a, long x1b, long x2a, long x2b) {
 		final long minOverlap = 2;
 		if (x1a > x1b + minOverlap) {
@@ -2319,8 +2139,6 @@ public class ClipperBase {
 		return false;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private System.Nullable<Joiner> GetHorzTrialParent(OutPt op)
 	private Joiner GetHorzTrialParent(OutPt op) {
 		Joiner joiner = op.joiner;
 		while (joiner != null) {
@@ -2339,15 +2157,11 @@ public class ClipperBase {
 		return joiner;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private bool OutPtInTrialHorzList(OutPt op)
 	private boolean OutPtInTrialHorzList(OutPt op) {
 		return op.joiner != null && ((op.joiner.idx < 0) || GetHorzTrialParent(op) != null);
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private bool ValidateClosedPathEx(ref System.Nullable<OutPt> op)
-	private boolean ValidateClosedPathEx(tangible.RefObject<OutPt> op) {
+	private boolean ValidateClosedPathEx(RefObject<OutPt> op) {
 		if (IsValidClosedPath(op.argValue)) {
 			return true;
 		}
@@ -2357,8 +2171,6 @@ public class ClipperBase {
 		return false;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static OutPt InsertOp(Point64 pt, OutPt insertAfter)
 	private static OutPt InsertOp(Point64 pt, OutPt insertAfter) {
 		OutPt result = new OutPt(pt, insertAfter.outrec);
 		result.next = insertAfter.next;
@@ -2368,8 +2180,6 @@ public class ClipperBase {
 		return result;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static System.Nullable<OutPt> DisposeOutPt(OutPt op)
 	private static OutPt DisposeOutPt(OutPt op) {
 		OutPt result = (op.next == op ? null : op.next);
 		op.prev.next = op.next;
@@ -2378,9 +2188,7 @@ public class ClipperBase {
 		return result;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void SafeDisposeOutPts(ref OutPt op)
-	private void SafeDisposeOutPts(tangible.RefObject<OutPt> op) {
+	private void SafeDisposeOutPts(RefObject<OutPt> op) {
 		OutRec outRec = GetRealOutRec(op.argValue.outrec);
 		if (outRec.frontEdge != null) {
 			outRec.frontEdge.outrec = null;
@@ -2398,34 +2206,30 @@ public class ClipperBase {
 		outRec.pts = null;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void SafeDeleteOutPtJoiners(OutPt op)
 	private void SafeDeleteOutPtJoiners(OutPt op) {
-	  Joiner joiner = op.joiner;
-	  if (joiner == null) {
-		  return;
-	  }
-
-	  while (joiner != null) {
-		if (joiner.idx < 0) {
-		  DeleteTrialHorzJoin(op);
-		} else if (_horzJoiners != null) {
-		  if (OutPtInTrialHorzList(joiner.op1)) {
-			DeleteTrialHorzJoin(joiner.op1);
-		  }
-		  if (OutPtInTrialHorzList(joiner.op2!)) {
-			DeleteTrialHorzJoin(joiner.op2!);
-		  }
-		  DeleteJoin(joiner);
-		} else {
-		  DeleteJoin(joiner);
+		Joiner joiner = op.joiner;
+		if (joiner == null) {
+			return;
 		}
-		joiner = op.joiner;
-	  }
+
+		while (joiner != null) {
+			if (joiner.idx < 0) {
+				DeleteTrialHorzJoin(op);
+			} else if (_horzJoiners != null) {
+				if (OutPtInTrialHorzList(joiner.op1)) {
+					DeleteTrialHorzJoin(joiner.op1);
+				}
+				if (OutPtInTrialHorzList(joiner.op2)) {
+					DeleteTrialHorzJoin(joiner.op2);
+				}
+				DeleteJoin(joiner);
+			} else {
+				DeleteJoin(joiner);
+			}
+			joiner = op.joiner;
+		}
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void AddTrialHorzJoin(OutPt op)
 	private void AddTrialHorzJoin(OutPt op) {
 		// make sure 'op' isn't added more than once
 		if (!op.outrec.isOpen && !OutPtInTrialHorzList(op)) {
@@ -2434,9 +2238,7 @@ public class ClipperBase {
 
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static System.Nullable<Joiner> FindTrialJoinParent(ref Joiner joiner, OutPt op)
-	private static Joiner FindTrialJoinParent(tangible.RefObject<Joiner> joiner, OutPt op) {
+	private static Joiner FindTrialJoinParent(RefObject<Joiner> joiner, OutPt op) {
 		Joiner parent = joiner.argValue;
 		while (parent != null) {
 			if (op == parent.op1) {
@@ -2456,8 +2258,6 @@ public class ClipperBase {
 		return null;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void DeleteTrialHorzJoin(OutPt op)
 	private void DeleteTrialHorzJoin(OutPt op) {
 		if (_horzJoiners == null) {
 			return;
@@ -2496,7 +2296,7 @@ public class ClipperBase {
 				}
 			} else {
 				// not a trial join so look further along the linked list
-				tangible.RefObject<Joiner> tempRef_joiner = new tangible.RefObject<>(joiner);
+				RefObject<Joiner> tempRef_joiner = new RefObject<>(joiner);
 				parentOp = FindTrialJoinParent(tempRef_joiner, op);
 				joiner = tempRef_joiner.argValue;
 				if (parentOp == null) {
@@ -2507,9 +2307,7 @@ public class ClipperBase {
 		}
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private bool GetHorzExtendedHorzSeg(ref OutPt op, out OutPt op2)
-	private boolean GetHorzExtendedHorzSeg(tangible.RefObject<OutPt> op, tangible.OutObject<OutPt> op2) {
+	private boolean GetHorzExtendedHorzSeg(RefObject<OutPt> op, OutObject<OutPt> op2) {
 		OutRec outRec = GetRealOutRec(op.argValue.outrec);
 		op2.argValue = op.argValue;
 		if (outRec.frontEdge != null) {
@@ -2531,8 +2329,6 @@ public class ClipperBase {
 		return op2.argValue != op.argValue && op2.argValue.next != op.argValue;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void ConvertHorzTrialsToJoins()
 	private void ConvertHorzTrialsToJoins() {
 		while (_horzJoiners != null) {
 			Joiner joiner = _horzJoiners;
@@ -2548,11 +2344,10 @@ public class ClipperBase {
 					joinerParent.next2 = joiner.next1;
 				}
 			}
-			// joiner = null;
 
-			tangible.RefObject<OutPt> tempRef_op1a = new tangible.RefObject<>(op1a);
+			RefObject<OutPt> tempRef_op1a = new RefObject<>(op1a);
 			OutPt op1b;
-			tangible.OutObject<OutPt> tempOut_op1b = new tangible.OutObject<>();
+			OutObject<OutPt> tempOut_op1b = new OutObject<>();
 			if (!GetHorzExtendedHorzSeg(tempRef_op1a, tempOut_op1b)) {
 				op1b = tempOut_op1b.argValue;
 				op1a = tempRef_op1a.argValue;
@@ -2570,10 +2365,10 @@ public class ClipperBase {
 			joiner = _horzJoiners;
 			while (joiner != null) {
 				op2a = joiner.op1;
-				tangible.RefObject<OutPt> tempRef_op2a = new tangible.RefObject<>(op2a);
+				RefObject<OutPt> tempRef_op2a = new RefObject<>(op2a);
 				OutPt op2b;
-				tangible.OutObject<OutPt> tempOut_op2b = new tangible.OutObject<>();
-				if (GetHorzExtendedHorzSeg(tempRef_op2a, tempOut_op2b) && HorzEdgesOverlap(op1a.pt.X, op1b.pt.X, op2a.pt.X, op2b.pt.X)) {
+				OutObject<OutPt> tempOut_op2b = new OutObject<>(); // NOTE SYNTAX
+				if (GetHorzExtendedHorzSeg(tempRef_op2a, tempOut_op2b) && HorzEdgesOverlap(op1a.pt.X, op1b.pt.X, op2a.pt.X, tempOut_op2b.argValue.pt.X)) {
 					op2b = tempOut_op2b.argValue;
 					op2a = tempRef_op2a.argValue;
 					// overlap found so promote to a 'real' join
@@ -2608,8 +2403,6 @@ public class ClipperBase {
 		}
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void AddJoin(OutPt op1, OutPt op2)
 	private void AddJoin(OutPt op1, OutPt op2) {
 		if ((op1.outrec == op2.outrec)
 				&& ((op1 == op2) || ((op1.next == op2) && (op1 != op1.outrec.pts)) || ((op2.next == op1) && (op2 != op1.outrec.pts)))) {
@@ -2621,8 +2414,6 @@ public class ClipperBase {
 		_joinerList.add(joiner);
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static Joiner FindJoinParent(Joiner joiner, OutPt op)
 	private static Joiner FindJoinParent(Joiner joiner, OutPt op) {
 		Joiner result = op.joiner;
 		for (;;) {
@@ -2640,8 +2431,6 @@ public class ClipperBase {
 		}
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void DeleteJoin(Joiner joiner)
 	private void DeleteJoin(Joiner joiner) {
 		// This method deletes a single join, and it doesn't check for or
 		// delete trial horz. joins. For that, use the following method.
@@ -2673,8 +2462,6 @@ public class ClipperBase {
 		_joinerList.set(joiner.idx, null);
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void ProcessJoinList()
 	private void ProcessJoinList() {
 		// NB can't use foreach here because list may
 		// contain nulls which can't be enumerated
@@ -2688,9 +2475,7 @@ public class ClipperBase {
 		_joinerList.clear();
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static bool CheckDisposeAdjacent(ref OutPt op, OutPt guard, OutRec outRec)
-	private static boolean CheckDisposeAdjacent(tangible.RefObject<OutPt> op, OutPt guard, OutRec outRec) {
+	private static boolean CheckDisposeAdjacent(RefObject<OutPt> op, OutPt guard, OutRec outRec) {
 		boolean result = false;
 		while (op.argValue.prev != op.argValue) {
 			if (op.argValue.pt == op.argValue.prev.pt && op.argValue != guard && op.argValue.prev.joiner != null
@@ -2720,8 +2505,6 @@ public class ClipperBase {
 		return result;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static double DistanceFromLineSqrd(Point64 pt, Point64 linePt1, Point64 linePt2)
 	private static double DistanceFromLineSqrd(Point64 pt, Point64 linePt1, Point64 linePt2) {
 		// perpendicular distance of point (x0,y0) = (a*x0 + b*y0 + C)/Sqrt(a*a + b*b)
 		// where ax + by +c = 0 is the equation of the line
@@ -2733,8 +2516,6 @@ public class ClipperBase {
 		return (q * q) / (a * a + b * b);
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static double DistanceSqr(Point64 pt1, Point64 pt2)
 	private static double DistanceSqr(Point64 pt1, Point64 pt2) {
 		return (double) (pt1.X - pt2.X) * (pt1.X - pt2.X) + (double) (pt1.Y - pt2.Y) * (pt1.Y - pt2.Y);
 	}
@@ -2749,13 +2530,13 @@ public class ClipperBase {
 			return or1;
 		}
 		if (!IsValidClosedPath(op2)) {
-			tangible.RefObject<OutPt> tempRef_op2 = new tangible.RefObject<>(op2);
+			RefObject<OutPt> tempRef_op2 = new RefObject<>(op2);
 			SafeDisposeOutPts(tempRef_op2);
 			op2 = tempRef_op2.argValue;
 			return or1;
 		}
 		if ((or1.pts == null) || !IsValidClosedPath(op1)) {
-			tangible.RefObject<OutPt> tempRef_op1 = new tangible.RefObject<>(op1);
+			RefObject<OutPt> tempRef_op1 = new RefObject<>(op1);
 			SafeDisposeOutPts(tempRef_op1);
 			op1 = tempRef_op1.argValue;
 			return or2;
@@ -2764,10 +2545,10 @@ public class ClipperBase {
 			return or1;
 		}
 
-		tangible.RefObject<OutPt> tempRef_op12 = new tangible.RefObject<>(op1);
+		RefObject<OutPt> tempRef_op12 = new RefObject<>(op1);
 		CheckDisposeAdjacent(tempRef_op12, op2, or1);
 		op1 = tempRef_op12.argValue;
-		tangible.RefObject<OutPt> tempRef_op22 = new tangible.RefObject<>(op2);
+		RefObject<OutPt> tempRef_op22 = new RefObject<>(op2);
 		CheckDisposeAdjacent(tempRef_op22, op1, or2);
 		op2 = tempRef_op22.argValue;
 		if (op1.next == op2 || op2.next == op1) {
@@ -2905,14 +2686,14 @@ public class ClipperBase {
 			}
 
 			// something odd needs tidying up
-			tangible.RefObject<OutPt> tempRef_op13 = new tangible.RefObject<>(op1);
+			RefObject<OutPt> tempRef_op13 = new RefObject<>(op1);
 			if (CheckDisposeAdjacent(tempRef_op13, op2, or1)) {
 				op1 = tempRef_op13.argValue;
 				continue;
 			} else {
 				op1 = tempRef_op13.argValue;
 			}
-			tangible.RefObject<OutPt> tempRef_op23 = new tangible.RefObject<>(op2);
+			RefObject<OutPt> tempRef_op23 = new RefObject<>(op2);
 			if (CheckDisposeAdjacent(tempRef_op23, op1, or1)) {
 				op2 = tempRef_op23.argValue;
 				continue;
@@ -2939,8 +2720,6 @@ public class ClipperBase {
 		return result;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private static void UpdateOutrecOwner(OutRec outrec)
 	private static void UpdateOutrecOwner(OutRec outrec) {
 		OutPt opCurr = outrec.pts;
 		for (;;) {
@@ -2952,8 +2731,6 @@ public class ClipperBase {
 		}
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void CompleteSplit(System.Nullable<OutPt> op1, System.Nullable<OutPt> op2, OutRec outrec)
 	private void CompleteSplit(OutPt op1, OutPt op2, OutRec outrec) {
 		double area1 = Area(op1);
 		double area2 = Area(op2);
@@ -2961,11 +2738,11 @@ public class ClipperBase {
 
 		// delete trivial splits (with zero or almost zero areas)
 		if (area1 == 0 || (signs_change && Math.abs(area1) < 2)) {
-			tangible.RefObject<OutPt> tempRef_Object = new tangible.RefObject<>(op1);
+			RefObject<OutPt> tempRef_Object = new RefObject<>(op1);
 			SafeDisposeOutPts(tempRef_Object);
 			outrec.pts = op2;
 		} else if (area2 == 0 || (signs_change && Math.abs(area2) < 2)) {
-			tangible.RefObject<OutPt> tempRef_Object2 = new tangible.RefObject<>(op2);
+			RefObject<OutPt> tempRef_Object2 = new RefObject<>(op2);
 			SafeDisposeOutPts(tempRef_Object2);
 			outrec.pts = op1;
 		} else {
@@ -2978,7 +2755,7 @@ public class ClipperBase {
 				if (outrec.splits == null) {
 					outrec.splits = new ArrayList<>();
 				}
-				outrec.splits.Add(newOr);
+				outrec.splits.add(newOr);
 			}
 
 			if (Math.abs(area1) >= Math.abs(area2)) {
@@ -3000,11 +2777,9 @@ public class ClipperBase {
 		}
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void CleanCollinear(System.Nullable<OutRec> outrec)
 	private void CleanCollinear(OutRec outrec) {
 	  outrec = GetRealOutRec(outrec);
-	  tangible.RefObject<OutPt> tempRef_pts = new tangible.RefObject<>(outrec.pts);
+	  RefObject<OutPt> tempRef_pts = new RefObject<>(outrec.pts);
 	  if (outrec == null || outrec.isOpen || outrec.frontEdge != null || !ValidateClosedPathEx(tempRef_pts)) {
 		  outrec.pts = tempRef_pts.argValue;
 		  return;
@@ -3019,12 +2794,13 @@ public class ClipperBase {
 			return;
 		}
 		// NB if preserveCollinear == true, then only remove 180 deg. spikes
-		if ((InternalClipper.CrossProduct(op2.prev.pt, op2.pt, op2.next.pt) == 0) && ((op2.pt == op2.prev.pt) || (op2.pt == op2.next.pt) || !getPreserveCollinear() || (InternalClipper.DotProduct(op2.prev.pt, op2.pt, op2.next.pt) < 0))) {
+		if ((InternalClipper.CrossProduct(op2.prev.pt, op2.pt, op2.next.pt) == 0) && ((op2.pt == op2.prev.pt) 
+				|| (op2.pt == op2.next.pt) || !getPreserveCollinear() || (InternalClipper.DotProduct(op2.prev.pt, op2.pt, op2.next.pt) < 0))) {
 		  if (op2.equals(outrec.pts)) {
 			outrec.pts = op2.prev;
 		  }
 		  op2 = DisposeOutPt(op2);
-		  tangible.RefObject<OutPt> tempRef_op2 = new tangible.RefObject<>(op2);
+		  RefObject<OutPt> tempRef_op2 = new RefObject<>(op2);
 		  if (!ValidateClosedPathEx(tempRef_op2)) {
 			  op2 = tempRef_op2.argValue;
 			outrec.pts = null;
@@ -3040,18 +2816,15 @@ public class ClipperBase {
 			break;
 		}
 	  }
-	  tangible.RefObject<OutPt> tempRef_Object = new tangible.RefObject<>(outrec.pts!);
+	  RefObject<OutPt> tempRef_Object = new RefObject<>(outrec.pts);
 	  FixSelfIntersects(tempRef_Object);
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private OutPt DoSplitOp(ref OutPt outRecOp, OutPt splitOp)
-	private OutPt DoSplitOp(tangible.RefObject<OutPt> outRecOp, OutPt splitOp) {
+	private OutPt DoSplitOp(RefObject<OutPt> outRecOp, OutPt splitOp) {
 	  OutPt prevOp = splitOp.prev, nextNextOp = splitOp.next.next;
 	  OutPt result = prevOp;
-	  PointD ipD;
-//C# TO JAVA CONVERTER TODO TASK: The following method call contained an unresolved 'out' keyword - these cannot be converted using the 'OutObject' helper class unless the method is within the code being modified:
-	  InternalClipper.GetIntersectPoint(prevOp.pt, splitOp.pt, splitOp.next.pt, nextNextOp.pt, out ipD);
+	  PointD ipD = new PointD();
+	  InternalClipper.GetIntersectPoint(prevOp.pt, splitOp.pt, splitOp.next.pt, nextNextOp.pt, ipD); // NOTE SYNTAX
 	  Point64 ip = new Point64(ipD);
 
 	  double area1 = Area(outRecOp.argValue);
@@ -3090,9 +2863,7 @@ public class ClipperBase {
 	  return result;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void FixSelfIntersects(ref OutPt op)
-	private void FixSelfIntersects(tangible.RefObject<OutPt> op) {
+	private void FixSelfIntersects(RefObject<OutPt> op) {
 		if (!IsValidClosedPath(op.argValue)) {
 			return;
 		}
@@ -3174,8 +2945,6 @@ public class ClipperBase {
 		return true;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private bool Path1InsidePath2(OutRec or1, OutRec or2)
 	private boolean Path1InsidePath2(OutRec or1, OutRec or2) {
 		PointInPolygonResult result;
 		OutPt op = or1.pts;
@@ -3192,8 +2961,6 @@ public class ClipperBase {
 		return result == PointInPolygonResult.IsInside;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private Rect64 GetBounds(List<Point64> path)
 	private Rect64 GetBounds(List<Point64> path) {
 		if (path.size() == 0) {
 			return new Rect64();
@@ -3216,8 +2983,6 @@ public class ClipperBase {
 		return result;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private bool DeepCheckOwner(OutRec outrec, OutRec owner)
 	private boolean DeepCheckOwner(OutRec outrec, OutRec owner) {
 		if (owner.bounds.IsEmpty()) {
 			owner.bounds = GetBounds(owner.path);
@@ -3238,7 +3003,7 @@ public class ClipperBase {
 					return true;
 				}
 
-				if (split.path.Count == 0) {
+				if (split.path.size() == 0) {
 					BuildPath(split.pts, getReverseSolution(), false, split.path);
 				}
 				if (split.bounds.IsEmpty()) {
@@ -3270,12 +3035,9 @@ public class ClipperBase {
 		}
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] protected bool BuildTree(PolyPathBase polytree, List<List<Point64>> solutionOpen)
 	protected final boolean BuildTree(PolyPathBase polytree, List<List<Point64>> solutionOpen) {
 		polytree.Clear();
-		solutionOpen.Clear();
-		solutionOpen.Capacity = _outrecList.size();
+		solutionOpen.clear();
 
 		for (int i = 0; i < _outrecList.size(); i++) {
 			OutRec outrec = _outrecList.get(i);
@@ -3284,9 +3046,9 @@ public class ClipperBase {
 			}
 
 			if (outrec.isOpen) {
-				List<Point64> open_path = new List<Point64>();
+				List<Point64> open_path = new ArrayList<Point64>();
 				if (BuildPath(outrec.pts, getReverseSolution(), true, open_path)) {
-					solutionOpen.Add(open_path);
+					solutionOpen.add(open_path);
 				}
 				continue;
 			}
@@ -3331,8 +3093,6 @@ public class ClipperBase {
 		return true;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] public Rect64 GetBounds()
 	public final Rect64 GetBounds() {
 		Rect64 bounds = Clipper.MaxInvalidRect64;
 		for (Vertex t : _vertexList) {
