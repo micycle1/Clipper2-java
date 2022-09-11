@@ -452,7 +452,7 @@ public class ClipperBase {
 					v0 = new Vertex(pt, VertexFlags.None, null);
 					_vertexList.add(v0);
 					prev_v = v0;
-				} else if (prev_v.pt != pt) { // ie skips duplicates
+				} else if (prev_v.pt.opNotEquals(pt)) { // ie skips duplicates
 					curr_v = new Vertex(pt, VertexFlags.None, prev_v);
 					_vertexList.add(curr_v);
 					prev_v.next = curr_v;
@@ -462,12 +462,12 @@ public class ClipperBase {
 			if (prev_v == null || prev_v.prev == null) {
 				continue;
 			}
-			if (!isOpen && v0.pt.equals(prev_v.pt)) {
+			if (!isOpen && v0.pt.opEquals(prev_v.pt)) {
 				prev_v = prev_v.prev;
 			}
 			prev_v.next = v0;
 			v0.prev = prev_v;
-			if (!isOpen && prev_v.equals(prev_v.next)) {
+			if (!isOpen && prev_v == prev_v.next) {
 				continue;
 			}
 
@@ -475,7 +475,7 @@ public class ClipperBase {
 			boolean going_up, going_up0;
 			if (isOpen) {
 				curr_v = v0.next;
-				while (!v0.equals(curr_v) && curr_v.pt.Y == v0.pt.Y) {
+				while (v0 != curr_v && curr_v.pt.Y == v0.pt.Y) {
 					curr_v = curr_v.next;
 				}
 				going_up = curr_v.pt.Y <= v0.pt.Y;
@@ -531,7 +531,7 @@ public class ClipperBase {
 	public final void AddSubject(List<Point64> path) {
 		AddPath(path, PathType.Subject);
 	}
-	
+
 	public final void AddSubjects(List<List<Point64>> paths) {
 		paths.forEach(path -> AddPath(path, PathType.Subject));
 	}
@@ -539,7 +539,7 @@ public class ClipperBase {
 	public final void AddOpenSubject(List<Point64> path) {
 		AddPath(path, PathType.Subject, true);
 	}
-	
+
 	public final void AddOpenSubjects(List<List<Point64>> paths) {
 		paths.forEach(path -> AddPath(path, PathType.Subject, true));
 	}
@@ -547,7 +547,7 @@ public class ClipperBase {
 	public final void AddClip(List<Point64> path) {
 		AddPath(path, PathType.Clip);
 	}
-	
+
 	public final void AddClips(List<List<Point64>> paths) {
 		paths.forEach(path -> AddPath(path, PathType.Clip));
 	}
@@ -1144,9 +1144,9 @@ public class ClipperBase {
 		OutPt opFront = outrec.pts;
 		OutPt opBack = opFront.next;
 
-		if (toFront && (pt == opFront.pt)) {
+		if (toFront && (pt.opEquals(opFront.pt))) {
 			newOp = opFront;
-		} else if (!toFront && (pt == opBack.pt)) {
+		} else if (!toFront && (pt.opEquals(opBack.pt))) {
 			newOp = opBack;
 		} else {
 			newOp = new OutPt(pt, outrec);
@@ -1206,7 +1206,7 @@ public class ClipperBase {
 			if (result.localMin.opEquals(e.localMin)) {
 				return result;
 			}
-			if (!IsHorizontal(result) && e.bot != result.bot) {
+			if (!IsHorizontal(result) && e.bot.opNotEquals(result.bot)) {
 				result = null;
 			} else {
 				result = result.nextInAEL;
@@ -1217,7 +1217,7 @@ public class ClipperBase {
 			if (result.localMin.opEquals(e.localMin)) {
 				return result;
 			}
-			if (!IsHorizontal(result) && e.bot != result.bot) {
+			if (!IsHorizontal(result) && e.bot.opNotEquals(result.bot)) {
 				return null;
 			}
 			result = result.prevInAEL;
@@ -1280,7 +1280,7 @@ public class ClipperBase {
 			}
 
 			// horizontal edges can pass under open paths at a LocMins
-			else if (pt == ae1.localMin.vertex.pt && !IsOpenEnd(ae1.localMin.vertex)) {
+			else if (pt.opEquals(ae1.localMin.vertex.pt) && !IsOpenEnd(ae1.localMin.vertex)) {
 				// find the other side of the LocMin and
 				// if it's 'hot' join up with it ...
 				Active ae3 = FindEdgeWithMatchingLocMin(ae1);
@@ -1372,7 +1372,7 @@ public class ClipperBase {
 				// a common vertex (not at common edges).
 				resultOp = AddLocalMaxPoly(ae1, ae2, pt);
 				OutPt op2 = AddLocalMinPoly(ae1, ae2, pt);
-				if (resultOp != null && resultOp.pt == op2.pt && !IsHorizontal(ae1) && !IsHorizontal(ae2)
+				if (resultOp != null && resultOp.pt.opEquals(op2.pt) && !IsHorizontal(ae1) && !IsHorizontal(ae2)
 						&& (InternalClipper.CrossProduct(ae1.bot, resultOp.pt, ae2.bot) == 0)) {
 					AddJoin(resultOp, op2);
 				}
@@ -1609,7 +1609,7 @@ public class ClipperBase {
 				lEnd = right;
 				rEnd = right.jump;
 				left.jump = rEnd;
-				while (left!=lEnd && right!=rEnd) {
+				while (left != lEnd && right != rEnd) {
 					if (right.curX < left.curX) {
 						tmp = right.prevInSEL;
 						for (;;) {
@@ -1827,7 +1827,7 @@ public class ClipperBase {
 							UpdateEdgeIntoAEL(horz);
 						}
 						op = AddLocalMaxPoly(horz, ae, horz.top);
-						if (op != null && !IsOpen(horz) && op.pt == horz.top) {
+						if (op != null && !IsOpen(horz) && op.pt.opEquals(horz.top)) {
 							AddTrialHorzJoin(op);
 						}
 					}
@@ -1877,7 +1877,7 @@ public class ClipperBase {
 					op = IntersectEdges(horz, ae, pt);
 					SwapPositionsInAEL(horz, ae);
 
-					if (IsHotEdge(horz) && op != null && !IsOpen(horz) && op.pt == pt) {
+					if (IsHotEdge(horz) && op != null && !IsOpen(horz) && op.pt.opEquals(pt)) {
 						AddTrialHorzJoin(op);
 					}
 
@@ -1893,7 +1893,7 @@ public class ClipperBase {
 					op = IntersectEdges(ae, horz, pt);
 					SwapPositionsInAEL(ae, horz);
 
-					if (IsHotEdge(horz) && op != null && !IsOpen(horz) && op.pt == pt) {
+					if (IsHotEdge(horz) && op != null && !IsOpen(horz) && op.pt.opEquals(pt)) {
 						AddTrialHorzJoin(op);
 					}
 
@@ -2383,13 +2383,13 @@ public class ClipperBase {
 					op2a = tempRef_op2a.argValue;
 					// overlap found so promote to a 'real' join
 					joined = true;
-					if (op1a.pt == op2b.pt) {
+					if (op1a.pt.opEquals(op2b.pt)) {
 						AddJoin(op1a, op2b);
-					} else if (op1b.pt == op2a.pt) {
+					} else if (op1b.pt.opEquals(op2a.pt)) {
 						AddJoin(op1b, op2a);
-					} else if (op1a.pt == op2a.pt) {
+					} else if (op1a.pt.opEquals(op2a.pt)) {
 						AddJoin(op1a, op2a);
-					} else if (op1b.pt == op2b.pt) {
+					} else if (op1b.pt.opEquals(op2b.pt)) {
 						AddJoin(op1b, op2b);
 					} else if (ValueBetween(op1a.pt.X, op2a.pt.X, op2b.pt.X)) {
 						AddJoin(op1a, InsertOp(op1a.pt, op2a));
@@ -2488,7 +2488,7 @@ public class ClipperBase {
 	private static boolean CheckDisposeAdjacent(RefObject<OutPt> op, OutPt guard, OutRec outRec) {
 		boolean result = false;
 		while (op.argValue.prev != op.argValue) {
-			if (op.argValue.pt == op.argValue.prev.pt && op.argValue != guard && op.argValue.prev.joiner != null
+			if (op.argValue.pt.opEquals(op.argValue.prev.pt) && op.argValue != guard && op.argValue.prev.joiner != null
 					&& op.argValue.joiner == null) {
 				if (op.argValue == outRec.pts) {
 					outRec.pts = op.argValue.prev;
@@ -2501,7 +2501,7 @@ public class ClipperBase {
 		}
 
 		while (op.argValue.next != op.argValue) {
-			if (op.argValue.pt == op.argValue.next.pt && op.argValue != guard && op.argValue.next.joiner != null
+			if (op.argValue.pt.opEquals(op.argValue.next.pt) && op.argValue != guard && op.argValue.next.joiner != null
 					&& op.argValue.joiner == null) {
 				if (op.argValue == outRec.pts) {
 					outRec.pts = op.argValue.prev;
@@ -2571,13 +2571,13 @@ public class ClipperBase {
 				return or1;
 			}
 
-			if (op1.prev.pt == op2.next.pt || ((InternalClipper.CrossProduct(op1.prev.pt, op1.pt, op2.next.pt) == 0)
+			if (op1.prev.pt.opEquals(op2.next.pt) || ((InternalClipper.CrossProduct(op1.prev.pt, op1.pt, op2.next.pt) == 0)
 					&& CollinearSegsOverlap(op1.prev.pt, op1.pt, op2.pt, op2.next.pt))) {
 				if (or1 == or2) {
 					// SPLIT REQUIRED
 					// make sure op1.prev and op2.next match positions
 					// by inserting an extra vertex if needed
-					if (op1.prev.pt != op2.next.pt) {
+					if (op1.prev.pt.opNotEquals(op2.next.pt)) {
 						if (PointBetween(op1.prev.pt, op2.pt, op2.next.pt)) {
 							op2.next = InsertOp(op1.prev.pt, op2);
 						} else {
@@ -2624,13 +2624,13 @@ public class ClipperBase {
 				}
 				break;
 			}
-			if (op1.next.pt == op2.prev.pt || ((InternalClipper.CrossProduct(op1.next.pt, op2.pt, op2.prev.pt) == 0)
+			if (op1.next.pt.opEquals(op2.prev.pt) || ((InternalClipper.CrossProduct(op1.next.pt, op2.pt, op2.prev.pt) == 0)
 					&& CollinearSegsOverlap(op1.next.pt, op1.pt, op2.pt, op2.prev.pt))) {
 				if (or1 == or2) {
 					// SPLIT REQUIRED
 					// make sure op2.prev and op1.next match positions
 					// by inserting an extra vertex if needed
-					if (op2.prev.pt != op1.next.pt) {
+					if (op2.prev.pt.opNotEquals(op1.next.pt)) {
 						if (PointBetween(op2.prev.pt, op1.pt, op1.next.pt)) {
 							op1.next = InsertOp(op2.prev.pt, op1);
 						} else {
@@ -2710,11 +2710,11 @@ public class ClipperBase {
 			} else {
 				op2 = tempRef_op23.argValue;
 			}
-			if (op1.prev.pt != op2.next.pt && (DistanceSqr(op1.prev.pt, op2.next.pt) < 2.01)) {
+			if (op1.prev.pt.opNotEquals(op2.next.pt) && (DistanceSqr(op1.prev.pt, op2.next.pt) < 2.01)) {
 				op1.prev.pt = op2.next.pt;
 				continue;
 			}
-			if (op1.next.pt != op2.prev.pt && (DistanceSqr(op1.next.pt, op2.prev.pt) < 2.01)) {
+			if (op1.next.pt.opNotEquals(op2.prev.pt) && (DistanceSqr(op1.next.pt, op2.prev.pt) < 2.01)) {
 				op2.prev.pt = op1.next.pt;
 				continue;
 			}
@@ -2804,8 +2804,9 @@ public class ClipperBase {
 				return;
 			}
 			// NB if preserveCollinear == true, then only remove 180 deg. spikes
-			if ((InternalClipper.CrossProduct(op2.prev.pt, op2.pt, op2.next.pt) == 0) && ((op2.pt == op2.prev.pt) || (op2.pt == op2.next.pt)
-					|| !getPreserveCollinear() || (InternalClipper.DotProduct(op2.prev.pt, op2.pt, op2.next.pt) < 0))) {
+			if ((InternalClipper.CrossProduct(op2.prev.pt, op2.pt, op2.next.pt) == 0)
+					&& ((op2.pt.opEquals(op2.prev.pt)) || (op2.pt.opEquals(op2.next.pt)) || !getPreserveCollinear()
+							|| (InternalClipper.DotProduct(op2.prev.pt, op2.pt, op2.next.pt) < 0))) {
 				if (op2.equals(outrec.pts)) {
 					outrec.pts = op2.prev;
 				}
@@ -2840,7 +2841,7 @@ public class ClipperBase {
 		double area1 = Area(outRecOp.argValue);
 		double area2 = AreaTriangle(ip, splitOp.pt, splitOp.next.pt);
 
-		if (ip == prevOp.pt || ip == nextNextOp.pt) {
+		if (ip.opEquals(prevOp.pt) || ip.opEquals(nextNextOp.pt)) {
 			nextNextOp.prev = prevOp;
 			prevOp.next = nextNextOp;
 		} else {
@@ -2919,7 +2920,7 @@ public class ClipperBase {
 		path.add(lastPt);
 
 		while (op2 != op) {
-			if (op2.pt != lastPt) {
+			if (op2.pt.opNotEquals(lastPt)) {
 				lastPt = op2.pt;
 				path.add(lastPt);
 			}

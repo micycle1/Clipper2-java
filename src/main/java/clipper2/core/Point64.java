@@ -38,8 +38,16 @@ public final class Point64 {
 		Y = (long) Math.rint(pt.y * scale);
 	}
 
+	public boolean opEquals(Point64 o) {
+		return X == o.X && Y == o.Y;
+	}
+
 	public static boolean opEquals(Point64 lhs, Point64 rhs) {
 		return lhs.X == rhs.X && lhs.Y == rhs.Y;
+	}
+
+	public boolean opNotEquals(Point64 o) {
+		return X != o.X || Y != o.Y;
 	}
 
 	public static boolean opNotEquals(Point64 lhs, Point64 rhs) {
@@ -69,17 +77,13 @@ public final class Point64 {
 		return false;
 	}
 
-	@Override
-	public int hashCode() {
-		return 0;
-	}
+//	@Override
+//	public int hashCode() { // NOTE
+//		return 0;
+//	}
 
 	@Override
 	public Point64 clone() {
-		Point64 varCopy = new Point64();
-		varCopy.X = this.X;
-		varCopy.Y = this.Y;
-		
-		return varCopy;
+		return new Point64(X, Y);
 	}
 }

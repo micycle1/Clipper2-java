@@ -48,7 +48,7 @@ class TestPolygons {
 
 	private static final List<Arguments> testCases() throws IOException {
 		return ClipperFileIO.loadTestCases("Polygons.txt").stream().map(t -> Arguments.of(t, t.caption(), t.clipType(), t.fillRule()))
-				.collect(Collectors.toList()).subList(0, 80);
+				.collect(Collectors.toList()).subList(0, 99);
 	}
 
 	@MethodSource("testCases")
