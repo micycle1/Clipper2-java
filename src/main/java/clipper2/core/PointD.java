@@ -40,7 +40,7 @@ public final class PointD {
 
 	@Override
 	public String toString() {
-		return String.format("%1$f,%2$f ", x, y);
+		return String.format("(%1$f,%2$f) ", x, y);
 	}
 
 	public static boolean opEquals(PointD lhs, PointD rhs) {

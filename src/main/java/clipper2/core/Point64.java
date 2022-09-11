@@ -56,7 +56,7 @@ public final class Point64 {
 
 	@Override
 	public String toString() {
-		return String.format("%1$s,%2$s ", X, Y); // nb: trailing space
+		return String.format("(%1$s,%2$s) ", X, Y); // nb: trailing space
 	}
 
 	@Override
@@ -77,10 +77,9 @@ public final class Point64 {
 	@Override
 	public Point64 clone() {
 		Point64 varCopy = new Point64();
-
 		varCopy.X = this.X;
 		varCopy.Y = this.Y;
-
+		
 		return varCopy;
 	}
 }

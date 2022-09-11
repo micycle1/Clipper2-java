@@ -13,7 +13,7 @@ public enum VertexFlags {
 	None(0), OpenStart(1), OpenEnd(2), LocalMax(4), LocalMin(8);
 
 	private final int intValue;
-	private static HashMap<Integer, VertexFlags> mappings = new HashMap<>();
+	private static HashMap<Integer, VertexFlags> mappings;
 
 	private VertexFlags(int value) {
 		intValue = value;
@@ -29,6 +29,9 @@ public enum VertexFlags {
 	}
 
 	private static HashMap<Integer, VertexFlags> getMappings() {
+		if (mappings == null) {
+			mappings = new HashMap<>();
+		}
 		return mappings;
 	}
 

@@ -1,18 +1,19 @@
 package clipper2.engine;
 
+import clipper2.Nullable;
 import clipper2.core.Point64;
 
-// OutPt: vertex data structure for clipping solutions
+/**
+ * Vertex data structure for clipping solutions
+ */
 public class OutPt {
-	
+
 	public Point64 pt;
-//C# TO JAVA CONVERTER WARNING: Nullable reference types have no equivalent in Java:
-//ORIGINAL LINE: public OutPt? next;
+	@Nullable
 	public OutPt next;
 	public OutPt prev;
 	public OutRec outrec;
-//C# TO JAVA CONVERTER WARNING: Nullable reference types have no equivalent in Java:
-//ORIGINAL LINE: public Joiner? joiner;
+	@Nullable
 	public Joiner joiner;
 
 	public OutPt(Point64 pt, OutRec outrec) {
@@ -22,4 +23,5 @@ public class OutPt {
 		prev = this;
 		joiner = null;
 	}
+
 }
