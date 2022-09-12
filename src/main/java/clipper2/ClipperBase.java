@@ -42,6 +42,7 @@ public class ClipperBase {
 	public boolean _using_polytree;
 	public boolean _succeeded;
 	private boolean PreserveCollinear;
+	private boolean ReverseSolution;
 
 	public ClipperBase() {
 		_minimaList = new ArrayList<>();
@@ -61,7 +62,6 @@ public class ClipperBase {
 		PreserveCollinear = value;
 	}
 
-	private boolean ReverseSolution;
 
 	public final boolean getReverseSolution() {
 		return ReverseSolution;
@@ -397,11 +397,17 @@ public class ClipperBase {
 
 	private void InsertScanline(long y) {
 		int index = _scanlineList.indexOf(y);
-		if (index >= 0) {
+		if (index >= 0) { // if item is found
 			return;
 		}
-		index = ~index;
-		_scanlineList.add(index, y);
+//		System.out.println(y);
+//		System.out.println(index);
+		// NOTE C# BinarySearch returns negative number that is the bitwise complement of the index 
+		index = ~index;  
+//		System.out.println(index);
+//		_scanlineList.add(index, y);
+		_scanlineList.add(y);
+		_scanlineList.sort((a,b) -> Long.compare(a,b));
 	}
 
 	private boolean PopScanline(OutObject<Long> y) {
@@ -2973,7 +2979,7 @@ public class ClipperBase {
 	}
 
 	private Rect64 GetBounds(List<Point64> path) {
-		if (path.size() == 0) {
+		if (path.isEmpty()) {
 			return new Rect64();
 		}
 		Rect64 result = new Rect64(Long.MAX_VALUE, Long.MAX_VALUE, -Long.MAX_VALUE, -Long.MAX_VALUE);
