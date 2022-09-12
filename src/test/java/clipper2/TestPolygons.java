@@ -24,8 +24,8 @@ class TestPolygons {
 	}
 
 	@MethodSource("testCases")
-	@ParameterizedTest(name = "{0} {2} {3}")
-	final void area(TestCase test, String caption, Object o, Object o1) {
+	@ParameterizedTest(name = "{1} {2} {3}")
+	final void RunPolygonsTestCase(TestCase test, String caption, Object o, Object o1) {
 		Clipper64 c64 = new Clipper64();
 		var solution = new ArrayList<List<Point64>>();
 		var solution_open = new ArrayList<List<Point64>>();

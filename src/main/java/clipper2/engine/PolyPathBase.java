@@ -5,7 +5,6 @@ import java.util.List;
 
 import clipper2.core.Point64;
 
-//C# TO JAVA CONVERTER TODO TASK: The interface type was changed to the closest equivalent Java type, but the methods implemented will need adjustment:
 public abstract class PolyPathBase implements java.lang.Iterable<PolyPathBase> {
 
 	public PolyPathBase _parent;

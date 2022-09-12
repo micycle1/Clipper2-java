@@ -32,16 +32,19 @@ public class ClipperFileIO {
 		List<TestCase> cases = new ArrayList<>();
 
 		for (String s : lines) {
-			if (s.isBlank()) {
+			if (s.isBlank() || s.length() == 0) {
+//				System.out.println("blank!");
 				cases.add(new TestCase(caption, ct, fillRule, area, count, GetIdx, new ArrayList<>(subj), new ArrayList<>(subj_open),
 						new ArrayList<>(clip)));
 				subj.clear();
 				subj_open.clear();
 				clip.clear();
+				continue;
 			}
 
 			if (s.indexOf("CAPTION: ") == 0) {
 				caption = s.substring(9);
+				continue;
 			}
 
 			if (s.indexOf("CLIPTYPE: ") == 0) {
@@ -92,7 +95,7 @@ public class ClipperFileIO {
 			} else {
 //				continue;
 			}
-
+			
 			List<List<Point64>> paths = PathFromStr(s); // 0 or 1 path
 			if (paths == null || paths.isEmpty()) {
 				if (GetIdx == 3) {
@@ -107,7 +110,7 @@ public class ClipperFileIO {
 				}
 				continue;
 			}
-			if (GetIdx == 1) {
+			if (GetIdx == 1 && !paths.get(0).isEmpty()) {
 				subj.add(paths.get(0));
 			} else if (GetIdx == 2) {
 				subj_open.add(paths.get(0));
@@ -116,84 +119,27 @@ public class ClipperFileIO {
 			}
 
 		}
+		
+		if (cases.isEmpty()) {
+			cases.add(new TestCase(caption, ct, fillRule, area, count, GetIdx, new ArrayList<>(subj), new ArrayList<>(subj_open),
+					new ArrayList<>(clip)));
+		}
 
 		return cases;
 	}
-
+	
 	public static List<List<Point64>> PathFromStr(String s) {
 		if (s == null) {
 			return null;
 		}
 		List<Point64> p = new ArrayList<>();
 		List<List<Point64>> pp = new ArrayList<>();
-		int len = s.length(), i = 0, j;
-		while (i < len) {
-			boolean isNeg;
-			while (s.charAt(i) < 33 && i < len) {
-				i++;
-			}
-			if (i >= len) {
-				break;
-			}
-			// get X ...
-			isNeg = s.charAt(i) == 45;
-			if (isNeg) {
-				i++;
-			}
-			if (i >= len || s.charAt(i) < 48 || s.charAt(i) > 57) {
-				break;
-			}
-			j = i + 1;
-			while (j < len && s.charAt(j) > 47 && s.charAt(j) < 58) {
-				j++;
-			}
-			long x = Long.parseLong(s.substring(i, j));
-			if (isNeg) {
-				x = -x;
-			}
-			// skip space or comma between X & Y ...
-			i = j;
-			while (i < len && (s.charAt(i) == 32 || s.charAt(i) == 44)) {
-				i++;
-			}
-			// get Y ...
-			if (i >= len) {
-				break;
-			}
-			isNeg = s.charAt(i) == 45;
-			if (isNeg) {
-				i++;
-			}
-			if (i >= len || s.charAt(i) < 48 || s.charAt(i) > 57) {
-				break;
-			}
-			j = i + 1;
-			while (j < len && s.charAt(j) > 47 && s.charAt(j) < 58) {
-				j++;
-			}
-			long y = Long.parseLong(s.substring(i, j));
-			if (isNeg) {
-				y = -y;
-			}
+		
+		for (var pair : s.split(" ")) {
+			var xy = pair.split(",");
+			long x = Long.parseLong(xy[0]);
+			long y = Long.parseLong(xy[1]);
 			p.add(new Point64(x, y));
-			// skip trailing space, comma ...
-			i = j;
-			int nlCnt = 0;
-			while (i < len && (s.charAt(i) < 33 || s.charAt(i) == 44)) {
-				if (i >= len) {
-					break;
-				}
-				if (s.charAt(i) == 10) {
-					nlCnt++;
-					if (nlCnt == 2) {
-						if (p.size() > 2) {
-							pp.add(p);
-						}
-						p = new ArrayList<>();
-					}
-				}
-				i++;
-			}
 		}
 		if (p.size() > 2) {
 			pp.add(p);
