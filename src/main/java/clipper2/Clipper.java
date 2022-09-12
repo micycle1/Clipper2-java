@@ -1,8 +1,10 @@
 package clipper2;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import clipper2.core.Point64;
+import clipper2.core.PointD;
 import clipper2.core.Rect64;
 import clipper2.core.RectD;
 
@@ -42,6 +44,33 @@ public class Clipper {
 			a += area(path);
 		}
 		return a;
+	}
+
+	public static List<Point64> MakePath(int[] arr) {
+		int len = arr.length / 2;
+		ArrayList<Point64> p = new ArrayList<>(len);
+		for (int i = 0; i < len; i++) {
+			p.add(new Point64(arr[i * 2], arr[i * 2 + 1]));
+		}
+		return p;
+	}
+
+	public static List<Point64> MakePath(long[] arr) {
+		int len = arr.length / 2;
+		ArrayList<Point64> p = new ArrayList<>(len);
+		for (int i = 0; i < len; i++) {
+			p.add(new Point64(arr[i * 2], arr[i * 2 + 1]));
+		}
+		return p;
+	}
+
+	public static List<PointD> MakePath(double[] arr) {
+		int len = arr.length / 2;
+		ArrayList<PointD> p = new ArrayList<>(len);
+		for (int i = 0; i < len; i++) {
+			p.add(new PointD(arr[i * 2], arr[i * 2 + 1]));
+		}
+		return p;
 	}
 
 }
