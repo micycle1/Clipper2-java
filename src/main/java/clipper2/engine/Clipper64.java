@@ -8,6 +8,11 @@ import clipper2.core.FillRule;
 import clipper2.core.PathType;
 import clipper2.core.Point64;
 
+/**
+ * The Clipper class performs boolean 'clipping'. This class is very similar to
+ * ClipperD except that coordinates passed to Clipper64 objects are of type
+ * <code>long</code> instead of type <code>double</code>.
+ */
 public class Clipper64 extends ClipperBase {
 
 	public final void addPath(List<Point64> path, PathType polytype) {
@@ -69,11 +74,11 @@ public class Clipper64 extends ClipperBase {
 		BuildPaths(solutionClosed, solutionOpen);
 		try { // NOTE avoid for now
 		} catch (java.lang.Exception e) {
-			_succeeded = false;
+			succeeded = false;
 		}
 
 		ClearSolution();
-		return _succeeded;
+		return succeeded;
 	}
 
 	public final boolean Execute(ClipType clipType, FillRule fillRule, List<List<Point64>> solutionClosed) {
@@ -83,16 +88,16 @@ public class Clipper64 extends ClipperBase {
 	public final boolean Execute(ClipType clipType, FillRule fillRule, PolyTree64 polytree, List<List<Point64>> openPaths) {
 		polytree.Clear();
 		openPaths.clear();
-		_using_polytree = true;
+		usingPolytree = true;
 		try {
 			ExecuteInternal(clipType, fillRule);
 			BuildTree(polytree, openPaths);
 		} catch (java.lang.Exception e) {
-			_succeeded = false;
+			succeeded = false;
 		}
 
 		ClearSolution();
-		return _succeeded;
+		return succeeded;
 	}
 
 	public final boolean Execute(ClipType clipType, FillRule fillRule, PolyTree64 polytree) {

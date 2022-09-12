@@ -123,6 +123,49 @@ public final class Clipper {
 		return InflatePaths(paths, delta, joinType, endType, 2.0);
 	}
 
+	/**
+	 * These functions encapsulate {@link ClipperOffset}, the class that performs
+	 * both polygon and open path offsetting.
+	 * <p>
+	 * When using this function to inflate polygons (ie closed paths), it's
+	 * important that you select {@link EndType#Polygon}. If instead you select one
+	 * of the open path end types (including {@link EndType#Joined}), you'll inflate
+	 * the polygon's outline.
+	 * <p>
+	 * With closed paths (polygons), a positive delta specifies how much outer
+	 * polygon contours will expand and how much inner "hole" contours will contract
+	 * (and the converse with negative deltas).
+	 * <p>
+	 * With open paths (polylines), including {@link EndType#Joined}, delta
+	 * specifies the width of the inflated line.
+	 * <p>
+	 * Caution: Offsetting self-intersecting polygons may produce unexpected
+	 * results.
+	 * 
+	 * @param paths
+	 * @param delta      With closed paths (polygons), a positive <code>delta</code>
+	 *                   specifies how much outer polygon contours will expand and
+	 *                   how much inner "hole" contours will contract (and the
+	 *                   converse with negative deltas).
+	 *                   <p>
+	 *                   With open paths (polylines), including EndType.Join,
+	 *                   <code>delta</code> specifies the width of the inflated
+	 *                   line.
+	 * @param joinType
+	 * @param endType
+	 * @param miterLimit sets the maximum distance in multiples of delta that
+	 *                   vertices can be offset from their original positions before
+	 *                   squaring is applied. (Squaring truncates a miter by
+	 *                   'cutting it off' at 1 × delta distance from the original
+	 *                   vertex.)
+	 *                   <p>
+	 *                   The default value for MiterLimit is 2 (ie twice delta).
+	 *                   This is also the smallest MiterLimit that's allowed. If
+	 *                   mitering was unrestricted (ie without any squaring), then
+	 *                   offsets at very acute angles would generate unacceptably
+	 *                   long 'spikes'.
+	 * @return
+	 */
 	public static List<List<Point64>> InflatePaths(List<List<Point64>> paths, double delta, JoinType joinType, EndType endType,
 			double miterLimit) {
 		ClipperOffset co = new ClipperOffset(miterLimit);
@@ -159,6 +202,16 @@ public final class Clipper {
 		return Minkowski.Diff(pattern, path, isClosed);
 	}
 
+	/**
+	 * Returns the area of the supplied polygon. It's assumed that the path is
+	 * closed and does not self-intersect. Depending on the path's winding
+	 * orientation, this value may be positive or negative. If the winding is
+	 * clockwise, then the area will be positive and conversely, if winding is
+	 * counter-clockwise, then the area will be negative.
+	 * 
+	 * @param path
+	 * @return
+	 */
 	public static double AreaPath(List<Point64> path) {
 		// https://en.wikipedia.org/wiki/Shoelace_formula
 		double a = 0.0;
@@ -174,6 +227,16 @@ public final class Clipper {
 		return a * 0.5;
 	}
 
+	/**
+	 * Returns the area of the supplied polygon. It's assumed that the path is
+	 * closed and does not self-intersect. Depending on the path's winding
+	 * orientation, this value may be positive or negative. If the winding is
+	 * clockwise, then the area will be positive and conversely, if winding is
+	 * counter-clockwise, then the area will be negative.
+	 * 
+	 * @param paths
+	 * @return
+	 */
 	public static double Area(List<List<Point64>> paths) {
 		double a = 0.0;
 		for (List<Point64> path : paths) {
@@ -645,6 +708,24 @@ public final class Clipper {
 		}
 	}
 
+	/**
+	 * The Ramer-Douglas-Peucker algorithm is very useful in removing path segments
+	 * that don't contribute meaningfully to the path's shape. The algorithm's
+	 * aggressiveness is determined by the epsilon parameter, with larger values
+	 * removing more vertices. (Somewhat simplistically, the algorithm removes
+	 * vertices that are less than epsilon distance from imaginary lines passing
+	 * through their adjacent vertices.)
+	 * <p>
+	 * This function can be particularly useful when offsetting paths (ie
+	 * inflating/shrinking) where the offsetting process often creates tiny
+	 * segments. These segments don't enhance curve quality, but they will slow path
+	 * processing (whether during file storage, or when rendering, or in subsequent
+	 * offsetting procedures).
+	 * 
+	 * @param path
+	 * @param epsilon
+	 * @return
+	 */
 	public static List<Point64> RamerDouglasPeuckerPath(List<Point64> path, double epsilon) {
 		int len = path.size();
 		if (len < 5) {
@@ -663,6 +744,24 @@ public final class Clipper {
 		return result;
 	}
 
+	/**
+	 * The Ramer-Douglas-Peucker algorithm is very useful in removing path segments
+	 * that don't contribute meaningfully to the path's shape. The algorithm's
+	 * aggressiveness is determined by the epsilon parameter, with larger values
+	 * removing more vertices. (Somewhat simplistically, the algorithm removes
+	 * vertices that are less than epsilon distance from imaginary lines passing
+	 * through their adjacent vertices.)
+	 * <p>
+	 * This function can be particularly useful when offsetting paths (ie
+	 * inflating/shrinking) where the offsetting process often creates tiny
+	 * segments. These segments don't enhance curve quality, but they will slow path
+	 * processing (whether during file storage, or when rendering, or in subsequent
+	 * offsetting procedures).
+	 * 
+	 * @param paths
+	 * @param epsilon
+	 * @return
+	 */
 	public static List<List<Point64>> RamerDouglasPeucker(List<List<Point64>> paths, double epsilon) {
 		List<List<Point64>> result = new ArrayList<>(paths.size());
 		for (List<Point64> path : paths) {

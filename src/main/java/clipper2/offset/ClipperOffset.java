@@ -13,6 +13,24 @@ import clipper2.core.PointD;
 import clipper2.engine.Clipper64;
 import tangible.RefObject;
 
+/**
+ * Geometric offsetting refers to the process of creating parallel curves that
+ * are offset a specified distance from their primary curves.
+ * <p>
+ * The ClipperOffset class manages the process of offsetting
+ * (inflating/deflating) both open and closed paths using a number of different
+ * join types and end types. The library user will rarely need to access this
+ * unit directly since it will generally be easier to use the
+ * {@link Clipper#InflatePaths(List, double, JoinType, EndType) InflatePaths()}
+ * function when doing polygon offsetting.
+ * <p>
+ * Caution: Offsetting self-intersecting polygons may produce unexpected
+ * results.
+ * <p>
+ * Note: When inflating polygons, it's important that you select
+ * {@link EndType#Polygon}. If you select one of the open path end types instead
+ * (including EndType.Join), you'll simply inflate the polygon's outline.
+ */
 public class ClipperOffset {
 
 	private final List<PathGroup> _pathGroups = new ArrayList<>();

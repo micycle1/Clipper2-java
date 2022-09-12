@@ -10,6 +10,11 @@ import clipper2.core.PathType;
 import clipper2.core.Point64;
 import clipper2.core.PointD;
 
+/**
+ * The ClipperD class performs boolean 'clipping'. This class is very similar to
+ * Clipper64 except that coordinates passed to ClipperD objects are of type
+ * <code>double</code> instead of type <code>long</code>.
+ */
 public class ClipperD extends ClipperBase {
 
 	private double _scale;
