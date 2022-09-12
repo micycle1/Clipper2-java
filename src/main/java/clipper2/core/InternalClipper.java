@@ -1,6 +1,6 @@
 package clipper2.core;
 
-import java.util.ArrayList;
+import java.util.List;
 
 import clipper2.engine.PointInPolygonResult;
 
@@ -31,7 +31,7 @@ public final class InternalClipper {
 		return (vec1.x * vec2.x + vec1.y * vec2.y);
 	}
 
-	public static boolean GetIntersectPoint(Point64 ln1a, Point64 ln1b, Point64 ln2a, Point64 ln2b, PointD ip) { // TODO check out var
+	public static boolean GetIntersectPoint(Point64 ln1a, Point64 ln1b, Point64 ln2a, Point64 ln2b, PointD ip) {
 		ip.x = 0;
 		ip.y = 0;
 		double m1, b1, m2, b2;
@@ -74,7 +74,7 @@ public final class InternalClipper {
 				&& ((dy2 * (seg1a.X - seg2a.X) - dx2 * (seg1a.Y - seg2a.Y)) * (dy2 * (seg1b.X - seg2a.X) - dx2 * (seg1b.Y - seg2a.Y)) < 0));
 	}
 
-	public static PointInPolygonResult PointInPolygon(Point64 pt, ArrayList<Point64> polygon) {
+	public static PointInPolygonResult PointInPolygon(Point64 pt, List<Point64> polygon) {
 		int len = polygon.size(), i = len - 1;
 
 		if (len < 3) {

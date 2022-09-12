@@ -100,7 +100,7 @@ public class ClipperBase {
 	}
 
 	private static boolean IsFront(Active ae) {
-		return (ae != null && ae == ae.outrec.frontEdge); // NOTE null check
+		return (ae == ae.outrec.frontEdge);
 	}
 
 	/*******************************************************************************
@@ -2783,9 +2783,10 @@ public class ClipperBase {
 
 	private void CleanCollinear(OutRec outrec) {
 		outrec = GetRealOutRec(outrec);
+		// NOTE potentially buggy
 		RefObject<OutPt> tempRef_pts = new RefObject<>(outrec.pts);
 		if (outrec == null || outrec.isOpen || outrec.frontEdge != null || !ValidateClosedPathEx(tempRef_pts)) {
-			outrec.pts = tempRef_pts.argValue;
+//			outrec.pts = tempRef_pts.argValue;
 			return;
 		} else {
 			outrec.pts = tempRef_pts.argValue;
@@ -2829,7 +2830,7 @@ public class ClipperBase {
 		OutPt prevOp = splitOp.prev, nextNextOp = splitOp.next.next;
 		OutPt result = prevOp;
 		PointD ipD = new PointD();
-		InternalClipper.GetIntersectPoint(prevOp.pt, splitOp.pt, splitOp.next.pt, nextNextOp.pt, ipD); // NOTE SYNTAX
+		InternalClipper.GetIntersectPoint(prevOp.pt, splitOp.pt, splitOp.next.pt, nextNextOp.pt, ipD);
 		Point64 ip = new Point64(ipD);
 
 		double area1 = Area(outRecOp.argValue);

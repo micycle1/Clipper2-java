@@ -48,7 +48,7 @@ class TestPolygons {
 
 	private static final List<Arguments> testCases() throws IOException {
 		return ClipperFileIO.loadTestCases("Polygons.txt").stream().map(t -> Arguments.of(t, t.caption(), t.clipType(), t.fillRule()))
-				.collect(Collectors.toList()).subList(0, 99);
+				.collect(Collectors.toList()).subList(0, 119);
 	}
 
 	@MethodSource("testCases")
@@ -64,8 +64,8 @@ class TestPolygons {
 		c64.Execute(test.clipType(), test.fillRule(), solution, solution_open);
 
 		if (test.area() > 0) {
-//			double area2 = Clipper.Area(solution);
-//			assertEquals(test.area(), area2, test.area() * 0.005);
+			double area2 = Clipper.Area(solution);
+			assertEquals(test.area(), Math.rint(area2), test.area() * 0.005);
 		}
 
 		if (test.count() > 0 && Math.abs(solution.size() - test.count()) > 2
