@@ -5,29 +5,18 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import clipper2.core.ClipType;
 import clipper2.core.FillRule;
 import clipper2.core.Point64;
 
 public class ClipperFileIO {
-	
-	public static void main(String[] args) throws IOException {
-		var tc = ClipperFileIO.loadTestCases("Polygons.txt").get(12);
-		System.out.println(tc.toString());
-		System.out.println(tc.subj.size());
-		System.out.println(tc.subj.get(0).stream()
-                .map(Object::toString)
-                .collect(Collectors.joining("")));
-		System.out.println(tc.clip.size());
-		System.out.println(tc.clip.get(0).stream()
-				.map(Object::toString)
-				.collect(Collectors.joining("")));
+
+	record TestCase(String caption, ClipType clipType, FillRule fillRule, double area, double count, int GetIdx, List<List<Point64>> subj,
+			List<List<Point64>> subj_open, List<List<Point64>> clip) {
 	}
 
 	public static List<TestCase> loadTestCases(String testFileName) throws IOException {
-//		System.out.println(ClipperFileIO.class.getResource("/polygons.txt").getFile());
 		List<String> lines = Files.readAllLines(Paths.get("src/test/resources/%s".formatted(testFileName)));
 
 		String caption = "";
@@ -44,12 +33,8 @@ public class ClipperFileIO {
 
 		for (String s : lines) {
 			if (s.isBlank()) {
-//				System.out.println(subj.size());
-//				System.out.println(subj.get(0).stream()
-//		                .map(Object::toString)
-//		                .collect(Collectors.joining("")));
-//				System.out.println(id);
-				cases.add(new TestCase(caption, ct, fillRule, area, count, GetIdx, new ArrayList<>(subj), new ArrayList<>(subj_open), new ArrayList<>(clip)));
+				cases.add(new TestCase(caption, ct, fillRule, area, count, GetIdx, new ArrayList<>(subj), new ArrayList<>(subj_open),
+						new ArrayList<>(clip)));
 				subj.clear();
 				subj_open.clear();
 				clip.clear();
@@ -131,7 +116,7 @@ public class ClipperFileIO {
 			}
 
 		}
-		
+
 		return cases;
 	}
 
@@ -204,7 +189,7 @@ public class ClipperFileIO {
 						if (p.size() > 2) {
 							pp.add(p);
 						}
-						p = new ArrayList<Point64>();
+						p = new ArrayList<>();
 					}
 				}
 				i++;
@@ -214,10 +199,6 @@ public class ClipperFileIO {
 			pp.add(p);
 		}
 		return pp;
-	}
-
-	record TestCase(String caption, ClipType clipType, FillRule fillRule, double area, double count, int GetIdx, List<List<Point64>> subj,
-			List<List<Point64>> subj_open, List<List<Point64>> clip) {
 	}
 
 }

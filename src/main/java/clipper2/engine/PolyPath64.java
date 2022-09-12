@@ -1,6 +1,6 @@
 package clipper2.engine;
 
-import java.util.*;
+import java.util.List;
 
 import clipper2.Clipper;
 import clipper2.Nullable;

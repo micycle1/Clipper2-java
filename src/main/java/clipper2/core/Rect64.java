@@ -1,7 +1,7 @@
 package clipper2.core;
 
 public final class Rect64 {
-	
+
 	public long left;
 	public long top;
 	public long right;

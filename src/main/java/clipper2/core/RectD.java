@@ -1,7 +1,7 @@
 package clipper2.core;
 
 public final class RectD {
-	
+
 	public double left;
 	public double top;
 	public double right;

@@ -1,8 +1,9 @@
 package clipper2.engine;
 
 import java.util.ArrayList;
-import clipper2.core.Point64;
 import java.util.List;
+
+import clipper2.core.Point64;
 
 //C# TO JAVA CONVERTER TODO TASK: The interface type was changed to the closest equivalent Java type, but the methods implemented will need adjustment:
 public abstract class PolyPathBase implements java.lang.Iterable<PolyPathBase> {
@@ -18,6 +19,7 @@ public abstract class PolyPathBase implements java.lang.Iterable<PolyPathBase> {
 		this(null);
 	}
 
+	@Override
 	public final PolyPathEnum iterator() {
 		return new PolyPathEnum(_childs);
 	}

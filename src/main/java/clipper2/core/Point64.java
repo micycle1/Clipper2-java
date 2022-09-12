@@ -77,10 +77,10 @@ public final class Point64 {
 		return false;
 	}
 
-//	@Override
-//	public int hashCode() { // NOTE
-//		return 0;
-//	}
+	@Override
+	public int hashCode() {
+		return Long.hashCode(X * 31 + Y);
+	}
 
 	@Override
 	public Point64 clone() {

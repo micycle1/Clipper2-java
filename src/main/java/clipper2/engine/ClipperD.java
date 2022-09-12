@@ -1,8 +1,9 @@
-package clipper2;
+package clipper2.engine;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import clipper2.Clipper;
 import clipper2.core.ClipType;
 import clipper2.core.FillRule;
 import clipper2.core.PathType;

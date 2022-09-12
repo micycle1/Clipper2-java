@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>micycle</groupId>
 	<artifactId>clipper2</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>1.0.4-SNAPSHOT</version>
 	<name>Clipper2</name>
 
 	<build>

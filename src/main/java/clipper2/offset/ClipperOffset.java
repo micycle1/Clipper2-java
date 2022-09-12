@@ -1,14 +1,16 @@
 package clipper2.offset;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
-import clipper2.Clipper64;
 import clipper2.Clipper;
 import clipper2.core.ClipType;
 import clipper2.core.FillRule;
 import clipper2.core.InternalClipper;
 import clipper2.core.Point64;
 import clipper2.core.PointD;
+import clipper2.engine.Clipper64;
 import tangible.RefObject;
 
 public class ClipperOffset {
@@ -16,7 +18,7 @@ public class ClipperOffset {
 	private final List<PathGroup> _pathGroups = new ArrayList<>();
 	private final List<PointD> _normals = new ArrayList<>();
 	private final List<List<Point64>> solution = new ArrayList<>();
-	private double _delta, _tmpLimit, _stepsPerRad;
+	private double _delta, _abs_delta, _tmpLimit, _stepsPerRad;
 	private JoinType _joinType = JoinType.values()[0];
 	private double ArcTolerance;
 
@@ -86,8 +88,6 @@ public class ClipperOffset {
 		this(2.0, 0.0, false, false);
 	}
 
-//C# TO JAVA CONVERTER NOTE: Java does not support optional parameters. Overloaded method(s) are created above:
-//ORIGINAL LINE: public ClipperOffset(double miterLimit = 2.0, double arcTolerance = 0.0, bool preserveCollinear = false, bool reverseSolution = false)
 	public ClipperOffset(double miterLimit, double arcTolerance, boolean preserveCollinear, boolean reverseSolution) {
 		setMiterLimit(miterLimit);
 		setArcTolerance(arcTolerance);
@@ -116,23 +116,6 @@ public class ClipperOffset {
 		}
 		_pathGroups.add(new PathGroup(paths, joinType, endType));
 	}
-
-//	public final void AddPath(List<PointD> path, JoinType joinType, EndType endType) { // NOTE UNCOMMENT
-//	  int cnt = path.size();
-//	  if (cnt == 0) {
-//		  return;
-//	  }
-//	  List<List<PointD>> pp = new ArrayList<>(Arrays.asList(path));
-//	  AddPaths(pp, joinType, endType);
-//	}
-
-//	public final void AddPaths(List<List<PointD>> paths, JoinType joinType, EndType endType) {
-//	  int cnt = paths.size();
-//	  if (cnt == 0) {
-//		  return;
-//	  }
-//	  _pathGroups.add(new PathGroup(paths, joinType, endType));
-//	}
 
 	public final List<List<Point64>> Execute(double delta) {
 		solution.clear();
@@ -166,8 +149,6 @@ public class ClipperOffset {
 		return solution;
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] internal static PointD GetUnitNormal(Point64 pt1, Point64 pt2)
 	public static PointD GetUnitNormal(Point64 pt1, Point64 pt2) {
 		double dx = (pt2.X - pt1.X);
 		double dy = (pt2.Y - pt1.Y);
@@ -182,21 +163,16 @@ public class ClipperOffset {
 		return new PointD(dy, -dx);
 	}
 
-//C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
-//ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private int GetLowestPolygonIdx(List<List<Point64>> paths)
 	private int GetLowestPolygonIdx(List<List<Point64>> paths) {
 		Point64 lp = new Point64(0, Long.MIN_VALUE);
 		int result = -1;
 		for (int i = 0; i < paths.size(); i++) {
-			List<Point64> p = paths.get(i);
-			for (int j = 0; j < p.size(); j++) {
-				if (p.get(j).Y < lp.Y) {
+			for (Point64 pt : paths.get(i)) {
+				if (pt.Y < lp.Y || (pt.Y == lp.Y && pt.X >= lp.X)) {
 					continue;
 				}
-				if (p.get(j).Y > lp.Y || p.get(j).X < lp.X) {
-					result = i;
-					lp = p.get(j).clone();
-				}
+				result = i;
+				lp = pt;
 			}
 		}
 		return result;
@@ -230,7 +206,7 @@ public class ClipperOffset {
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private double Hypotenuse(double x, double y)
 	private double Hypotenuse(double x, double y) {
-		return Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2));
+		return Math.sqrt(x * x + y * y);
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
@@ -247,7 +223,7 @@ public class ClipperOffset {
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private PointD GetAvgUnitVector(PointD vec1, PointD vec2)
 	private PointD GetAvgUnitVector(PointD vec1, PointD vec2) {
-		return NormalizeVector(new PointD(vec1.x + vec2.x, vec1.y + vec2.y)).clone();
+		return NormalizeVector(new PointD(vec1.x + vec2.x, vec1.y + vec2.y));
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
@@ -283,29 +259,28 @@ public class ClipperOffset {
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void DoSquare(PathGroup group, List<Point64> path, int j, int k)
 	private void DoSquare(PathGroup group, List<Point64> path, int j, int k) {
 		// square off at delta distance from original vertex
-		PointD vec, pt, ptQ, pt1, pt2, pt3, pt4 = new PointD();
+		PointD vec, pt, ptQ, pt1, pt2, pt3, pt4;
 
 		// using the reciprocal of unit normals (as unit vectors)
 		// get the average unit vector ...
-		vec = GetAvgUnitVector(new PointD(-_normals.get(k).y, _normals.get(k).x), new PointD(_normals.get(j).y, -_normals.get(j).x))
-				.clone();
+		vec = GetAvgUnitVector(new PointD(-_normals.get(k).y, _normals.get(k).x), new PointD(_normals.get(j).y, -_normals.get(j).x));
 
 		// now offset the original vertex delta units along unit vector
-		ptQ = new PointD(path.get(j).clone());
-		ptQ = TranslatePoint(ptQ.clone(), _delta * vec.x, _delta * vec.y).clone();
+		ptQ = new PointD(path.get(j));
+		ptQ = TranslatePoint(ptQ, _abs_delta * vec.x, _abs_delta * vec.y);
 
 		// get perpendicular vertices
-		pt1 = TranslatePoint(ptQ.clone(), _delta * vec.y, _delta * -vec.x).clone();
-		pt2 = TranslatePoint(ptQ.clone(), _delta * -vec.y, _delta * vec.x).clone();
+		pt1 = TranslatePoint(ptQ, _delta * vec.y, _delta * -vec.x);
+		pt2 = TranslatePoint(ptQ, _delta * -vec.y, _delta * vec.x);
 		// get 2 vertices along one edge offset
 		pt3 = new PointD(path.get(k).X + _normals.get(k).x * _delta, path.get(k).Y + _normals.get(k).y * _delta);
 		pt4 = new PointD(path.get(j).X + _normals.get(k).x * _delta, path.get(j).Y + _normals.get(k).y * _delta);
 
 		// get the intersection point
-		pt = IntersectPoint(pt1.clone(), pt2.clone(), pt3.clone(), pt4.clone()).clone();
-		group._outPath.add(new Point64(pt.clone()));
+		pt = IntersectPoint(pt1, pt2, pt3, pt4);
+		group._outPath.add(new Point64(pt));
 		// get the second intersect point through reflecion
-		group._outPath.add(new Point64(ReflectPoint(pt.clone(), ptQ.clone()).clone()));
+		group._outPath.add(new Point64(ReflectPoint(pt, ptQ)));
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
@@ -339,9 +314,9 @@ public class ClipperOffset {
 		_normals.clear();
 
 		for (int i = 0; i < cnt - 1; i++) {
-			_normals.add(GetUnitNormal(path.get(i).clone(), path.get(i + 1).clone()));
+			_normals.add(GetUnitNormal(path.get(i), path.get(i + 1)));
 		}
-		_normals.add(GetUnitNormal(path.get(cnt - 1).clone(), path.get(0).clone()));
+		_normals.add(GetUnitNormal(path.get(cnt - 1), path.get(0)));
 	}
 
 	private void OffsetPoint(PathGroup group, List<Point64> path, int j, RefObject<Integer> k) {
@@ -350,8 +325,8 @@ public class ClipperOffset {
 		// A == PI: edges 'spike'
 		// sin(A) < 0: right turning
 		// cos(A) < 0: change in angle is more than 90 degree
-		double sinA = InternalClipper.CrossProduct(_normals.get(j).clone(), _normals.get(k.argValue).clone());
-		double cosA = InternalClipper.DotProduct(_normals.get(j).clone(), _normals.get(k.argValue).clone());
+		double sinA = InternalClipper.CrossProduct(_normals.get(j), _normals.get(k.argValue));
+		double cosA = InternalClipper.DotProduct(_normals.get(j), _normals.get(k.argValue));
 		if (sinA > 1.0) {
 			sinA = 1.0;
 		} else if (sinA < -1.0) {
@@ -363,29 +338,27 @@ public class ClipperOffset {
 			Point64 p1 = new Point64(path.get(j).X + _normals.get(k.argValue).x * _delta,
 					path.get(j).Y + _normals.get(k.argValue).y * _delta);
 			Point64 p2 = new Point64(path.get(j).X + _normals.get(j).x * _delta, path.get(j).Y + _normals.get(j).y * _delta);
-			group._outPath.add(p1.clone());
-			if (Point64.opNotEquals(p1, p2)) {
+			group._outPath.add(p1);
+			if (p1 != p2) {
 				// when concave add an extra vertex to ensure neat clipping
 				if (!almostNoAngle) {
-					group._outPath.add(path.get(j).clone());
+					group._outPath.add(path.get(j));
 				}
-				group._outPath.add(p2.clone());
+				group._outPath.add(p2);
 			}
-		} else { // convex
-			if (_joinType == JoinType.Round) {
-				DoRound(group, path.get(j).clone(), _normals.get(j).clone(), _normals.get(k.argValue).clone(), Math.atan2(sinA, cosA));
-			}
-			// else miter when the angle isn't too acute (and hence exceed ML)
-			else if (_joinType == JoinType.Miter && cosA > _tmpLimit - 1) {
-				DoMiter(group, path, j, k.argValue, cosA);
-			}
-			// else only square angles that deviate > 90 degrees
-			else if (cosA < -0.001) {
-				DoSquare(group, path, j, k.argValue);
-			} else {
-				// don't square shallow angles that are safe to miter
-				DoMiter(group, path, j, k.argValue, cosA);
-			}
+		} else if (_joinType == JoinType.Round) {
+			DoRound(group, path.get(j), _normals.get(j), _normals.get(k.argValue), Math.atan2(sinA, cosA));
+		}
+		// else miter when the angle isn't too acute (and hence exceed ML)
+		else if (_joinType == JoinType.Miter && cosA > _tmpLimit - 1) {
+			DoMiter(group, path, j, k.argValue, cosA);
+		}
+		// else only square angles that deviate > 90 degrees
+		else if (cosA < -0.001) {
+			DoSquare(group, path, j, k.argValue);
+		} else {
+			// don't square shallow angles that are safe to miter
+			DoMiter(group, path, j, k.argValue, cosA);
 		}
 
 		k.argValue = j;
@@ -394,7 +367,7 @@ public class ClipperOffset {
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void OffsetPolygon(PathGroup group, List<Point64> path)
 	private void OffsetPolygon(PathGroup group, List<Point64> path) {
-		group._outPath = new ArrayList<Point64>();
+		group._outPath = new ArrayList<>();
 		int cnt = path.size(), prev = cnt - 1;
 		for (int i = 0; i < cnt; i++) {
 			RefObject<Integer> tempRef_prev = new RefObject<>(prev);
@@ -414,7 +387,7 @@ public class ClipperOffset {
 	}
 
 	private void OffsetOpenPath(PathGroup group, List<Point64> path, EndType endType) {
-		group._outPath = new ArrayList<Point64>();
+		group._outPath = new ArrayList<>();
 		int cnt = path.size() - 1, k = 0;
 		for (int i = 1; i < cnt; i++) {
 			RefObject<Integer> tempRef_k = new RefObject<>(k);
@@ -433,7 +406,7 @@ public class ClipperOffset {
 						path.get(cnt - 1).Y - _normals.get(cnt - 2).y * _delta));
 				break;
 			case Round :
-				DoRound(group, path.get(cnt - 1).clone(), _normals.get(cnt - 1).clone(), _normals.get(cnt - 2).clone(), Math.PI);
+				DoRound(group, path.get(cnt - 1), _normals.get(cnt - 1), _normals.get(cnt - 2), Math.PI);
 				break;
 			default :
 				DoSquare(group, path, cnt - 1, cnt - 2);
@@ -460,7 +433,7 @@ public class ClipperOffset {
 				group._outPath.add(new Point64(path.get(0).X - _normals.get(1).x * _delta, path.get(0).Y - _normals.get(1).y * _delta));
 				break;
 			case Round :
-				DoRound(group, path.get(0).clone(), _normals.get(0).clone(), _normals.get(1).clone(), Math.PI);
+				DoRound(group, path.get(0), _normals.get(0), _normals.get(1), Math.PI);
 				break;
 			default :
 				DoSquare(group, path, 0, 1);
@@ -503,14 +476,14 @@ public class ClipperOffset {
 		}
 
 		_delta = delta;
-		double absDelta = Math.abs(_delta);
+		_abs_delta = Math.abs(_delta);
 		_joinType = group._joinType;
 
 		// calculate a sensible number of steps (for 360 deg for the given offset
 		if (group._joinType == JoinType.Round || group._endType == EndType.Round) {
-			double arcTol = getArcTolerance() > 0.01 ? getArcTolerance() : Math.log10(2 + absDelta) * 0.25; // empirically derived
+			double arcTol = getArcTolerance() > 0.01 ? getArcTolerance() : Math.log10(2 + _abs_delta) * 0.25; // empirically derived
 			// get steps per 180 degrees (see offset_triginometry2.svg)
-			_stepsPerRad = Math.PI / Math.acos(1 - arcTol / absDelta) / TwoPi;
+			_stepsPerRad = Math.PI / Math.acos(1 - arcTol / _abs_delta) / TwoPi;
 		}
 
 		for (List<Point64> p : group._inPaths) {
@@ -521,10 +494,10 @@ public class ClipperOffset {
 			}
 
 			if (cnt == 1) {
-				group._outPath = new ArrayList<Point64>();
+				group._outPath = new ArrayList<>();
 				// single vertex so build a circle or square ...
 				if (group._endType == EndType.Round) {
-					DoRound(group, path.get(0).clone(), new PointD(1.0, 0.0), new PointD(-1.0, 0.0), TwoPi);
+					DoRound(group, path.get(0), new PointD(1.0, 0.0), new PointD(-1.0, 0.0), TwoPi);
 				} else {
 					group._outPath.add(new Point64(path.get(0).X - _delta, path.get(0).Y - _delta));
 					group._outPath.add(new Point64(path.get(0).X + _delta, path.get(0).Y - _delta));
@@ -560,4 +533,3 @@ public class ClipperOffset {
 		group._outPaths.clear();
 	}
 }
-// namespace

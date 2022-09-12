@@ -1,6 +1,7 @@
 package clipper2.engine;
 
-import java.util.*;
+import java.util.Iterator;
+import java.util.List;
 
 public class PolyPathEnum implements Iterator<PolyPathBase> {
 
@@ -10,12 +11,12 @@ public class PolyPathEnum implements Iterator<PolyPathBase> {
 	public PolyPathEnum(List<PolyPathBase> childs) {
 		_ppbList = childs;
 	}
-	
+
 	@Override
 	public final boolean hasNext() {
 		return (position < _ppbList.size());
 	}
-	
+
 	@Override
 	public PolyPathBase next() {
 		position++;

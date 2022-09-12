@@ -2,7 +2,7 @@ package clipper2.engine;
 
 // Joiner: structure used in merging "touching" solution polygons
 public class Joiner {
-	
+
 	public int idx;
 	public OutPt op1;
 //C# TO JAVA CONVERTER WARNING: Nullable reference types have no equivalent in Java:

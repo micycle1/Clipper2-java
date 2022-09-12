@@ -13,6 +13,8 @@ import clipper2.core.Point64;
 import clipper2.core.PointD;
 import clipper2.core.Rect64;
 import clipper2.core.RectD;
+import clipper2.engine.Clipper64;
+import clipper2.engine.ClipperD;
 import clipper2.engine.PointInPolygonResult;
 import clipper2.engine.PolyPath64;
 import clipper2.engine.PolyTree64;
@@ -20,35 +22,11 @@ import clipper2.offset.ClipperOffset;
 import clipper2.offset.EndType;
 import clipper2.offset.JoinType;
 
-/*******************************************************************************
- * Author : Angus Johnson * Version : Clipper2 - ver.1.0.4 * Date : 5 September
- * 2022 * Website : http: //www.angusj.com * Copyright : Angus Johnson 2010-2022
- * * Purpose : This module contains simple functions that will likely cover *
- * most polygon boolean and offsetting needs, while also avoiding * the inherent
- * complexities of the other modules. * Thanks : Special thanks to Thong Nguyen,
- * Guus Kuiper, Phil Stopford, * : and Daniel Gosnell for their invaluable
- * assistance with C#. * License : http: //www.boost.org/LICENSE_1_0.txt *
- *******************************************************************************/
-
-///#nullable enable
-
-// PRE-COMPILER CONDITIONAL ...
-// USINGZ: For user defined Z-coordinates. See Clipper.SetZ
-
-//C# TO JAVA CONVERTER NOTE: There is no Java equivalent to C# namespace aliases:
-//  using Path64 = List<Point64>;
-//C# TO JAVA CONVERTER NOTE: There is no Java equivalent to C# namespace aliases:
-//  using Paths64 = List<List<Point64>>;
-//C# TO JAVA CONVERTER NOTE: There is no Java equivalent to C# namespace aliases:
-//  using PathD = List<PointD>;
-//C# TO JAVA CONVERTER NOTE: There is no Java equivalent to C# namespace aliases:
-//  using PathsD = List<List<PointD>>;
-
 public final class Clipper {
 
-	public static Rect64 MaxInvalidRect64 = new Rect64(Long.MAX_VALUE, Long.MAX_VALUE, Long.MIN_VALUE, Long.MIN_VALUE);
+	public static final Rect64 MaxInvalidRect64 = new Rect64(Long.MAX_VALUE, Long.MAX_VALUE, Long.MIN_VALUE, Long.MIN_VALUE);
 
-	public static RectD MaxInvalidRectD = new RectD(Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE);
+	public static final RectD MaxInvalidRectD = new RectD(Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE);
 
 	public static List<List<Point64>> Intersect(List<List<Point64>> subject, List<List<Point64>> clip, FillRule fillRule) {
 		return BooleanOp(ClipType.Intersection, subject, clip, fillRule);
@@ -105,15 +83,11 @@ public final class Clipper {
 //		return Xor(subject, clip, fillRule, 2);
 //	}
 
-//C# TO JAVA CONVERTER NOTE: Java does not support optional parameters. Overloaded method(s) are created above:
-//ORIGINAL LINE: public static List<List<PointD>> Xor(List<List<PointD>> subject, List<List<PointD>> clip, FillRule fillRule, int roundingDecimalPrecision = 2)
 	public static List<List<PointD>> Xor(List<List<PointD>> subject, List<List<PointD>> clip, FillRule fillRule,
 			int roundingDecimalPrecision) {
 		return BooleanOp(ClipType.Xor, subject, clip, fillRule, roundingDecimalPrecision);
 	}
 
-//C# TO JAVA CONVERTER WARNING: Nullable reference types have no equivalent in Java:
-//ORIGINAL LINE: public static List<List<Point64>> BooleanOp(ClipType clipType, List<List<Point64>>? subject, List<List<Point64>>? clip, FillRule fillRule)
 	public static List<List<Point64>> BooleanOp(ClipType clipType, List<List<Point64>> subject, List<List<Point64>> clip,
 			FillRule fillRule) {
 		List<List<Point64>> solution = new ArrayList<>();
@@ -587,7 +561,7 @@ public final class Clipper {
 	}
 
 	private static void AddPolyNodeToPaths(PolyPath64 polyPath, List<List<Point64>> paths) {
-		if (polyPath.getPolygon().size() > 0) {
+		if (!polyPath.getPolygon().isEmpty()) {
 			paths.add(polyPath.getPolygon());
 		}
 		for (int i = 0; i < polyPath.getCount(); i++) {
@@ -672,21 +646,21 @@ public final class Clipper {
 	}
 
 	public static List<Point64> RamerDouglasPeuckerPath(List<Point64> path, double epsilon) {
-	  int len = path.size();
-	  if (len < 5) {
-		  return path;
-	  }
-	  List<Boolean> flags = new ArrayList<>(Arrays.asList(new Boolean[len]));
-	  flags.set(0, true);
-	  flags.set(len - 1, true);
-	  RDP(path, 0, len - 1, Sqr(epsilon), flags);
-	  List<Point64> result = new ArrayList<>(len);
-	  for (int i = 0; i < len; ++i) {
-		if (flags.get(i)) {
-			result.add(path.get(i).clone());
+		int len = path.size();
+		if (len < 5) {
+			return path;
 		}
-	  }
-	  return result;
+		List<Boolean> flags = new ArrayList<>(Arrays.asList(new Boolean[len]));
+		flags.set(0, true);
+		flags.set(len - 1, true);
+		RDP(path, 0, len - 1, Sqr(epsilon), flags);
+		List<Point64> result = new ArrayList<>(len);
+		for (int i = 0; i < len; ++i) {
+			if (flags.get(i).booleanValue()) {
+				result.add(path.get(i).clone());
+			}
+		}
+		return result;
 	}
 
 	public static List<List<Point64>> RamerDouglasPeucker(List<List<Point64>> paths, double epsilon) {
@@ -772,7 +746,7 @@ public final class Clipper {
 
 		if (len - i < 3) {
 			if (!isOpen || len < 2 || path.get(0).equals(path.get(1).clone())) {
-				return new ArrayList<Point64>();
+				return new ArrayList<>();
 			}
 			return path;
 		}

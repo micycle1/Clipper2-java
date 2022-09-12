@@ -20,6 +20,7 @@ public final class IntersectNode {
 		this.edge2 = edge2;
 	}
 
+	@Override
 	public IntersectNode clone() {
 		IntersectNode varCopy = new IntersectNode();
 

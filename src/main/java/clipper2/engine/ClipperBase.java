@@ -1,7 +1,12 @@
-package clipper2;
+package clipper2.engine;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.TreeSet;
 
+import clipper2.Clipper;
 import clipper2.core.ClipType;
 import clipper2.core.FillRule;
 import clipper2.core.InternalClipper;
@@ -9,16 +14,6 @@ import clipper2.core.PathType;
 import clipper2.core.Point64;
 import clipper2.core.PointD;
 import clipper2.core.Rect64;
-import clipper2.engine.Active;
-import clipper2.engine.IntersectNode;
-import clipper2.engine.Joiner;
-import clipper2.engine.LocalMinima;
-import clipper2.engine.OutPt;
-import clipper2.engine.OutRec;
-import clipper2.engine.PointInPolygonResult;
-import clipper2.engine.PolyPathBase;
-import clipper2.engine.Vertex;
-import clipper2.engine.VertexFlags;
 import tangible.OutObject;
 import tangible.RefObject;
 
@@ -61,7 +56,6 @@ public class ClipperBase {
 	public final void setPreserveCollinear(boolean value) {
 		PreserveCollinear = value;
 	}
-
 
 	public final boolean getReverseSolution() {
 		return ReverseSolution;
@@ -256,6 +250,7 @@ public class ClipperBase {
 	}
 
 	private static final class IntersectListSort implements Comparator<IntersectNode> {
+		@Override
 		public int compare(IntersectNode a, IntersectNode b) {
 			if (a.pt.Y == b.pt.Y) {
 				return (a.pt.X < b.pt.X) ? -1 : 1;
@@ -266,6 +261,7 @@ public class ClipperBase {
 	}
 
 	private static final class LocMinSorter implements Comparator<LocalMinima> {
+		@Override
 		public int compare(LocalMinima locMin1, LocalMinima locMin2) {
 			return Long.compare(locMin2.vertex.pt.Y, locMin1.vertex.pt.Y);
 		}
@@ -396,7 +392,7 @@ public class ClipperBase {
 
 	private void InsertScanline(long y) {
 		if (!_scanlineList.contains(y)) {
-			_scanlineList.add(y);			
+			_scanlineList.add(y);
 		}
 	}
 
@@ -546,21 +542,21 @@ public class ClipperBase {
 		paths.forEach(path -> AddPath(path, PathType.Clip));
 	}
 
-	protected final void AddPath(List<Point64> path, PathType polytype) {
+	public final void AddPath(List<Point64> path, PathType polytype) {
 		AddPath(path, polytype, false);
 	}
 
-	protected final void AddPath(List<Point64> path, PathType polytype, boolean isOpen) {
+	public final void AddPath(List<Point64> path, PathType polytype, boolean isOpen) {
 		List<List<Point64>> tmp = new ArrayList<>();
 		tmp.add(path);
 		AddPaths(tmp, polytype, isOpen);
 	}
 
-	protected final void AddPaths(List<List<Point64>> paths, PathType polytype) {
+	public final void AddPaths(List<List<Point64>> paths, PathType polytype) {
 		AddPaths(paths, polytype, false);
 	}
 
-	protected final void AddPaths(List<List<Point64>> paths, PathType polytype, boolean isOpen) {
+	public final void AddPaths(List<List<Point64>> paths, PathType polytype, boolean isOpen) {
 		if (isOpen) {
 			_hasOpenPaths = true;
 		}
