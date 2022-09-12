@@ -34,7 +34,7 @@ public class ClipperBase {
 	private ArrayList<Vertex> _vertexList;
 	private ArrayList<OutRec> _outrecList;
 	private ArrayList<Joiner> _joinerList;
-	private ArrayList<Long> _scanlineList;
+	private TreeSet<Long> _scanlineList;
 	private int _currentLocMin;
 	private long _currentBotY;
 	private boolean _isSortedMinimaList;
@@ -50,7 +50,7 @@ public class ClipperBase {
 		_vertexList = new ArrayList<>();
 		_outrecList = new ArrayList<>();
 		_joinerList = new ArrayList<>();
-		_scanlineList = new ArrayList<>();
+		_scanlineList = new TreeSet<>();
 		setPreserveCollinear(true);
 	}
 
@@ -383,7 +383,6 @@ public class ClipperBase {
 			_isSortedMinimaList = true;
 		}
 
-		_scanlineList.ensureCapacity(_minimaList.size());
 		for (int i = _minimaList.size() - 1; i >= 0; i--) {
 			_scanlineList.add(_minimaList.get(i).vertex.pt.Y);
 		}
@@ -396,31 +395,20 @@ public class ClipperBase {
 	}
 
 	private void InsertScanline(long y) {
-		int index = _scanlineList.indexOf(y);
-		if (index >= 0) { // if item is found
-			return;
+		if (!_scanlineList.contains(y)) {
+			_scanlineList.add(y);			
 		}
-//		System.out.println(y);
-//		System.out.println(index);
-		// NOTE C# BinarySearch returns negative number that is the bitwise complement of the index 
-		index = ~index;  
-//		System.out.println(index);
-//		_scanlineList.add(index, y);
-		_scanlineList.add(y);
-		_scanlineList.sort((a,b) -> Long.compare(a,b));
 	}
 
 	private boolean PopScanline(OutObject<Long> y) {
-		int cnt = _scanlineList.size() - 1;
-		if (cnt < 0) {
+		if (_scanlineList.isEmpty()) {
 			y.argValue = 0L;
 			return false;
 		}
 
-		y.argValue = _scanlineList.get(cnt);
-		_scanlineList.remove(cnt--);
-		while (cnt >= 0 && _scanlineList.get(cnt).equals(y.argValue)) {
-			_scanlineList.remove(cnt--);
+		y.argValue = _scanlineList.pollLast();
+		while (!_scanlineList.isEmpty() && _scanlineList.last().equals(y.argValue)) {
+			_scanlineList.pollLast();
 		}
 		return true;
 	}
