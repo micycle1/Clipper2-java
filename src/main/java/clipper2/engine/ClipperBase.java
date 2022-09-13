@@ -386,17 +386,16 @@ public class ClipperBase {
 		}
 	}
 
-	private boolean PopScanline(OutObject<Long> y) {
+	private long PopScanline() {
 		if (scanlineList.isEmpty()) {
-			y.argValue = 0L;
-			return false;
+			return Long.MAX_VALUE;
 		}
 
-		y.argValue = scanlineList.pollLast();
-		while (!scanlineList.isEmpty() && scanlineList.last().equals(y.argValue)) {
+		long y = scanlineList.pollLast();
+		while (!scanlineList.isEmpty() && scanlineList.last().equals(y)) {
 			scanlineList.pollLast();
 		}
-		return true;
+		return y;
 	}
 
 	private boolean HasLocMinAtY(long y) {
@@ -1479,13 +1478,9 @@ public class ClipperBase {
 		fillrule = fillRule;
 		cliptype = ct;
 		Reset();
-		long y;
-		OutObject<Long> tempOuty = new OutObject<>();
-		if (!PopScanline(tempOuty)) {
-			y = tempOuty.argValue;
+		long y = PopScanline();
+		if (y==Long.MAX_VALUE) {
 			return;
-		} else {
-			y = tempOuty.argValue;
 		}
 		while (succeeded) {
 			InsertLocalMinimaIntoAEL(y);
@@ -1498,12 +1493,9 @@ public class ClipperBase {
 			ae = tempOutae.argValue;
 			ConvertHorzTrialsToJoins();
 			currentBotY = y; // bottom of scanbeam
-			OutObject<Long> tempOuty2 = new OutObject<>();
-			if (!PopScanline(tempOuty2)) {
-				y = tempOuty2.argValue;
+			y = PopScanline();
+			if (y==Long.MAX_VALUE) {
 				break; // y new top of scanbeam
-			} else {
-				y = tempOuty2.argValue;
 			}
 			DoIntersections(y);
 			DoTopOfScanbeam(y);
