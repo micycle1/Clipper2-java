@@ -10,7 +10,9 @@ import clipper2.Clipper;
 import clipper2.core.ClipType;
 import clipper2.core.FillRule;
 import clipper2.core.InternalClipper;
+import clipper2.core.Path64;
 import clipper2.core.PathType;
+import clipper2.core.Paths64;
 import clipper2.core.Point64;
 import clipper2.core.PointD;
 import clipper2.core.Rect64;
@@ -433,14 +435,14 @@ public class ClipperBase {
 		minimaList.add(lm);
 	}
 
-	protected final void AddPathsToVertexList(List<List<Point64>> paths, PathType polytype, boolean isOpen) {
+	protected final void AddPathsToVertexList(Paths64 paths, PathType polytype, boolean isOpen) {
 		int totalVertCnt = 0;
-		for (List<Point64> path : paths) {
+		for (Path64 path : paths) {
 			totalVertCnt += path.size();
 		}
 		vertexList.ensureCapacity(vertexList.size() + totalVertCnt);
 
-		for (List<Point64> path : paths) {
+		for (Path64 path : paths) {
 			Vertex v0 = null, prevv = null, currv;
 			for (Point64 pt : path) {
 				if (v0 == null) {
@@ -523,7 +525,7 @@ public class ClipperBase {
 		}
 	}
 
-	public final void AddSubject(List<Point64> path) {
+	public final void AddSubject(Path64 path) {
 		AddPath(path, PathType.Subject);
 	}
 
@@ -532,7 +534,7 @@ public class ClipperBase {
 	 * 
 	 * @param paths
 	 */
-	public final void AddSubjects(List<List<Point64>> paths) {
+	public final void AddSubjects(Paths64 paths) {
 		paths.forEach(path -> AddPath(path, PathType.Subject));
 	}
 
@@ -541,11 +543,11 @@ public class ClipperBase {
 	 * 
 	 * @param path
 	 */
-	public final void AddOpenSubject(List<Point64> path) {
+	public final void AddOpenSubject(Path64 path) {
 		AddPath(path, PathType.Subject, true);
 	}
 
-	public final void AddOpenSubjects(List<List<Point64>> paths) {
+	public final void AddOpenSubjects(Paths64 paths) {
 		paths.forEach(path -> AddPath(path, PathType.Subject, true));
 	}
 
@@ -554,29 +556,29 @@ public class ClipperBase {
 	 * 
 	 * @param path
 	 */
-	public final void AddClip(List<Point64> path) {
+	public final void AddClip(Path64 path) {
 		AddPath(path, PathType.Clip);
 	}
 
-	public final void AddClips(List<List<Point64>> paths) {
+	public final void AddClips(Paths64 paths) {
 		paths.forEach(path -> AddPath(path, PathType.Clip));
 	}
 
-	public final void AddPath(List<Point64> path, PathType polytype) {
+	public final void AddPath(Path64 path, PathType polytype) {
 		AddPath(path, polytype, false);
 	}
 
-	public final void AddPath(List<Point64> path, PathType polytype, boolean isOpen) {
-		List<List<Point64>> tmp = new ArrayList<>();
+	public final void AddPath(Path64 path, PathType polytype, boolean isOpen) {
+		Paths64 tmp = new Paths64();
 		tmp.add(path);
 		AddPaths(tmp, polytype, isOpen);
 	}
 
-	public final void AddPaths(List<List<Point64>> paths, PathType polytype) {
+	public final void AddPaths(Paths64 paths, PathType polytype) {
 		AddPaths(paths, polytype, false);
 	}
 
-	public final void AddPaths(List<List<Point64>> paths, PathType polytype, boolean isOpen) {
+	public final void AddPaths(Paths64 paths, PathType polytype, boolean isOpen) {
 		if (isOpen) {
 			hasOpenPaths = true;
 		}
@@ -2911,7 +2913,7 @@ public class ClipperBase {
 		}
 	}
 
-	public final boolean BuildPath(OutPt op, boolean reverse, boolean isOpen, List<Point64> path) {
+	public final boolean BuildPath(OutPt op, boolean reverse, boolean isOpen, Path64 path) {
 		if (op.next == op || (!isOpen && op.next == op.prev)) {
 			return false;
 		}
@@ -2943,7 +2945,7 @@ public class ClipperBase {
 		return true;
 	}
 
-	protected final boolean BuildPaths(List<List<Point64>> solutionClosed, List<List<Point64>> solutionOpen) {
+	protected final boolean BuildPaths(Paths64 solutionClosed, Paths64 solutionOpen) {
 		solutionClosed.clear();
 		solutionOpen.clear();
 
@@ -2952,7 +2954,7 @@ public class ClipperBase {
 				continue;
 			}
 
-			List<Point64> path = new ArrayList<>();
+			Path64 path = new Path64();
 			if (outrec.isOpen) {
 				if (BuildPath(outrec.pts, getReverseSolution(), true, path)) {
 					solutionOpen.add(path);
@@ -2982,7 +2984,7 @@ public class ClipperBase {
 		return result == PointInPolygonResult.IsInside;
 	}
 
-	private Rect64 GetBounds(List<Point64> path) {
+	private Rect64 GetBounds(Path64 path) {
 		if (path.isEmpty()) {
 			return new Rect64();
 		}
@@ -3056,7 +3058,7 @@ public class ClipperBase {
 		}
 	}
 
-	protected final boolean BuildTree(PolyPathBase polytree, List<List<Point64>> solutionOpen) {
+	protected final boolean BuildTree(PolyPathBase polytree, Paths64 solutionOpen) {
 		polytree.Clear();
 		solutionOpen.clear();
 
@@ -3067,7 +3069,7 @@ public class ClipperBase {
 			}
 
 			if (outrec.isOpen) {
-				List<Point64> openpath = new ArrayList<>();
+				Path64 openpath = new Path64();
 				if (BuildPath(outrec.pts, getReverseSolution(), true, openpath)) {
 					solutionOpen.add(openpath);
 				}

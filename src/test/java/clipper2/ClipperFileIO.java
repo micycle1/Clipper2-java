@@ -8,12 +8,14 @@ import java.util.List;
 
 import clipper2.core.ClipType;
 import clipper2.core.FillRule;
+import clipper2.core.Path64;
+import clipper2.core.Paths64;
 import clipper2.core.Point64;
 
 public class ClipperFileIO {
 
-	record TestCase(String caption, ClipType clipType, FillRule fillRule, double area, double count, int GetIdx, List<List<Point64>> subj,
-			List<List<Point64>> subj_open, List<List<Point64>> clip) {
+	record TestCase(String caption, ClipType clipType, FillRule fillRule, double area, double count, int GetIdx, Paths64 subj,
+			Paths64 subj_open, Paths64 clip) {
 	}
 
 	public static List<TestCase> loadTestCases(String testFileName) throws IOException {
@@ -25,17 +27,17 @@ public class ClipperFileIO {
 		double area = 0;
 		double count = 0;
 		int GetIdx = 0;
-		var subj = new ArrayList<List<Point64>>();
-		var subj_open = new ArrayList<List<Point64>>();
-		var clip = new ArrayList<List<Point64>>();
+		var subj = new Paths64();
+		var subj_open = new Paths64();
+		var clip = new Paths64();
 
 		List<TestCase> cases = new ArrayList<>();
 
 		for (String s : lines) {
 			if (s.isBlank() || s.length() == 0) {
 //				System.out.println("blank!");
-				cases.add(new TestCase(caption, ct, fillRule, area, count, GetIdx, new ArrayList<>(subj), new ArrayList<>(subj_open),
-						new ArrayList<>(clip)));
+				cases.add(new TestCase(caption, ct, fillRule, area, count, GetIdx, new Paths64(subj), new Paths64(subj_open),
+						new Paths64(clip)));
 				subj.clear();
 				subj_open.clear();
 				clip.clear();
@@ -95,8 +97,8 @@ public class ClipperFileIO {
 			} else {
 //				continue;
 			}
-			
-			List<List<Point64>> paths = PathFromStr(s); // 0 or 1 path
+
+			Paths64 paths = PathFromStr(s); // 0 or 1 path
 			if (paths == null || paths.isEmpty()) {
 				if (GetIdx == 3) {
 //					return result;
@@ -119,22 +121,22 @@ public class ClipperFileIO {
 			}
 
 		}
-		
+
 		if (cases.isEmpty()) {
-			cases.add(new TestCase(caption, ct, fillRule, area, count, GetIdx, new ArrayList<>(subj), new ArrayList<>(subj_open),
-					new ArrayList<>(clip)));
+			cases.add(
+					new TestCase(caption, ct, fillRule, area, count, GetIdx, new Paths64(subj), new Paths64(subj_open), new Paths64(clip)));
 		}
 
 		return cases;
 	}
-	
-	public static List<List<Point64>> PathFromStr(String s) {
+
+	public static Paths64 PathFromStr(String s) {
 		if (s == null) {
 			return null;
 		}
-		List<Point64> p = new ArrayList<>();
-		List<List<Point64>> pp = new ArrayList<>();
-		
+		Path64 p = new Path64();
+		Paths64 pp = new Paths64();
+
 		for (var pair : s.split(" ")) {
 			var xy = pair.split(",");
 			long x = Long.parseLong(xy[0]);

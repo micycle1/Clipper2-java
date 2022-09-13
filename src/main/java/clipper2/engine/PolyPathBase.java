@@ -3,9 +3,9 @@ package clipper2.engine;
 import java.util.ArrayList;
 import java.util.List;
 
-import clipper2.core.Point64;
+import clipper2.core.Path64;
 
-public abstract class PolyPathBase implements java.lang.Iterable<PolyPathBase> {
+public abstract class PolyPathBase implements Iterable<PolyPathBase> {
 
 	public PolyPathBase _parent;
 	public List<PolyPathBase> _childs = new ArrayList<>();
@@ -42,7 +42,7 @@ public abstract class PolyPathBase implements java.lang.Iterable<PolyPathBase> {
 		return _childs.size();
 	}
 
-	public abstract PolyPathBase AddChild(List<Point64> p);
+	public abstract PolyPathBase AddChild(Path64 p);
 
 	public final void Clear() {
 		_childs.clear();

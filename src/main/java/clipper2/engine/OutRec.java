@@ -1,8 +1,10 @@
 package clipper2.engine;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import clipper2.Nullable;
+import clipper2.core.Path64;
 import clipper2.core.Point64;
 import clipper2.core.Rect64;
 
@@ -15,7 +17,7 @@ public class OutRec {
 	@Nullable
 	public OutRec owner;
 	@Nullable
-	public ArrayList<OutRec> splits;
+	public List<OutRec> splits;
 	@Nullable
 	public Active frontEdge;
 	@Nullable
@@ -25,12 +27,12 @@ public class OutRec {
 	@Nullable
 	public PolyPathBase polypath;
 	public Rect64 bounds;
-	public ArrayList<Point64> path;
+	public Path64 path;
 	public boolean isOpen;
 
 	public OutRec() {
 		bounds = new Rect64();
-		path = new ArrayList<>();
+		path = new Path64();
 	}
 
 }

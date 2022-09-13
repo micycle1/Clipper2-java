@@ -74,7 +74,7 @@ public final class InternalClipper {
 				&& ((dy2 * (seg1a.X - seg2a.X) - dx2 * (seg1a.Y - seg2a.Y)) * (dy2 * (seg1b.X - seg2a.X) - dx2 * (seg1b.Y - seg2a.Y)) < 0));
 	}
 
-	public static PointInPolygonResult PointInPolygon(Point64 pt, List<Point64> polygon) {
+	public static PointInPolygonResult PointInPolygon(Point64 pt, Path64 polygon) {
 		int len = polygon.size(), i = len - 1;
 
 		if (len < 3) {

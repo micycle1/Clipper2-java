@@ -10,6 +10,8 @@ import clipper2.core.FillRule;
 import clipper2.core.InternalClipper;
 import clipper2.core.PathType;
 import clipper2.core.Point64;
+import clipper2.core.Path64;
+import clipper2.core.Paths64;
 import clipper2.core.PointD;
 import clipper2.core.Rect64;
 import clipper2.core.RectD;
@@ -28,7 +30,7 @@ public final class Clipper {
 
 	public static final RectD MaxInvalidRectD = new RectD(Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE);
 
-	public static List<List<Point64>> Intersect(List<List<Point64>> subject, List<List<Point64>> clip, FillRule fillRule) {
+	public static Paths64 Intersect(Paths64 subject, Paths64 clip, FillRule fillRule) {
 		return BooleanOp(ClipType.Intersection, subject, clip, fillRule);
 	}
 
@@ -41,11 +43,11 @@ public final class Clipper {
 		return BooleanOp(ClipType.Intersection, subject, clip, fillRule, roundingDecimalPrecision);
 	}
 
-	public static List<List<Point64>> Union(List<List<Point64>> subject, FillRule fillRule) {
+	public static Paths64 Union(Paths64 subject, FillRule fillRule) {
 		return BooleanOp(ClipType.Union, subject, null, fillRule);
 	}
 
-	public static List<List<Point64>> Union(List<List<Point64>> subject, List<List<Point64>> clip, FillRule fillRule) {
+	public static Paths64 Union(Paths64 subject, Paths64 clip, FillRule fillRule) {
 		return BooleanOp(ClipType.Union, subject, clip, fillRule);
 	}
 
@@ -62,7 +64,7 @@ public final class Clipper {
 		return BooleanOp(ClipType.Union, subject, clip, fillRule, roundingDecimalPrecision);
 	}
 
-	public static List<List<Point64>> Difference(List<List<Point64>> subject, List<List<Point64>> clip, FillRule fillRule) {
+	public static Paths64 Difference(Paths64 subject, Paths64 clip, FillRule fillRule) {
 		return BooleanOp(ClipType.Difference, subject, clip, fillRule);
 	}
 
@@ -75,7 +77,7 @@ public final class Clipper {
 		return BooleanOp(ClipType.Difference, subject, clip, fillRule, roundingDecimalPrecision);
 	}
 
-	public static List<List<Point64>> Xor(List<List<Point64>> subject, List<List<Point64>> clip, FillRule fillRule) {
+	public static Paths64 Xor(Paths64 subject, Paths64 clip, FillRule fillRule) {
 		return BooleanOp(ClipType.Xor, subject, clip, fillRule);
 	}
 
@@ -88,9 +90,9 @@ public final class Clipper {
 		return BooleanOp(ClipType.Xor, subject, clip, fillRule, roundingDecimalPrecision);
 	}
 
-	public static List<List<Point64>> BooleanOp(ClipType clipType, List<List<Point64>> subject, List<List<Point64>> clip,
+	public static Paths64 BooleanOp(ClipType clipType, Paths64 subject, Paths64 clip,
 			FillRule fillRule) {
-		List<List<Point64>> solution = new ArrayList<>();
+		Paths64 solution = new Paths64();
 		if (subject == null) {
 			return solution;
 		}
@@ -119,7 +121,7 @@ public final class Clipper {
 		return solution;
 	}
 
-	public static List<List<Point64>> InflatePaths(List<List<Point64>> paths, double delta, JoinType joinType, EndType endType) {
+	public static Paths64 InflatePaths(Paths64 paths, double delta, JoinType joinType, EndType endType) {
 		return InflatePaths(paths, delta, joinType, endType, 2.0);
 	}
 
@@ -166,7 +168,7 @@ public final class Clipper {
 	 *                   long 'spikes'.
 	 * @return
 	 */
-	public static List<List<Point64>> InflatePaths(List<List<Point64>> paths, double delta, JoinType joinType, EndType endType,
+	public static Paths64 InflatePaths(Paths64 paths, double delta, JoinType joinType, EndType endType,
 			double miterLimit) {
 		ClipperOffset co = new ClipperOffset(miterLimit);
 		co.AddPaths(paths, joinType, endType);
@@ -187,18 +189,18 @@ public final class Clipper {
 			throw new RuntimeException("Error: Precision is out of range.");
 		}
 		double scale = Math.pow(10, precision);
-		List<List<Point64>> tmp = ScalePaths64(paths, scale);
+		Paths64 tmp = ScalePaths64(paths, scale);
 		ClipperOffset co = new ClipperOffset(miterLimit);
 		co.AddPaths(tmp, joinType, endType);
 		tmp = co.Execute(delta * scale);
 		return ScalePathsD(tmp, 1 / scale);
 	}
 
-	public static List<List<Point64>> MinkowskiSum(List<Point64> pattern, List<Point64> path, boolean isClosed) {
+	public static Paths64 MinkowskiSum(Path64 pattern, Path64 path, boolean isClosed) {
 		return Minkowski.Sum(pattern, path, isClosed);
 	}
 
-	public static List<List<Point64>> MinkowskiDiff(List<Point64> pattern, List<Point64> path, boolean isClosed) {
+	public static Paths64 MinkowskiDiff(Path64 pattern, Path64 path, boolean isClosed) {
 		return Minkowski.Diff(pattern, path, isClosed);
 	}
 
@@ -212,7 +214,7 @@ public final class Clipper {
 	 * @param path
 	 * @return
 	 */
-	public static double AreaPath(List<Point64> path) {
+	public static double Area(Path64 path) {
 		// https://en.wikipedia.org/wiki/Shoelace_formula
 		double a = 0.0;
 		int cnt = path.size();
@@ -237,10 +239,10 @@ public final class Clipper {
 	 * @param paths
 	 * @return
 	 */
-	public static double Area(List<List<Point64>> paths) {
+	public static double Area(Paths64 paths) {
 		double a = 0.0;
-		for (List<Point64> path : paths) {
-			a += AreaPath(path);
+		for (Path64 path : paths) {
+			a += Area(path);
 		}
 		return a;
 	}
@@ -267,15 +269,15 @@ public final class Clipper {
 //	  return a;
 //	}
 
-	public static boolean IsPositive(List<Point64> poly) {
-		return AreaPath(poly) >= 0;
+	public static boolean IsPositive(Path64 poly) {
+		return Area(poly) >= 0;
 	}
 
 //	public static boolean IsPositive(List<PointD> poly) {
 //		return AreaPath(poly) >= 0;
 //	}
 
-	public static String Path64ToString(List<Point64> path) {
+	public static String Path64ToString(Path64 path) {
 		String result = "";
 		for (Point64 pt : path) {
 			result = result + pt.toString();
@@ -283,9 +285,9 @@ public final class Clipper {
 		return result + '\n';
 	}
 
-	public static String Paths64ToString(List<List<Point64>> paths) {
+	public static String Paths64ToString(Paths64 paths) {
 		String result = "";
-		for (List<Point64> path : paths) {
+		for (Path64 path : paths) {
 			result = result + Path64ToString(path);
 		}
 		return result;
@@ -307,8 +309,8 @@ public final class Clipper {
 		return result;
 	}
 
-	public static List<Point64> OffsetPath(List<Point64> path, long dx, long dy) {
-		List<Point64> result = new ArrayList<>(path.size());
+	public static Path64 OffsetPath(Path64 path, long dx, long dy) {
+		Path64 result = new Path64(path.size());
 		for (Point64 pt : path) {
 			result.add(new Point64(pt.X + dx, pt.Y + dy));
 		}
@@ -329,23 +331,23 @@ public final class Clipper {
 		return result.clone();
 	}
 
-	public static List<Point64> ScalePath(List<Point64> path, double scale) {
+	public static Path64 ScalePath(Path64 path, double scale) {
 		if (InternalClipper.IsAlmostZero(scale - 1)) {
 			return path;
 		}
-		List<Point64> result = new ArrayList<>(path.size());
+		Path64 result = new Path64(path.size());
 		for (Point64 pt : path) {
 			result.add(new Point64(pt.X * scale, pt.Y * scale));
 		}
 		return result;
 	}
 
-	public static List<List<Point64>> ScalePaths(List<List<Point64>> paths, double scale) {
+	public static Paths64 ScalePaths(Paths64 paths, double scale) {
 		if (InternalClipper.IsAlmostZero(scale - 1)) {
 			return paths;
 		}
-		List<List<Point64>> result = new ArrayList<>(paths.size());
-		for (List<Point64> path : paths) {
+		Paths64 result = new Paths64(paths.size());
+		for (Path64 path : paths) {
 			result.add(ScalePath(path, scale));
 		}
 		return result;
@@ -374,25 +376,25 @@ public final class Clipper {
 //	}
 
 	// Unlike ScalePath, both ScalePath64 & ScalePathD also involve type conversion
-	public static List<Point64> ScalePath64(List<PointD> path, double scale) {
+	public static Path64 ScalePath64(List<PointD> path, double scale) {
 		int cnt = path.size();
-		List<Point64> res = new ArrayList<>(cnt);
+		Path64 res = new Path64(cnt);
 		for (PointD pt : path) {
 			res.add(new Point64(pt.clone(), scale));
 		}
 		return res;
 	}
 
-	public static List<List<Point64>> ScalePaths64(List<List<PointD>> paths, double scale) {
+	public static Paths64 ScalePaths64(List<List<PointD>> paths, double scale) {
 		int cnt = paths.size();
-		List<List<Point64>> res = new ArrayList<>(cnt);
+		Paths64 res = new Paths64(cnt);
 		for (List<PointD> path : paths) {
 			res.add(ScalePath64(path, scale));
 		}
 		return res;
 	}
 
-	public static List<PointD> ScalePathD(List<Point64> path, double scale) {
+	public static List<PointD> ScalePathD(Path64 path, double scale) {
 		int cnt = path.size();
 		List<PointD> res = new ArrayList<>(cnt);
 		for (Point64 pt : path) {
@@ -401,41 +403,41 @@ public final class Clipper {
 		return res;
 	}
 
-	public static List<List<PointD>> ScalePathsD(List<List<Point64>> paths, double scale) {
+	public static List<List<PointD>> ScalePathsD(Paths64 paths, double scale) {
 		int cnt = paths.size();
 		List<List<PointD>> res = new ArrayList<>(cnt);
-		for (List<Point64> path : paths) {
+		for (Path64 path : paths) {
 			res.add(ScalePathD(path, scale));
 		}
 		return res;
 	}
 
 	// The static functions Path64 and PathD convert path types without scaling
-	public static List<Point64> Path64(List<PointD> path) {
-		List<Point64> result = new ArrayList<>(path.size());
+	public static Path64 Path64(List<PointD> path) {
+		Path64 result = new Path64(path.size());
 		for (PointD pt : path) {
 			result.add(new Point64(pt.clone()));
 		}
 		return result;
 	}
 
-	public static List<List<Point64>> Paths64(List<List<PointD>> paths) {
-		List<List<Point64>> result = new ArrayList<>(paths.size());
+	public static Paths64 Paths64(List<List<PointD>> paths) {
+		Paths64 result = new Paths64(paths.size());
 		for (List<PointD> path : paths) {
 			result.add(Path64(path));
 		}
 		return result;
 	}
 
-	public static List<List<PointD>> PathsD(List<List<Point64>> paths) {
+	public static List<List<PointD>> PathsD(Paths64 paths) {
 		List<List<PointD>> result = new ArrayList<>(paths.size());
-		for (List<Point64> path : paths) {
+		for (Path64 path : paths) {
 			result.add(PathD(path));
 		}
 		return result;
 	}
 
-	public static List<PointD> PathD(List<Point64> path) {
+	public static List<PointD> PathD(Path64 path) {
 		List<PointD> result = new ArrayList<>(path.size());
 		for (Point64 pt : path) {
 			result.add(new PointD(pt.clone()));
@@ -443,17 +445,17 @@ public final class Clipper {
 		return result;
 	}
 
-	public static List<Point64> TranslatePath(List<Point64> path, long dx, long dy) {
-		List<Point64> result = new ArrayList<>(path.size());
+	public static Path64 TranslatePath(Path64 path, long dx, long dy) {
+		Path64 result = new Path64(path.size());
 		for (Point64 pt : path) {
 			result.add(new Point64(pt.X + dx, pt.Y + dy));
 		}
 		return result;
 	}
 
-	public static List<List<Point64>> TranslatePaths(List<List<Point64>> paths, long dx, long dy) {
-		List<List<Point64>> result = new ArrayList<>(paths.size());
-		for (List<Point64> path : paths) {
+	public static Paths64 TranslatePaths(Paths64 paths, long dx, long dy) {
+		Paths64 result = new Paths64(paths.size());
+		for (Path64 path : paths) {
 			result.add(OffsetPath(path, dx, dy));
 		}
 		return result;
@@ -475,8 +477,8 @@ public final class Clipper {
 		return result;
 	}
 
-	public static List<Point64> ReversePath(List<Point64> path) {
-		List<Point64> result = new ArrayList<>(path);
+	public static Path64 ReversePath(Path64 path) {
+		Path64 result = new Path64(path);
 		Collections.reverse(result);
 		return result;
 	}
@@ -487,9 +489,9 @@ public final class Clipper {
 //		return result;
 //	}
 
-	public static List<List<Point64>> ReversePaths(List<List<Point64>> paths) {
-		List<List<Point64>> result = new ArrayList<>(paths.size());
-		for (List<Point64> t : paths) {
+	public static Paths64 ReversePaths(Paths64 paths) {
+		Paths64 result = new Paths64(paths.size());
+		for (Path64 t : paths) {
 			result.add(ReversePath(t));
 		}
 
@@ -504,9 +506,9 @@ public final class Clipper {
 //		return result;
 //	}
 
-	public static Rect64 GetBounds(List<List<Point64>> paths) {
+	public static Rect64 GetBounds(Paths64 paths) {
 		Rect64 result = MaxInvalidRect64;
-		for (List<Point64> path : paths) {
+		for (Path64 path : paths) {
 			for (Point64 pt : path) {
 				if (pt.X < result.left) {
 					result.left = pt.X;
@@ -546,18 +548,18 @@ public final class Clipper {
 //		return result.IsEmpty() ? new RectD() : result;
 //	}
 
-	public static List<Point64> MakePath(int[] arr) {
+	public static Path64 MakePath(int[] arr) {
 		int len = arr.length / 2;
-		List<Point64> p = new ArrayList<>(len);
+		Path64 p = new Path64(len);
 		for (int i = 0; i < len; i++) {
 			p.add(new Point64(arr[i * 2], arr[i * 2 + 1]));
 		}
 		return p;
 	}
 
-	public static List<Point64> MakePath(long[] arr) {
+	public static Path64 MakePath(long[] arr) {
 		int len = arr.length / 2;
-		List<Point64> p = new ArrayList<>(len);
+		Path64 p = new Path64(len);
 		for (int i = 0; i < len; i++) {
 			p.add(new Point64(arr[i * 2], arr[i * 2 + 1]));
 		}
@@ -603,9 +605,9 @@ public final class Clipper {
 		return result;
 	}
 
-	public static List<Point64> StripDuplicates(List<Point64> path, boolean isClosedPath) {
+	public static Path64 StripDuplicates(Path64 path, boolean isClosedPath) {
 		int cnt = path.size();
-		List<Point64> result = new ArrayList<>(cnt);
+		Path64 result = new Path64(cnt);
 		if (cnt == 0) {
 			return result;
 		}
@@ -623,7 +625,7 @@ public final class Clipper {
 		return result;
 	}
 
-	private static void AddPolyNodeToPaths(PolyPath64 polyPath, List<List<Point64>> paths) {
+	private static void AddPolyNodeToPaths(PolyPath64 polyPath, Paths64 paths) {
 		if (!polyPath.getPolygon().isEmpty()) {
 			paths.add(polyPath.getPolygon());
 		}
@@ -632,8 +634,8 @@ public final class Clipper {
 		}
 	}
 
-	public static List<List<Point64>> PolyTreeToPaths64(PolyTree64 polyTree) {
-		List<List<Point64>> result = new ArrayList<>();
+	public static Paths64 PolyTreeToPaths64(PolyTree64 polyTree) {
+		Paths64 result = new Paths64();
 		for (int i = 0; i < polyTree.getCount(); i++) {
 			AddPolyNodeToPaths((PolyPath64) polyTree._childs.get(i), result);
 		}
@@ -681,7 +683,7 @@ public final class Clipper {
 		return Sqr(a * d - c * b) / (c * c + d * d);
 	}
 
-	public static void RDP(List<Point64> path, int begin, int end, double epsSqrd, List<Boolean> flags) {
+	public static void RDP(Path64 path, int begin, int end, double epsSqrd, List<Boolean> flags) {
 		int idx = 0;
 		double max_d = 0;
 		while (end > begin && path.get(begin).equals(path.get(end).clone())) {
@@ -726,7 +728,7 @@ public final class Clipper {
 	 * @param epsilon
 	 * @return
 	 */
-	public static List<Point64> RamerDouglasPeuckerPath(List<Point64> path, double epsilon) {
+	public static Path64 RamerDouglasPeuckerPath(Path64 path, double epsilon) {
 		int len = path.size();
 		if (len < 5) {
 			return path;
@@ -735,7 +737,7 @@ public final class Clipper {
 		flags.set(0, true);
 		flags.set(len - 1, true);
 		RDP(path, 0, len - 1, Sqr(epsilon), flags);
-		List<Point64> result = new ArrayList<>(len);
+		Path64 result = new Path64(len);
 		for (int i = 0; i < len; ++i) {
 			if (flags.get(i).booleanValue()) {
 				result.add(path.get(i).clone());
@@ -762,9 +764,9 @@ public final class Clipper {
 	 * @param epsilon
 	 * @return
 	 */
-	public static List<List<Point64>> RamerDouglasPeucker(List<List<Point64>> paths, double epsilon) {
-		List<List<Point64>> result = new ArrayList<>(paths.size());
-		for (List<Point64> path : paths) {
+	public static Paths64 RamerDouglasPeucker(Paths64 paths, double epsilon) {
+		Paths64 result = new Paths64(paths.size());
+		for (Path64 path : paths) {
 			result.add(RamerDouglasPeuckerPath(path, epsilon));
 		}
 		return result;
@@ -823,13 +825,13 @@ public final class Clipper {
 //		return result;
 //	}
 
-	public static List<Point64> TrimCollinear(List<Point64> path) {
+	public static Path64 TrimCollinear(Path64 path) {
 		return TrimCollinear(path, false);
 	}
 
 //C# TO JAVA CONVERTER NOTE: Java does not support optional parameters. Overloaded method(s) are created above:
-//ORIGINAL LINE: public static List<Point64> TrimCollinear(List<Point64> path, bool isOpen = false)
-	public static List<Point64> TrimCollinear(List<Point64> path, boolean isOpen) {
+//ORIGINAL LINE: public static Path64 TrimCollinear(Path64 path, bool isOpen = false)
+	public static Path64 TrimCollinear(Path64 path, boolean isOpen) {
 		int len = path.size();
 		int i = 0;
 		if (!isOpen) {
@@ -845,12 +847,12 @@ public final class Clipper {
 
 		if (len - i < 3) {
 			if (!isOpen || len < 2 || path.get(0).equals(path.get(1).clone())) {
-				return new ArrayList<>();
+				return new Path64();
 			}
 			return path;
 		}
 
-		List<Point64> result = new ArrayList<>(len - i);
+		Path64 result = new Path64(len - i);
 		Point64 last = path.get(i).clone();
 		result.add(last.clone());
 		for (i++; i < len - 1; i++) {
@@ -886,12 +888,12 @@ public final class Clipper {
 			throw new RuntimeException("Error: Precision is out of range.");
 		}
 		double scale = Math.pow(10, precision);
-		List<Point64> p = ScalePath64(path, scale);
+		Path64 p = ScalePath64(path, scale);
 		p = TrimCollinear(p, isOpen);
 		return ScalePathD(p, 1 / scale);
 	}
 
-	public static PointInPolygonResult PointInPolygon(Point64 pt, List<Point64> polygon) {
+	public static PointInPolygonResult PointInPolygon(Point64 pt, Path64 polygon) {
 		return InternalClipper.PointInPolygon(pt.clone(), polygon);
 	}
 

@@ -6,8 +6,9 @@ import java.util.List;
 import clipper2.Clipper;
 import clipper2.core.ClipType;
 import clipper2.core.FillRule;
+import clipper2.core.Path64;
 import clipper2.core.PathType;
-import clipper2.core.Point64;
+import clipper2.core.Paths64;
 import clipper2.core.PointD;
 
 /**
@@ -77,7 +78,7 @@ public class ClipperD extends ClipperBase {
 	}
 
 	public final boolean Execute(ClipType clipType, FillRule fillRule, List<List<PointD>> solutionClosed, List<List<PointD>> solutionOpen) {
-		List<List<Point64>> solClosed64 = new ArrayList<>(), solOpen64 = new ArrayList<>();
+		Paths64 solClosed64 = new Paths64(), solOpen64 = new Paths64();
 
 		boolean success = true;
 		solutionClosed.clear();
@@ -94,10 +95,10 @@ public class ClipperD extends ClipperBase {
 			return false;
 		}
 
-		for (List<Point64> path : solClosed64) {
+		for (Path64 path : solClosed64) {
 			solutionClosed.add(Clipper.ScalePathD(path, _invScale));
 		}
-		for (List<Point64> path : solOpen64) {
+		for (Path64 path : solOpen64) {
 			solutionOpen.add(Clipper.ScalePathD(path, _invScale));
 		}
 

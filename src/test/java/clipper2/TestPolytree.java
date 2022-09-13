@@ -12,6 +12,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import clipper2.ClipperFileIO.TestCase;
+import clipper2.core.Paths64;
 import clipper2.core.Point64;
 import clipper2.engine.Clipper64;
 import clipper2.engine.PointInPolygonResult;
@@ -30,7 +31,7 @@ class TestPolytree {
 	@ParameterizedTest(name = "{1} {2} {3}")
 	final void RunPolytreeTestCase(TestCase test, String caption, Object o, Object o1) {
 		PolyTree64 solutionTree = new PolyTree64();
-		List<List<Point64>> solution_open = new ArrayList<List<Point64>>();
+		Paths64 solution_open = new Paths64();
 		Clipper64 clipper = new Clipper64();
 
 		var subject = test.subj();

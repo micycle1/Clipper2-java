@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -13,7 +12,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import clipper2.ClipperFileIO.TestCase;
-import clipper2.core.Point64;
+import clipper2.core.Paths64;
 import clipper2.engine.Clipper64;
 
 class TestPolygons {
@@ -27,8 +26,8 @@ class TestPolygons {
 	@ParameterizedTest(name = "{1} {2} {3}")
 	final void RunPolygonsTestCase(TestCase test, String caption, Object o, Object o1) {
 		Clipper64 c64 = new Clipper64();
-		var solution = new ArrayList<List<Point64>>();
-		var solution_open = new ArrayList<List<Point64>>();
+		var solution = new Paths64();
+		var solution_open = new Paths64();
 
 		c64.AddSubjects(test.subj());
 		c64.AddOpenSubjects(test.subj_open());

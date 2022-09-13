@@ -1,20 +1,18 @@
 package clipper2.engine;
 
-import java.util.List;
-
 import clipper2.Clipper;
 import clipper2.Nullable;
-import clipper2.core.Point64;
+import clipper2.core.Path64;
 
 public class PolyPath64 extends PolyPathBase {
 
-	private List<Point64> Polygon;
+	private Path64 Polygon;
 
-	public final List<Point64> getPolygon() {
+	public final Path64 getPolygon() {
 		return Polygon;
 	}
 
-	private void setPolygon(List<Point64> value) {
+	private void setPolygon(Path64 value) {
 		Polygon = value;
 	}
 
@@ -27,7 +25,7 @@ public class PolyPath64 extends PolyPathBase {
 	}
 
 	@Override
-	public PolyPathBase AddChild(List<Point64> p) {
+	public PolyPathBase AddChild(Path64 p) {
 		PolyPath64 newChild = new PolyPath64(this);
 		newChild.setPolygon(p);
 		_childs.add(newChild);
@@ -42,7 +40,7 @@ public class PolyPath64 extends PolyPathBase {
 	}
 
 	public final double Area() {
-		double result = getPolygon() == null ? 0 : Clipper.AreaPath(getPolygon());
+		double result = getPolygon() == null ? 0 : Clipper.Area(getPolygon());
 		for (var polyPathBase : _childs) {
 			PolyPath64 child = (PolyPath64) polyPathBase;
 			result += child.Area();
