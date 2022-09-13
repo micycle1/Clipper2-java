@@ -2,7 +2,6 @@ package clipper2.engine;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.TreeSet;
 
 import clipper2.Clipper;
@@ -104,9 +103,11 @@ public class ClipperBase {
 		return (ae == ae.outrec.frontEdge);
 	}
 
-	/*******************************************************************************
-	 * Dx: 0(90deg) * | * +inf (180deg) <--- o --. -inf (0deg) *
-	 *******************************************************************************/
+	/*-
+	*  Dx:                             0(90deg)                                    *
+	*                                  |                                           *
+	*               +inf (180deg) <--- o --. -inf (0deg)                           *
+	*******************************************************************************/
 	private static double GetDx(Point64 pt1, Point64 pt2) {
 		double dy = pt2.Y - pt1.Y;
 		if (dy != 0) {
@@ -256,23 +257,6 @@ public class ClipperBase {
 		return null;
 	}
 
-	private static final class IntersectListSort implements Comparator<IntersectNode> {
-		@Override
-		public int compare(IntersectNode a, IntersectNode b) {
-			if (a.pt.Y == b.pt.Y) {
-				return (a.pt.X < b.pt.X) ? -1 : 1;
-			}
-			return (a.pt.Y > b.pt.Y) ? -1 : 1;
-		}
-	}
-
-	private static final class LocMinSorter implements Comparator<LocalMinima> {
-		@Override
-		public int compare(LocalMinima locMin1, LocalMinima locMin2) {
-			return Long.compare(locMin2.vertex.pt.Y, locMin1.vertex.pt.Y);
-		}
-	}
-
 	private static void SetSides(OutRec outrec, Active startEdge, Active endEdge) {
 		outrec.frontEdge = startEdge;
 		outrec.backEdge = endEdge;
@@ -381,7 +365,7 @@ public class ClipperBase {
 
 	protected final void Reset() {
 		if (!isSortedMinimaList) {
-			Collections.sort(minimaList, new LocMinSorter());
+			minimaList.sort((locMin1, locMin2) -> Long.compare(locMin2.vertex.pt.Y, locMin1.vertex.pt.Y));
 			isSortedMinimaList = true;
 		}
 
@@ -659,10 +643,12 @@ public class ClipperBase {
 	}
 
 	private void SetWindCountForClosedPathEdge(Active ae) {
-		// Wind counts refer to polygon regions not edges, so here an edge's WindCnt
-		// indicates the higher of the wind counts for the two regions touching the
-		// edge. (nb: Adjacent regions can only ever have their wind counts differ by
-		// one. Also, open paths have no meaningful wind directions or counts.)
+		/*
+		 * Wind counts refer to polygon regions not edges, so here an edge's WindCnt
+		 * indicates the higher of the wind counts for the two regions touching the
+		 * edge. (nb: Adjacent regions can only ever have their wind counts differ by
+		 * one. Also, open paths have no meaningful wind directions or counts.)
+		 */
 
 		Active ae2 = ae.prevInAEL;
 		// find the nearest closed path edge of the same PolyType in AEL (heading left)
@@ -1662,7 +1648,12 @@ public class ClipperBase {
 		// crucial that intersections only occur between adjacent edges.
 
 		// First we do a quicksort so intersections proceed in a bottom up order ...
-		intersectList.sort(new IntersectListSort());
+		intersectList.sort((a, b) -> {
+			if (a.pt.Y == b.pt.Y) {
+				return (a.pt.X < b.pt.X) ? -1 : 1;
+			}
+			return (a.pt.Y > b.pt.Y) ? -1 : 1;
+		});
 
 		// Now as we process these intersections, we must sometimes adjust the order
 		// to ensure that intersecting edges are always adjacent ...
@@ -1767,16 +1758,19 @@ public class ClipperBase {
 	}
 
 	private void DoHorizontal(Active horz)
-	/*******************************************************************************
-	 * Notes: Horizontal edges (HEs) at scanline intersections (i.e. at the top or *
-	 * bottom of a scanbeam) are processed as if layered.The order in which HEs *
-	 * are processed doesn't matter. HEs intersect with the bottom vertices of *
-	 * other HEs[#] and with non-horizontal edges [*]. Once these intersections *
-	 * are completed, intermediate HEs are 'promoted' to the next edge in their *
-	 * bounds, and they in turn may be intersected[%] by other HEs. * * eg: 3
-	 * horizontals at a scanline: / | / / * | / | (HE3)o ========%========== o * o
-	 * ======= o(HE2) / | / / * o ============#=========*======*========#=========o
-	 * (HE1) * / | / | / *
+	/*-
+	 * Notes: Horizontal edges (HEs) at scanline intersections (i.e. at the top or  *
+	 * bottom of a scanbeam) are processed as if layered.The order in which HEs     *
+	 * are processed doesn't matter. HEs intersect with the bottom vertices of      *
+	 * other HEs[#] and with non-horizontal edges [*]. Once these intersections     *
+	 * are completed, intermediate HEs are 'promoted' to the next edge in their     *
+	 * bounds, and they in turn may be intersected[%] by other HEs.                 *
+	 *                                                                              *
+	 * eg: 3 horizontals at a scanline:    /   |                     /           /  *
+	 *              |                     /    |     (HE3)o ========%========== o   *
+	 *              o ======= o(HE2)     /     |         /         /                *
+	 *          o ============#=========*======*========#=========o (HE1)           *
+	 *         /              |        /       |       /                            *
 	 *******************************************************************************/
 	{
 		Point64 pt;
@@ -2837,7 +2831,10 @@ public class ClipperBase {
 			}
 		}
 		RefObject<OutPt> tempRefObject = new RefObject<>(outrec.pts);
-		FixSelfIntersects(tempRefObject);
+		FixSelfIntersects(tempRefObject); // NOTE BUGGY
+		if (outrec.pts != tempRefObject.argValue) {
+			outrec.pts = tempRefObject.argValue;
+		}
 	}
 
 	private OutPt DoSplitOp(RefObject<OutPt> outRecOp, OutPt splitOp) {
@@ -2883,7 +2880,7 @@ public class ClipperBase {
 		return result;
 	}
 
-	private void FixSelfIntersects(RefObject<OutPt> op) {
+	private void FixSelfIntersects(RefObject<OutPt> op) { // TODO BUGGY -- op.pts not updated within method!
 		if (!IsValidClosedPath(op.argValue)) {
 			return;
 		}
