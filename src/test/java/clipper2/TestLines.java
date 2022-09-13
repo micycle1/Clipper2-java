@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -13,9 +12,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import clipper2.ClipperFileIO.TestCase;
-import clipper2.core.Path64;
 import clipper2.core.Paths64;
-import clipper2.core.Point64;
 import clipper2.engine.Clipper64;
 
 class TestLines {
@@ -32,9 +29,9 @@ class TestLines {
 		var solution = new Paths64();
 		var solution_open = new Paths64();
 
-		c64.AddSubjects(test.subj());
-		c64.AddOpenSubjects(test.subj_open());
-		c64.AddClips(test.clip());
+		c64.AddSubject(test.subj());
+		c64.AddOpenSubject(test.subj_open());
+		c64.AddClip(test.clip());
 		c64.Execute(test.clipType(), test.fillRule(), solution, solution_open);
 
 		if (test.area() > 0) {

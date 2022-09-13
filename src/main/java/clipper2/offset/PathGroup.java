@@ -1,11 +1,7 @@
 package clipper2.offset;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import clipper2.core.Path64;
 import clipper2.core.Paths64;
-import clipper2.core.Point64;
 
 public class PathGroup {
 
@@ -20,8 +16,6 @@ public class PathGroup {
 		this(paths, joinType, EndType.Polygon);
 	}
 
-//C# TO JAVA CONVERTER NOTE: Java does not support optional parameters. Overloaded method(s) are created above:
-//ORIGINAL LINE: public PathGroup(Paths64 paths, JoinType joinType, EndType endType = EndType.Polygon)
 	public PathGroup(Paths64 paths, JoinType joinType, EndType endType) {
 		_inPaths = new Paths64(paths);
 		_joinType = joinType;

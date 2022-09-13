@@ -29,9 +29,9 @@ class TestPolygons {
 		var solution = new Paths64();
 		var solution_open = new Paths64();
 
-		c64.AddSubjects(test.subj());
-		c64.AddOpenSubjects(test.subj_open());
-		c64.AddClips(test.clip());
+		c64.AddSubject(test.subj());
+		c64.AddOpenSubject(test.subj_open());
+		c64.AddClip(test.clip());
 		c64.Execute(test.clipType(), test.fillRule(), solution, solution_open);
 
 		if (test.area() > 0) {

@@ -3,7 +3,6 @@ package clipper2;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -61,9 +60,9 @@ class TestPolytree {
 			assertSame(1, poi_inside_counter, String.format("poi_inside_counter - expected 1 but got %1$s", poi_inside_counter));
 		}
 
-		clipper.AddSubjects(subject);
-		clipper.AddOpenSubjects(subjectOpen);
-		clipper.AddClips(clip);
+		clipper.AddSubject(subject);
+		clipper.AddOpenSubject(subjectOpen);
+		clipper.AddClip(clip);
 		clipper.Execute(test.clipType(), test.fillRule(), solutionTree, solution_open);
 
 		var solutionPaths = Clipper.PolyTreeToPaths64(solutionTree);

@@ -1,11 +1,9 @@
 package clipper2.engine;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import clipper2.Nullable;
 import clipper2.core.Path64;
-import clipper2.core.Point64;
 import clipper2.core.Rect64;
 
 /**

@@ -1,14 +1,13 @@
 package clipper2;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import clipper2.core.FillRule;
 import clipper2.core.Path64;
+import clipper2.core.PathD;
 import clipper2.core.Paths64;
+import clipper2.core.PathsD;
 import clipper2.core.Point64;
-import clipper2.core.PointD;
 
 public class Minkowski {
 
@@ -16,11 +15,11 @@ public class Minkowski {
 		return Clipper.Union(MinkowskiInternal(pattern, path, true, isClosed), FillRule.NonZero);
 	}
 
-//	public static List<List<PointD>> Sum(List<PointD> pattern, List<PointD> path, boolean isClosed) { // NOTE
-//		return Sum(pattern, path, isClosed, 2);
-//	}
+	public static PathsD Sum(PathD pattern, PathD path, boolean isClosed) {
+		return Sum(pattern, path, isClosed, 2);
+	}
 
-	public static List<List<PointD>> Sum(List<PointD> pattern, List<PointD> path, boolean isClosed, int decimalPlaces) {
+	public static PathsD Sum(PathD pattern, PathD path, boolean isClosed, int decimalPlaces) {
 		double scale = Math.pow(10, decimalPlaces);
 		Paths64 tmp = Clipper.Union(
 				MinkowskiInternal(Clipper.ScalePath64(pattern, scale), Clipper.ScalePath64(path, scale), true, isClosed), FillRule.NonZero);
@@ -31,11 +30,11 @@ public class Minkowski {
 		return Clipper.Union(MinkowskiInternal(pattern, path, false, isClosed), FillRule.NonZero);
 	}
 
-//	public static List<List<PointD>> Diff(List<PointD> pattern, List<PointD> path, boolean isClosed) { // NOTE
-//		return Diff(pattern, path, isClosed, 2);
-//	}
+	public static PathsD Diff(PathD pattern, PathD path, boolean isClosed) {
+		return Diff(pattern, path, isClosed, 2);
+	}
 
-	public static List<List<PointD>> Diff(List<PointD> pattern, List<PointD> path, boolean isClosed, int decimalPlaces) {
+	public static PathsD Diff(PathD pattern, PathD path, boolean isClosed, int decimalPlaces) {
 		double scale = Math.pow(10, decimalPlaces);
 		Paths64 tmp = Clipper.Union(
 				MinkowskiInternal(Clipper.ScalePath64(pattern, scale), Clipper.ScalePath64(path, scale), false, isClosed),
@@ -68,8 +67,7 @@ public class Minkowski {
 		int h = patLen - 1;
 		for (int i = delta; i < pathLen; i++) {
 			for (int j = 0; j < patLen; j++) {
-				Path64 quad = Path64(
-						List.of(tmp.get(g).get(h), tmp.get(i).get(h), tmp.get(i).get(j), tmp.get(g).get(j)));
+				Path64 quad = Path64(List.of(tmp.get(g).get(h), tmp.get(i).get(h), tmp.get(i).get(j), tmp.get(g).get(j)));
 				if (!Clipper.IsPositive(quad)) {
 					result.add(Clipper.ReversePath(quad));
 				} else {

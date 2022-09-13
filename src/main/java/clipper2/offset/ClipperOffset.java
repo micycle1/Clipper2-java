@@ -9,6 +9,7 @@ import clipper2.core.ClipType;
 import clipper2.core.FillRule;
 import clipper2.core.InternalClipper;
 import clipper2.core.Path64;
+import clipper2.core.PathD;
 import clipper2.core.Paths64;
 import clipper2.core.Point64;
 import clipper2.core.PointD;
@@ -36,7 +37,7 @@ import tangible.RefObject;
 public class ClipperOffset {
 
 	private final List<PathGroup> _pathGroups = new ArrayList<>();
-	private final List<PointD> _normals = new ArrayList<>();
+	private final PathD _normals = new PathD();
 	private final Paths64 solution = new Paths64();
 	private double _delta, _abs_delta, _tmpLimit, _stepsPerRad;
 	private JoinType _joinType = JoinType.values()[0];
@@ -159,7 +160,7 @@ public class ClipperOffset {
 			Clipper64 c = new Clipper64();
 			c.setPreserveCollinear(getPreserveCollinear());
 			c.setReverseSolution(getReverseSolution() != _pathGroups.get(0)._pathsReversed);
-			c.AddSubjects(solution);
+			c.AddSubject(solution);
 			if (_pathGroups.get(0)._pathsReversed) {
 				c.Execute(ClipType.Union, FillRule.Negative, solution);
 			} else {
@@ -538,7 +539,7 @@ public class ClipperOffset {
 			Clipper64 c = new Clipper64();
 			c.setPreserveCollinear(getPreserveCollinear());
 			c.setReverseSolution(getReverseSolution() != group._pathsReversed);
-			c.AddSubjects(group._outPaths);
+			c.AddSubject(group._outPaths);
 			if (group._pathsReversed) {
 				c.Execute(ClipType.Union, FillRule.Negative, group._outPaths);
 			} else {

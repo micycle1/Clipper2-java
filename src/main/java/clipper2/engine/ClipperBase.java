@@ -3,7 +3,6 @@ package clipper2.engine;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.List;
 import java.util.TreeSet;
 
 import clipper2.Clipper;
@@ -534,7 +533,7 @@ public class ClipperBase {
 	 * 
 	 * @param paths
 	 */
-	public final void AddSubjects(Paths64 paths) {
+	public final void AddSubject(Paths64 paths) {
 		paths.forEach(path -> AddPath(path, PathType.Subject));
 	}
 
@@ -547,7 +546,7 @@ public class ClipperBase {
 		AddPath(path, PathType.Subject, true);
 	}
 
-	public final void AddOpenSubjects(Paths64 paths) {
+	public final void AddOpenSubject(Paths64 paths) {
 		paths.forEach(path -> AddPath(path, PathType.Subject, true));
 	}
 
@@ -560,7 +559,7 @@ public class ClipperBase {
 		AddPath(path, PathType.Clip);
 	}
 
-	public final void AddClips(Paths64 paths) {
+	public final void AddClip(Paths64 paths) {
 		paths.forEach(path -> AddPath(path, PathType.Clip));
 	}
 
@@ -1069,8 +1068,6 @@ public class ClipperBase {
 			result = outrec.pts;
 
 			outrec.owner = GetRealOutRec(outrec.owner);
-//C# TO JAVA CONVERTER TODO TASK: C# to Java Converter could not resolve the named parameters in the following line:
-//ORIGINAL LINE: if (usingPolytree && outrec.owner is { frontEdge: null })
 			if (usingPolytree && outrec.owner.frontEdge == null) { // NOTE strange c# syntax
 				outrec.owner = GetRealOutRec(outrec.owner.owner);
 			}

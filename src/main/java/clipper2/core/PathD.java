@@ -4,17 +4,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 @SuppressWarnings("serial")
-public class Path64 extends ArrayList<Point64> {
+public class PathD extends ArrayList<PointD> {
 	
-	public Path64() {
+	public PathD() {
 		super();
 	}
 	
-	public Path64(int n) {
+	public PathD(int n) {
 		super(n);
 	}
 	
-	public Path64(List<Point64> path) {
+	public PathD(List<PointD> path) {
 		super(path);
 	}
 

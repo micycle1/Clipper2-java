@@ -1,6 +1,5 @@
 package clipper2.engine;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import clipper2.core.ClipType;
@@ -8,7 +7,6 @@ import clipper2.core.FillRule;
 import clipper2.core.Path64;
 import clipper2.core.PathType;
 import clipper2.core.Paths64;
-import clipper2.core.Point64;
 
 /**
  * The Clipper class performs boolean 'clipping'. This class is very similar to

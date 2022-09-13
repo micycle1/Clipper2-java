@@ -4,17 +4,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 @SuppressWarnings("serial")
-public class Paths64 extends ArrayList<Path64> {
+public class PathsD extends ArrayList<PathD> {
 	
-	public Paths64() {
+	public PathsD() {
 		super();
 	}
 	
-	public Paths64(int n) {
+	public PathsD(int n) {
 		super(n);
 	}
 	
-	public Paths64(List<Path64> paths) {
+	public PathsD(List<PathD> paths) {
 		super(paths);
 	}
 

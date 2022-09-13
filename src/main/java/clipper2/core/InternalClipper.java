@@ -1,7 +1,5 @@
 package clipper2.core;
 
-import java.util.List;
-
 import clipper2.engine.PointInPolygonResult;
 
 public final class InternalClipper {
