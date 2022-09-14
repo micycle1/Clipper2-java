@@ -22,7 +22,7 @@ public final class LocalMinima { // TODO record
 	}
 
 	public boolean opEquals(LocalMinima o) {
-		return vertex == o.vertex; // NOTE reference equals
+		return vertex == o.vertex;
 	}
 
 	public boolean opNotEquals(LocalMinima o) {

@@ -142,7 +142,7 @@ public class ClipperOffset {
 		solution.clear();
 		if (Math.abs(delta) < 0.5) {
 			for (PathGroup group : _pathGroups) {
-				for (Path64 path : group._inPaths) {
+				for (Path64 path : group.inPaths) {
 					solution.add(path);
 				}
 			}
@@ -159,9 +159,9 @@ public class ClipperOffset {
 			// clean up self-intersections ...
 			Clipper64 c = new Clipper64();
 			c.setPreserveCollinear(getPreserveCollinear());
-			c.setReverseSolution(getReverseSolution() != _pathGroups.get(0)._pathsReversed);
+			c.setReverseSolution(getReverseSolution() != _pathGroups.get(0).pathsReversed);
 			c.AddSubject(solution);
-			if (_pathGroups.get(0)._pathsReversed) {
+			if (_pathGroups.get(0).pathsReversed) {
 				c.Execute(ClipType.Union, FillRule.Negative, solution);
 			} else {
 				c.Execute(ClipType.Union, FillRule.Positive, solution);
@@ -299,16 +299,16 @@ public class ClipperOffset {
 
 		// get the intersection point
 		pt = IntersectPoint(pt1, pt2, pt3, pt4);
-		group._outPath.add(new Point64(pt));
+		group.outPath.add(new Point64(pt));
 		// get the second intersect point through reflecion
-		group._outPath.add(new Point64(ReflectPoint(pt, ptQ)));
+		group.outPath.add(new Point64(ReflectPoint(pt, ptQ)));
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
 //ORIGINAL LINE: [MethodImpl(MethodImplOptions.AggressiveInlining)] private void DoMiter(PathGroup group, Path64 path, int j, int k, double cosA)
 	private void DoMiter(PathGroup group, Path64 path, int j, int k, double cosA) {
 		double q = _delta / (cosA + 1);
-		group._outPath.add(new Point64(path.get(j).X + (_normals.get(k).x + _normals.get(j).x) * q,
+		group.outPath.add(new Point64(path.get(j).X + (_normals.get(k).x + _normals.get(j).x) * q,
 				path.get(j).Y + (_normals.get(k).y + _normals.get(j).y) * q));
 	}
 
@@ -318,14 +318,14 @@ public class ClipperOffset {
 		// even though angle may be negative this is a convex join
 		PointD pt2 = new PointD(normal2.x * _delta, normal2.y * _delta);
 		int steps = (int) Math.rint(_stepsPerRad * Math.abs(angle) + 0.501);
-		group._outPath.add(new Point64(pt.X + pt2.x, pt.Y + pt2.y));
+		group.outPath.add(new Point64(pt.X + pt2.x, pt.Y + pt2.y));
 		double stepSin = Math.sin(angle / steps);
 		double stepCos = Math.cos(angle / steps);
 		for (int i = 0; i < steps; i++) {
 			pt2 = new PointD(pt2.x * stepCos - stepSin * pt2.y, pt2.x * stepSin + pt2.y * stepCos);
-			group._outPath.add(new Point64(pt.X + pt2.x, pt.Y + pt2.y));
+			group.outPath.add(new Point64(pt.X + pt2.x, pt.Y + pt2.y));
 		}
-		group._outPath.add(new Point64(pt.X + normal1.x * _delta, pt.Y + normal1.y * _delta));
+		group.outPath.add(new Point64(pt.X + normal1.x * _delta, pt.Y + normal1.y * _delta));
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
@@ -359,13 +359,13 @@ public class ClipperOffset {
 			Point64 p1 = new Point64(path.get(j).X + _normals.get(k.argValue).x * _delta,
 					path.get(j).Y + _normals.get(k.argValue).y * _delta);
 			Point64 p2 = new Point64(path.get(j).X + _normals.get(j).x * _delta, path.get(j).Y + _normals.get(j).y * _delta);
-			group._outPath.add(p1);
+			group.outPath.add(p1);
 			if (p1 != p2) {
 				// when concave add an extra vertex to ensure neat clipping
 				if (!almostNoAngle) {
-					group._outPath.add(path.get(j));
+					group.outPath.add(path.get(j));
 				}
-				group._outPath.add(p2);
+				group.outPath.add(p2);
 			}
 		} else if (_joinType == JoinType.Round) {
 			DoRound(group, path.get(j), _normals.get(j), _normals.get(k.argValue), Math.atan2(sinA, cosA));
@@ -386,14 +386,14 @@ public class ClipperOffset {
 	}
 
 	private void OffsetPolygon(PathGroup group, Path64 path) {
-		group._outPath = new Path64();
+		group.outPath = new Path64();
 		int cnt = path.size(), prev = cnt - 1;
 		for (int i = 0; i < cnt; i++) {
 			RefObject<Integer> tempRef_prev = new RefObject<>(prev);
 			OffsetPoint(group, path, i, tempRef_prev);
 			prev = tempRef_prev.argValue;
 		}
-		group._outPaths.add(group._outPath);
+		group.outPaths.add(group.outPath);
 	}
 
 	private void OffsetOpenJoined(PathGroup group, Path64 path) {
@@ -404,7 +404,7 @@ public class ClipperOffset {
 	}
 
 	private void OffsetOpenPath(PathGroup group, Path64 path, EndType endType) {
-		group._outPath = new Path64();
+		group.outPath = new Path64();
 		int cnt = path.size() - 1, k = 0;
 		for (int i = 1; i < cnt; i++) {
 			RefObject<Integer> tempRef_k = new RefObject<>(k);
@@ -417,9 +417,9 @@ public class ClipperOffset {
 
 		switch (endType) {
 			case Butt :
-				group._outPath.add(new Point64(path.get(cnt - 1).X + _normals.get(cnt - 2).x * _delta,
+				group.outPath.add(new Point64(path.get(cnt - 1).X + _normals.get(cnt - 2).x * _delta,
 						path.get(cnt - 1).Y + _normals.get(cnt - 2).y * _delta));
-				group._outPath.add(new Point64(path.get(cnt - 1).X - _normals.get(cnt - 2).x * _delta,
+				group.outPath.add(new Point64(path.get(cnt - 1).X - _normals.get(cnt - 2).x * _delta,
 						path.get(cnt - 1).Y - _normals.get(cnt - 2).y * _delta));
 				break;
 			case Round :
@@ -446,8 +446,8 @@ public class ClipperOffset {
 		// now cap the start ...
 		switch (endType) {
 			case Butt :
-				group._outPath.add(new Point64(path.get(0).X + _normals.get(1).x * _delta, path.get(0).Y + _normals.get(1).y * _delta));
-				group._outPath.add(new Point64(path.get(0).X - _normals.get(1).x * _delta, path.get(0).Y - _normals.get(1).y * _delta));
+				group.outPath.add(new Point64(path.get(0).X + _normals.get(1).x * _delta, path.get(0).Y + _normals.get(1).y * _delta));
+				group.outPath.add(new Point64(path.get(0).X - _normals.get(1).x * _delta, path.get(0).Y - _normals.get(1).y * _delta));
 				break;
 			case Round :
 				DoRound(group, path.get(0), _normals.get(0), _normals.get(1), Math.PI);
@@ -457,7 +457,7 @@ public class ClipperOffset {
 				break;
 		}
 
-		group._outPaths.add(group._outPath);
+		group.outPaths.add(group.outPath);
 	}
 
 //C# TO JAVA CONVERTER TODO TASK: Java annotations will not correspond to .NET attributes:
@@ -467,69 +467,69 @@ public class ClipperOffset {
 	}
 
 	private void DoGroupOffset(PathGroup group, double delta) {
-		if (group._endType != EndType.Polygon) {
+		if (group.endType != EndType.Polygon) {
 			delta = Math.abs(delta) / 2;
 		}
-		boolean isClosedPaths = !IsFullyOpenEndType(group._endType);
+		boolean isClosedPaths = !IsFullyOpenEndType(group.endType);
 
 		if (isClosedPaths) {
 			// the lowermost polygon must be an outer polygon. So we can use that as the
 			// designated orientation for outer polygons (needed for tidy-up clipping)
-			int lowestIdx = GetLowestPolygonIdx(group._inPaths);
+			int lowestIdx = GetLowestPolygonIdx(group.inPaths);
 			if (lowestIdx < 0) {
 				return;
 			}
 			// nb: don't use the default orientation here ...
-			double area = Clipper.Area(group._inPaths.get(lowestIdx));
+			double area = Clipper.Area(group.inPaths.get(lowestIdx));
 			if (area == 0) {
 				return;
 			}
-			group._pathsReversed = (area < 0);
-			if (group._pathsReversed) {
+			group.pathsReversed = (area < 0);
+			if (group.pathsReversed) {
 				delta = -delta;
 			}
 		} else {
-			group._pathsReversed = false;
+			group.pathsReversed = false;
 		}
 
 		_delta = delta;
 		_abs_delta = Math.abs(_delta);
-		_joinType = group._joinType;
+		_joinType = group.joinType;
 
 		// calculate a sensible number of steps (for 360 deg for the given offset
-		if (group._joinType == JoinType.Round || group._endType == EndType.Round) {
+		if (group.joinType == JoinType.Round || group.endType == EndType.Round) {
 			double arcTol = getArcTolerance() > 0.01 ? getArcTolerance() : Math.log10(2 + _abs_delta) * 0.25; // empirically derived
 			// get steps per 180 degrees (see offset_triginometry2.svg)
 			_stepsPerRad = Math.PI / Math.acos(1 - arcTol / _abs_delta) / TwoPi;
 		}
 
-		for (Path64 p : group._inPaths) {
+		for (Path64 p : group.inPaths) {
 			Path64 path = Clipper.StripDuplicates(p, isClosedPaths);
 			int cnt = path.size();
-			if (cnt == 0 || (cnt < 3 && !IsFullyOpenEndType(group._endType))) {
+			if (cnt == 0 || (cnt < 3 && !IsFullyOpenEndType(group.endType))) {
 				continue;
 			}
 
 			if (cnt == 1) {
-				group._outPath = new Path64();
+				group.outPath = new Path64();
 				// single vertex so build a circle or square ...
-				if (group._endType == EndType.Round) {
+				if (group.endType == EndType.Round) {
 					DoRound(group, path.get(0), new PointD(1.0, 0.0), new PointD(-1.0, 0.0), TwoPi);
 				} else {
-					group._outPath.add(new Point64(path.get(0).X - _delta, path.get(0).Y - _delta));
-					group._outPath.add(new Point64(path.get(0).X + _delta, path.get(0).Y - _delta));
-					group._outPath.add(new Point64(path.get(0).X + _delta, path.get(0).Y + _delta));
-					group._outPath.add(new Point64(path.get(0).X - _delta, path.get(0).Y + _delta));
+					group.outPath.add(new Point64(path.get(0).X - _delta, path.get(0).Y - _delta));
+					group.outPath.add(new Point64(path.get(0).X + _delta, path.get(0).Y - _delta));
+					group.outPath.add(new Point64(path.get(0).X + _delta, path.get(0).Y + _delta));
+					group.outPath.add(new Point64(path.get(0).X - _delta, path.get(0).Y + _delta));
 				}
-				group._outPaths.add(group._outPath);
+				group.outPaths.add(group.outPath);
 			} else {
 				BuildNormals(path);
-				if (group._endType == EndType.Polygon) {
+				if (group.endType == EndType.Polygon) {
 					OffsetPolygon(group, path);
-				} else if (group._endType == EndType.Joined) {
+				} else if (group.endType == EndType.Joined) {
 					OffsetOpenJoined(group, path);
 				} else {
-					OffsetOpenPath(group, path, group._endType);
+					OffsetOpenPath(group, path, group.endType);
 				}
 			}
 		}
@@ -538,15 +538,15 @@ public class ClipperOffset {
 			// clean up self-intersections
 			Clipper64 c = new Clipper64();
 			c.setPreserveCollinear(getPreserveCollinear());
-			c.setReverseSolution(getReverseSolution() != group._pathsReversed);
-			c.AddSubject(group._outPaths);
-			if (group._pathsReversed) {
-				c.Execute(ClipType.Union, FillRule.Negative, group._outPaths);
+			c.setReverseSolution(getReverseSolution() != group.pathsReversed);
+			c.AddSubject(group.outPaths);
+			if (group.pathsReversed) {
+				c.Execute(ClipType.Union, FillRule.Negative, group.outPaths);
 			} else {
-				c.Execute(ClipType.Union, FillRule.Positive, group._outPaths);
+				c.Execute(ClipType.Union, FillRule.Positive, group.outPaths);
 			}
 		}
-		solution.addAll(group._outPaths);
-		group._outPaths.clear();
+		solution.addAll(group.outPaths);
+		group.outPaths.clear();
 	}
 }

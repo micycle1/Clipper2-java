@@ -69,10 +69,8 @@ public final class Point64 {
 
 	@Override
 	public boolean equals(Object obj) {
-		boolean tempVar = obj instanceof Point64;
-		Point64 p = tempVar ? (Point64) obj : null;
-		if (tempVar) {
-			return opEquals(this.clone(), p);
+		if (obj instanceof Point64 p) {
+			return opEquals(this, p);
 		}
 		return false;
 	}

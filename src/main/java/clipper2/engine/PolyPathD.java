@@ -38,20 +38,20 @@ public class PolyPathD extends PolyPathBase {
 		PolyPathD newChild = new PolyPathD(this);
 		newChild.setScale(Scale);
 		newChild.setPolygon(Clipper.ScalePathD(p, Scale));
-		_childs.add(newChild);
+		children.add(newChild);
 		return newChild;
 	}
 
 	public final PolyPathD get(int index) {
-		if (index < 0 || index >= _childs.size()) {
+		if (index < 0 || index >= children.size()) {
 			throw new IllegalStateException();
 		}
-		return (PolyPathD) _childs.get(index);
+		return (PolyPathD) children.get(index);
 	}
 
 	public final double Area() {
 		double result = getPolygon() == null ? 0 : Clipper.Area(getPolygon());
-		for (var polyPathBase : _childs) {
+		for (var polyPathBase : children) {
 			PolyPathD child = (PolyPathD) polyPathBase;
 			result += child.Area();
 		}

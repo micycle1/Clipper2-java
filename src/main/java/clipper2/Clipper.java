@@ -183,7 +183,7 @@ public final class Clipper {
 
 	public static PathsD InflatePaths(PathsD paths, double delta, JoinType joinType, EndType endType, double miterLimit, int precision) {
 		if (precision < -8 || precision > 8) {
-			throw new RuntimeException("Error: Precision is out of range.");
+			throw new IllegalArgumentException("Error: Precision is out of range.");
 		}
 		double scale = Math.pow(10, precision);
 		Paths64 tmp = ScalePaths64(paths, scale);
@@ -275,35 +275,34 @@ public final class Clipper {
 	}
 
 	public static String Path64ToString(Path64 path) {
-		String result = "";
+		StringBuilder bld = new StringBuilder();
 		for (Point64 pt : path) {
-			result = result + pt.toString();
+			bld.append(pt.toString());
 		}
-		return result + '\n';
+		return bld.toString() + '\n';
 	}
 
 	public static String Paths64ToString(Paths64 paths) {
-		String result = "";
+		StringBuilder bld = new StringBuilder();
 		for (Path64 path : paths) {
-			result = result + Path64ToString(path);
+			bld.append(Path64ToString(path));
 		}
-		return result;
+		return bld.toString();
 	}
-
 	public static String PathDToString(PathD path) {
-		String result = "";
+		StringBuilder bld = new StringBuilder();
 		for (PointD pt : path) {
-			result = result + pt.toString();
+			bld.append(pt.toString());
 		}
-		return result + '\n';
+		return bld.toString() + '\n';
 	}
-
+	
 	public static String PathsDToString(PathsD paths) {
-		String result = "";
+		StringBuilder bld = new StringBuilder();
 		for (PathD path : paths) {
-			result = result + PathDToString(path);
+			bld.append(PathDToString(path));
 		}
-		return result;
+		return bld.toString();
 	}
 
 	public static Path64 OffsetPath(Path64 path, long dx, long dy) {
@@ -627,24 +626,24 @@ public final class Clipper {
 			paths.add(polyPath.getPolygon());
 		}
 		for (int i = 0; i < polyPath.getCount(); i++) {
-			AddPolyNodeToPaths((PolyPath64) polyPath._childs.get(i), paths);
+			AddPolyNodeToPaths((PolyPath64) polyPath.children.get(i), paths);
 		}
 	}
 
 	public static Paths64 PolyTreeToPaths64(PolyTree64 polyTree) {
 		Paths64 result = new Paths64();
 		for (int i = 0; i < polyTree.getCount(); i++) {
-			AddPolyNodeToPaths((PolyPath64) polyTree._childs.get(i), result);
+			AddPolyNodeToPaths((PolyPath64) polyTree.children.get(i), result);
 		}
 		return result;
 	}
 
 	public static void AddPolyNodeToPathsD(PolyPathD polyPath, PathsD paths) {
-		if (polyPath.getPolygon().size() > 0) {
+		if (!polyPath.getPolygon().isEmpty()) {
 			paths.add(polyPath.getPolygon());
 		}
 		for (int i = 0; i < polyPath.getCount(); i++) {
-			AddPolyNodeToPathsD((PolyPathD) polyPath._childs.get(i), paths);
+			AddPolyNodeToPathsD((PolyPathD) polyPath.children.get(i), paths);
 		}
 	}
 
@@ -683,7 +682,7 @@ public final class Clipper {
 	public static void RDP(Path64 path, int begin, int end, double epsSqrd, List<Boolean> flags) {
 		int idx = 0;
 		double max_d = 0;
-		while (end > begin && path.get(begin).equals(path.get(end).clone())) {
+		while (end > begin && path.get(begin).equals(path.get(end))) {
 			flags.set(end--, false);
 		}
 		for (int i = begin + 1; i < end; ++i) {

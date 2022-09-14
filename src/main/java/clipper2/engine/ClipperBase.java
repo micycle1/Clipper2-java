@@ -2,6 +2,7 @@ package clipper2.engine;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.TreeSet;
 
 import clipper2.Clipper;
@@ -30,11 +31,11 @@ public class ClipperBase {
 	private Active actives = null;
 	private Active sel = null;
 	private Joiner horzJoiners = null;
-	private ArrayList<LocalMinima> minimaList;
-	private ArrayList<IntersectNode> intersectList;
-	private ArrayList<Vertex> vertexList;
-	private ArrayList<OutRec> outrecList;
-	private ArrayList<Joiner> joinerList;
+	private List<LocalMinima> minimaList;
+	private List<IntersectNode> intersectList;
+	private List<Vertex> vertexList;
+	private List<OutRec> outrecList;
+	private List<Joiner> joinerList;
 	private TreeSet<Long> scanlineList;
 	private int currentLocMin;
 	private long currentBotY;
@@ -103,12 +104,12 @@ public class ClipperBase {
 		return (ae == ae.outrec.frontEdge);
 	}
 
-	/*-
-	*  Dx:                             0(90deg)                                    *
-	*                                  |                                           *
-	*               +inf (180deg) <--- o --. -inf (0deg)                           *
-	*******************************************************************************/
 	private static double GetDx(Point64 pt1, Point64 pt2) {
+		/*-
+		 *  Dx:                             0(90deg)                                    *
+		 *                                  |                                           *
+		 *               +inf (180deg) <--- o --. -inf (0deg)                           *
+		 *******************************************************************************/
 		double dy = pt2.Y - pt1.Y;
 		if (dy != 0) {
 			return (pt2.X - pt1.X) / dy;
@@ -419,12 +420,6 @@ public class ClipperBase {
 	}
 
 	protected final void AddPathsToVertexList(Paths64 paths, PathType polytype, boolean isOpen) {
-		int totalVertCnt = 0;
-		for (Path64 path : paths) {
-			totalVertCnt += path.size();
-		}
-		vertexList.ensureCapacity(vertexList.size() + totalVertCnt);
-
 		for (Path64 path : paths) {
 			Vertex v0 = null, prevv = null, currv;
 			for (Point64 pt : path) {
@@ -1482,7 +1477,6 @@ public class ClipperBase {
 		long y;
 		OutObject<Long> tempOuty = new OutObject<>();
 		if (!PopScanline(tempOuty)) {
-			y = tempOuty.argValue;
 			return;
 		} else {
 			y = tempOuty.argValue;

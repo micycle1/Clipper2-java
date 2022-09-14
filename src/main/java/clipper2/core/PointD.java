@@ -53,9 +53,7 @@ public final class PointD {
 
 	@Override
 	public boolean equals(Object obj) {
-		boolean tempVar = obj instanceof PointD;
-		PointD p = tempVar ? (PointD) obj : null;
-		if (tempVar) {
+		if (obj instanceof PointD p) {
 			return opEquals(this, p);
 		}
 		return false;
@@ -63,16 +61,11 @@ public final class PointD {
 
 	@Override
 	public int hashCode() {
-		return 0;
+		return Double.hashCode(x * 31 + y);
 	}
 
 	@Override
 	public PointD clone() {
-		PointD varCopy = new PointD();
-
-		varCopy.x = this.x;
-		varCopy.y = this.y;
-
-		return varCopy;
+		return new PointD(x, y);
 	}
 }

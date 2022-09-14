@@ -1,7 +1,5 @@
 package clipper2;
 
-import java.util.List;
-
 import clipper2.core.FillRule;
 import clipper2.core.Path64;
 import clipper2.core.PathD;
@@ -61,13 +59,13 @@ public class Minkowski {
 			tmp.add(path2);
 		}
 
-		Paths64 result = Paths64((pathLen - delta) * patLen);
+		Paths64 result = new Paths64((pathLen - delta) * patLen);
 		int g = isClosed ? pathLen - 1 : 0;
 
 		int h = patLen - 1;
 		for (int i = delta; i < pathLen; i++) {
 			for (int j = 0; j < patLen; j++) {
-				Path64 quad = Path64(List.of(tmp.get(g).get(h), tmp.get(i).get(h), tmp.get(i).get(j), tmp.get(g).get(j)));
+				Path64 quad = new Path64(tmp.get(g).get(h), tmp.get(i).get(h), tmp.get(i).get(j), tmp.get(g).get(j));
 				if (!Clipper.IsPositive(quad)) {
 					result.add(Clipper.ReversePath(quad));
 				} else {

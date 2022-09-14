@@ -28,20 +28,20 @@ public class PolyPath64 extends PolyPathBase {
 	public PolyPathBase AddChild(Path64 p) {
 		PolyPath64 newChild = new PolyPath64(this);
 		newChild.setPolygon(p);
-		_childs.add(newChild);
+		children.add(newChild);
 		return newChild;
 	}
 
 	public final PolyPath64 get(int index) {
-		if (index < 0 || index >= _childs.size()) {
+		if (index < 0 || index >= children.size()) {
 			throw new IllegalStateException();
 		}
-		return (PolyPath64) _childs.get(index);
+		return (PolyPath64) children.get(index);
 	}
 
 	public final double Area() {
 		double result = getPolygon() == null ? 0 : Clipper.Area(getPolygon());
-		for (var polyPathBase : _childs) {
+		for (var polyPathBase : children) {
 			PolyPath64 child = (PolyPath64) polyPathBase;
 			result += child.Area();
 		}

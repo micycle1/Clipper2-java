@@ -73,7 +73,7 @@ public class Clipper64 extends ClipperBase {
 		ExecuteInternal(clipType, fillRule);
 		BuildPaths(solutionClosed, solutionOpen);
 		try { // NOTE avoid for now
-		} catch (java.lang.Exception e) {
+		} catch (Exception e) {
 			succeeded = false;
 		}
 

@@ -35,7 +35,6 @@ public class ClipperFileIO {
 
 		for (String s : lines) {
 			if (s.isBlank() || s.length() == 0) {
-//				System.out.println("blank!");
 				cases.add(new TestCase(caption, ct, fillRule, area, count, GetIdx, new Paths64(subj), new Paths64(subj_open),
 						new Paths64(clip)));
 				subj.clear();
