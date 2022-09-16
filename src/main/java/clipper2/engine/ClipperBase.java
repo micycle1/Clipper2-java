@@ -1643,10 +1643,11 @@ public class ClipperBase {
 
 		// First we do a quicksort so intersections proceed in a bottom up order ...
 		intersectList.sort((a, b) -> {
-			if (a.pt.Y == b.pt.Y) {
-				return (a.pt.X < b.pt.X) ? -1 : 1;
+			var cmp = Long.compare(b.pt.Y, a.pt.Y); // sorting Y dsc
+			if (cmp == 0) {
+				return Long.compare(a.pt.X, b.pt.X); // sorting X asc
 			}
-			return (a.pt.Y > b.pt.Y) ? -1 : 1;
+			return cmp;
 		});
 
 		// Now as we process these intersections, we must sometimes adjust the order

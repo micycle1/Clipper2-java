@@ -1,6 +1,5 @@
 package clipper2;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -35,13 +34,14 @@ class TestPolygons {
 
 		if (test.area() > 0) {
 			double area2 = Clipper.Area(solution);
-			assertEquals(test.area(), Math.rint(area2), test.area() * 0.005);
+			double a = test.area() / area2;
+			assertTrue(Math.abs(test.area() - area2) < 2 || (a > 0.995 && a < 1.005));
 		}
 
 		if (test.count() > 0 && Math.abs(solution.size() - test.count()) > 2
 				&& Math.abs(solution.size() - test.count()) / test.count() > 0.02) {
 			assertTrue(Math.abs(solution.size() - test.count()) < 4,
-					String.format("Incorrect count: %s", (int) Math.abs(solution.size() - test.count())));
+					String.format("Vertex count incorrect. Difference=%s", (solution.size() - test.count())));
 		}
 	}
 }

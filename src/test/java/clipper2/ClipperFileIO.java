@@ -14,7 +14,7 @@ import clipper2.core.Point64;
 
 public class ClipperFileIO {
 
-	record TestCase(String caption, ClipType clipType, FillRule fillRule, double area, double count, int GetIdx, Paths64 subj,
+	record TestCase(String caption, ClipType clipType, FillRule fillRule, long area, int count, int GetIdx, Paths64 subj,
 			Paths64 subj_open, Paths64 clip) {
 	}
 
@@ -24,8 +24,8 @@ public class ClipperFileIO {
 		String caption = "";
 		ClipType ct = ClipType.None;
 		FillRule fillRule = FillRule.EvenOdd;
-		double area = 0;
-		double count = 0;
+		long area = 0;
+		int count = 0;
 		int GetIdx = 0;
 		var subj = new Paths64();
 		var subj_open = new Paths64();
