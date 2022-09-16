@@ -49,7 +49,7 @@ public final class Rect64 {
 	}
 
 	public boolean Contains(Point64 pt) {
-		return pt.X > left && pt.X < right && pt.Y > top && pt.Y < bottom;
+		return pt.x > left && pt.x < right && pt.y > top && pt.y < bottom;
 	}
 
 	public boolean Contains(Rect64 rec) {

@@ -220,7 +220,7 @@ public final class Clipper {
 		}
 		Point64 prevPt = path.get(cnt - 1).clone();
 		for (Point64 pt : path) {
-			a += (double) (prevPt.Y + pt.Y) * (prevPt.X - pt.X);
+			a += (double) (prevPt.y + pt.y) * (prevPt.x - pt.x);
 			prevPt = pt.clone();
 		}
 		return a * 0.5;
@@ -308,22 +308,22 @@ public final class Clipper {
 	public static Path64 OffsetPath(Path64 path, long dx, long dy) {
 		Path64 result = new Path64(path.size());
 		for (Point64 pt : path) {
-			result.add(new Point64(pt.X + dx, pt.Y + dy));
+			result.add(new Point64(pt.x + dx, pt.y + dy));
 		}
 		return result;
 	}
 
 	public static Point64 ScalePoint64(Point64 pt, double scale) {
 		Point64 result = new Point64();
-		result.X = (long) (pt.X * scale);
-		result.Y = (long) (pt.Y * scale);
+		result.x = (long) (pt.x * scale);
+		result.y = (long) (pt.y * scale);
 		return result.clone();
 	}
 
 	public static PointD ScalePointD(Point64 pt, double scale) {
 		PointD result = new PointD();
-		result.x = pt.X * scale;
-		result.y = pt.Y * scale;
+		result.x = pt.x * scale;
+		result.y = pt.y * scale;
 		return result.clone();
 	}
 
@@ -333,7 +333,7 @@ public final class Clipper {
 		}
 		Path64 result = new Path64(path.size());
 		for (Point64 pt : path) {
-			result.add(new Point64(pt.X * scale, pt.Y * scale));
+			result.add(new Point64(pt.x * scale, pt.y * scale));
 		}
 		return result;
 	}
@@ -444,7 +444,7 @@ public final class Clipper {
 	public static Path64 TranslatePath(Path64 path, long dx, long dy) {
 		Path64 result = new Path64(path.size());
 		for (Point64 pt : path) {
-			result.add(new Point64(pt.X + dx, pt.Y + dy));
+			result.add(new Point64(pt.x + dx, pt.y + dy));
 		}
 		return result;
 	}
@@ -506,17 +506,17 @@ public final class Clipper {
 		Rect64 result = MaxInvalidRect64;
 		for (Path64 path : paths) {
 			for (Point64 pt : path) {
-				if (pt.X < result.left) {
-					result.left = pt.X;
+				if (pt.x < result.left) {
+					result.left = pt.x;
 				}
-				if (pt.X > result.right) {
-					result.right = pt.X;
+				if (pt.x > result.right) {
+					result.right = pt.x;
 				}
-				if (pt.Y < result.top) {
-					result.top = pt.Y;
+				if (pt.y < result.top) {
+					result.top = pt.y;
 				}
-				if (pt.Y > result.bottom) {
-					result.bottom = pt.Y;
+				if (pt.y > result.bottom) {
+					result.bottom = pt.y;
 				}
 			}
 		}
@@ -669,10 +669,10 @@ public final class Clipper {
 	}
 
 	public static double PerpendicDistFromLineSqrd(Point64 pt, Point64 line1, Point64 line2) {
-		double a = (double) pt.X - line1.X;
-		double b = (double) pt.Y - line1.Y;
-		double c = (double) line2.X - line1.X;
-		double d = (double) line2.Y - line1.Y;
+		double a = (double) pt.x - line1.x;
+		double b = (double) pt.y - line1.y;
+		double c = (double) line2.x - line1.x;
+		double d = (double) line2.y - line1.y;
 		if (c == 0 && d == 0) {
 			return 0;
 		}

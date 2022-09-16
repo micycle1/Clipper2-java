@@ -14,8 +14,8 @@ public final class PointD {
 	}
 
 	public PointD(Point64 pt) {
-		x = pt.X;
-		y = pt.Y;
+		x = pt.x;
+		y = pt.y;
 	}
 
 	public PointD(PointD pt, double scale) {
@@ -24,8 +24,8 @@ public final class PointD {
 	}
 
 	public PointD(Point64 pt, double scale) {
-		x = pt.X * scale;
-		y = pt.Y * scale;
+		x = pt.x * scale;
+		y = pt.y * scale;
 	}
 
 	public PointD(long x, long y) {

@@ -6,15 +6,7 @@ import clipper2.core.Path64;
 
 public class PolyPath64 extends PolyPathBase {
 
-	private Path64 Polygon;
-
-	public final Path64 getPolygon() {
-		return Polygon;
-	}
-
-	private void setPolygon(Path64 value) {
-		Polygon = value;
-	}
+	private Path64 polygon;
 
 	public PolyPath64() {
 		this(null);
@@ -46,5 +38,13 @@ public class PolyPath64 extends PolyPathBase {
 			result += child.Area();
 		}
 		return result;
+	}
+
+	public final Path64 getPolygon() {
+		return polygon;
+	}
+
+	private void setPolygon(Path64 value) {
+		polygon = value;
 	}
 }

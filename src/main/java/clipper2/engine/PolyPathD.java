@@ -7,37 +7,22 @@ import clipper2.core.PathD;
 
 public class PolyPathD extends PolyPathBase {
 
-	private PathD Polygon;
-	private double Scale;
+	private PathD polygon;
+	private double scale;
 
-	public final PathD getPolygon() {
-		return Polygon;
-	}
-
-	private void setPolygon(PathD value) {
-		Polygon = value;
-	}
-	
-	public double getScale() {
-		return Scale;
-	}
-	public final void setScale(double value) {
-		Scale = value;
-	}
-
-	public PolyPathD() {
+	PolyPathD() {
 		this(null);
 	}
 
-	public PolyPathD(@Nullable PolyPathBase parent) {
+	PolyPathD(@Nullable PolyPathBase parent) {
 		super(parent);
 	}
 
 	@Override
 	public PolyPathBase AddChild(Path64 p) {
 		PolyPathD newChild = new PolyPathD(this);
-		newChild.setScale(Scale);
-		newChild.setPolygon(Clipper.ScalePathD(p, Scale));
+		newChild.setScale(scale);
+		newChild.setPolygon(Clipper.ScalePathD(p, scale));
 		children.add(newChild);
 		return newChild;
 	}
@@ -56,5 +41,21 @@ public class PolyPathD extends PolyPathBase {
 			result += child.Area();
 		}
 		return result;
+	}
+
+	public final PathD getPolygon() {
+		return polygon;
+	}
+
+	private void setPolygon(PathD value) {
+		polygon = value;
+	}
+
+	public double getScale() {
+		return scale;
+	}
+
+	public final void setScale(double value) {
+		scale = value;
 	}
 }

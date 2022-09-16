@@ -2,17 +2,17 @@ package clipper2.engine;
 
 import clipper2.core.PathType;
 
-public final class LocalMinima { // TODO record
+final class LocalMinima {
 
-	public Vertex vertex;
-	public PathType polytype;
-	public boolean isOpen = false;
+	Vertex vertex;
+	PathType polytype;
+	boolean isOpen = false;
+	
+	public LocalMinima() {
+	}
 
 	public LocalMinima(Vertex vertex, PathType polytype) {
 		this(vertex, polytype, false);
-	}
-
-	public LocalMinima() {
 	}
 
 	public LocalMinima(Vertex vertex, PathType polytype, boolean isOpen) {

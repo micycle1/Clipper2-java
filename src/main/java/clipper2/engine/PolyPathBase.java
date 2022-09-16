@@ -10,11 +10,11 @@ public abstract class PolyPathBase implements Iterable<PolyPathBase> {
 	public PolyPathBase parent;
 	public List<PolyPathBase> children = new ArrayList<>();
 
-	public PolyPathBase(PolyPathBase parent) {
+	PolyPathBase(PolyPathBase parent) {
 		this.parent = parent;
 	}
 
-	public PolyPathBase() {
+	PolyPathBase() {
 		this(null);
 	}
 

@@ -4,21 +4,21 @@ import clipper2.engine.PointInPolygonResult;
 
 public final class InternalClipper {
 
-	public static final double floatingPointTolerance = 1E-12;
-	public static final double defaultMinimumEdgeLength = 0.1;
+	private static final double FLOATING_POINT_TOLERANCE = 1E-12;
+	private static final double DEFAULT_MIN_EDGE_LENGTH = 0.1;
 
 	public static boolean IsAlmostZero(double value) {
-		return (Math.abs(value) <= floatingPointTolerance);
+		return (Math.abs(value) <= FLOATING_POINT_TOLERANCE);
 	}
 
 	public static double CrossProduct(Point64 pt1, Point64 pt2, Point64 pt3) {
 		// typecast to double to avoid potential int overflow
-		return ((double) (pt2.X - pt1.X) * (pt3.Y - pt2.Y) - (double) (pt2.Y - pt1.Y) * (pt3.X - pt2.X));
+		return ((double) (pt2.x - pt1.x) * (pt3.y - pt2.y) - (double) (pt2.y - pt1.y) * (pt3.x - pt2.x));
 	}
 
 	public static double DotProduct(Point64 pt1, Point64 pt2, Point64 pt3) {
 		// typecast to double to avoid potential int overflow
-		return ((double) (pt2.X - pt1.X) * (pt3.X - pt2.X) + (double) (pt2.Y - pt1.Y) * (pt3.Y - pt2.Y));
+		return ((double) (pt2.x - pt1.x) * (pt3.x - pt2.x) + (double) (pt2.y - pt1.y) * (pt3.y - pt2.y));
 	}
 
 	public static double CrossProduct(PointD vec1, PointD vec2) {
@@ -33,30 +33,30 @@ public final class InternalClipper {
 		ip.x = 0;
 		ip.y = 0;
 		double m1, b1, m2, b2;
-		if (ln1b.X == ln1a.X) {
-			if (ln2b.X == ln2a.X) {
+		if (ln1b.x == ln1a.x) {
+			if (ln2b.x == ln2a.x) {
 				return false;
 			}
-			m2 = (double) (ln2b.Y - ln2a.Y) / (ln2b.X - ln2a.X);
-			b2 = ln2a.Y - m2 * ln2a.X;
-			ip.x = ln1a.X;
-			ip.y = m2 * ln1a.X + b2;
-		} else if (ln2b.X == ln2a.X) {
-			m1 = (double) (ln1b.Y - ln1a.Y) / (ln1b.X - ln1a.X);
-			b1 = ln1a.Y - m1 * ln1a.X;
-			ip.x = ln2a.X;
-			ip.y = m1 * ln2a.X + b1;
+			m2 = (double) (ln2b.y - ln2a.y) / (ln2b.x - ln2a.x);
+			b2 = ln2a.y - m2 * ln2a.x;
+			ip.x = ln1a.x;
+			ip.y = m2 * ln1a.x + b2;
+		} else if (ln2b.x == ln2a.x) {
+			m1 = (double) (ln1b.y - ln1a.y) / (ln1b.x - ln1a.x);
+			b1 = ln1a.y - m1 * ln1a.x;
+			ip.x = ln2a.x;
+			ip.y = m1 * ln2a.x + b1;
 		} else {
-			m1 = (double) (ln1b.Y - ln1a.Y) / (ln1b.X - ln1a.X);
-			b1 = ln1a.Y - m1 * ln1a.X;
-			m2 = (double) (ln2b.Y - ln2a.Y) / (ln2b.X - ln2a.X);
-			b2 = ln2a.Y - m2 * ln2a.X;
-			if (Math.abs(m1 - m2) > floatingPointTolerance) {
+			m1 = (double) (ln1b.y - ln1a.y) / (ln1b.x - ln1a.x);
+			b1 = ln1a.y - m1 * ln1a.x;
+			m2 = (double) (ln2b.y - ln2a.y) / (ln2b.x - ln2a.x);
+			b2 = ln2a.y - m2 * ln2a.x;
+			if (Math.abs(m1 - m2) > FLOATING_POINT_TOLERANCE) {
 				ip.x = (b2 - b1) / (m1 - m2);
 				ip.y = m1 * ip.x + b1;
 			} else {
-				ip.x = (ln1a.X + ln1b.X) * 0.5;
-				ip.y = (ln1a.Y + ln1b.Y) * 0.5;
+				ip.x = (ln1a.x + ln1b.x) * 0.5;
+				ip.y = (ln1a.y + ln1b.y) * 0.5;
 			}
 		}
 
@@ -64,12 +64,12 @@ public final class InternalClipper {
 	}
 
 	public static boolean SegmentsIntersect(Point64 seg1a, Point64 seg1b, Point64 seg2a, Point64 seg2b) {
-		double dx1 = seg1a.X - seg1b.X;
-		double dy1 = seg1a.Y - seg1b.Y;
-		double dx2 = seg2a.X - seg2b.X;
-		double dy2 = seg2a.Y - seg2b.Y;
-		return (((dy1 * (seg2a.X - seg1a.X) - dx1 * (seg2a.Y - seg1a.Y)) * (dy1 * (seg2b.X - seg1a.X) - dx1 * (seg2b.Y - seg1a.Y)) < 0)
-				&& ((dy2 * (seg1a.X - seg2a.X) - dx2 * (seg1a.Y - seg2a.Y)) * (dy2 * (seg1b.X - seg2a.X) - dx2 * (seg1b.Y - seg2a.Y)) < 0));
+		double dx1 = seg1a.x - seg1b.x;
+		double dy1 = seg1a.y - seg1b.y;
+		double dx2 = seg2a.x - seg2b.x;
+		double dy2 = seg2a.y - seg2b.y;
+		return (((dy1 * (seg2a.x - seg1a.x) - dx1 * (seg2a.y - seg1a.y)) * (dy1 * (seg2b.x - seg1a.x) - dx1 * (seg2b.y - seg1a.y)) < 0)
+				&& ((dy2 * (seg1a.x - seg2a.x) - dx2 * (seg1a.y - seg2a.y)) * (dy2 * (seg1b.x - seg2a.x) - dx2 * (seg1b.y - seg2a.y)) < 0));
 	}
 
 	public static PointInPolygonResult PointInPolygon(Point64 pt, Path64 polygon) {
@@ -79,7 +79,7 @@ public final class InternalClipper {
 			return PointInPolygonResult.IsOutside;
 		}
 
-		while (i >= 0 && polygon.get(i).Y == pt.Y) {
+		while (i >= 0 && polygon.get(i).y == pt.y) {
 			--i;
 		}
 		if (i < 0) {
@@ -87,19 +87,19 @@ public final class InternalClipper {
 		}
 
 		int val = 0;
-		boolean isAbove = polygon.get(i).Y < pt.Y;
+		boolean isAbove = polygon.get(i).y < pt.y;
 		i = 0;
 
 		while (i < len) {
 			if (isAbove) {
-				while (i < len && polygon.get(i).Y < pt.Y) {
+				while (i < len && polygon.get(i).y < pt.y) {
 					i++;
 				}
 				if (i == len) {
 					break;
 				}
 			} else {
-				while (i < len && polygon.get(i).Y > pt.Y) {
+				while (i < len && polygon.get(i).y > pt.y) {
 					i++;
 				}
 				if (i == len) {
@@ -116,17 +116,17 @@ public final class InternalClipper {
 				prev = polygon.get(len - 1).clone();
 			}
 
-			if (curr.Y == pt.Y) {
-				if (curr.X == pt.X || (curr.Y == prev.Y && ((pt.X < prev.X) != (pt.X < curr.X)))) {
+			if (curr.y == pt.y) {
+				if (curr.x == pt.x || (curr.y == prev.y && ((pt.x < prev.x) != (pt.x < curr.x)))) {
 					return PointInPolygonResult.IsOn;
 				}
 				i++;
 				continue;
 			}
 
-			if (pt.X < curr.X && pt.X < prev.X) {
+			if (pt.x < curr.x && pt.x < prev.x) {
 				// we're only interested in edges crossing on the left
-			} else if (pt.X > prev.X && pt.X > curr.X) {
+			} else if (pt.x > prev.x && pt.x > curr.x) {
 				val = 1 - val; // toggle val
 			} else {
 				double d = CrossProduct(prev.clone(), curr.clone(), pt.clone());

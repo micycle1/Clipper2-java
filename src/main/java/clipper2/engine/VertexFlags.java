@@ -2,7 +2,7 @@ package clipper2.engine;
 
 import java.util.HashMap;
 
-public enum VertexFlags {
+enum VertexFlags {
 
 //	public static final int None = 0;
 //	public static final int OpenStart = 1;

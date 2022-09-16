@@ -3,12 +3,12 @@ package clipper2.engine;
 import java.util.Iterator;
 import java.util.List;
 
-public class PolyPathEnum implements Iterator<PolyPathBase> {
+class PolyPathEnum implements Iterator<PolyPathBase> {
 
-	public List<PolyPathBase> ppbList;
-	private int position = -1;
+	List<PolyPathBase> ppbList;
+	int position = -1;
 
-	public PolyPathEnum(List<PolyPathBase> childs) {
+	PolyPathEnum(List<PolyPathBase> childs) {
 		ppbList = childs;
 	}
 

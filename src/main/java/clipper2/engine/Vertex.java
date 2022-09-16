@@ -8,16 +8,16 @@ import clipper2.core.Point64;
  * ascending and descending 'bounds' (or sides) that start at local minima and
  * ascend to a local maxima, before descending again.
  */
-public class Vertex {
+class Vertex {
 
-	public Point64 pt = new Point64();
+	Point64 pt = new Point64();
 	@Nullable
-	public Vertex next;
+	Vertex next;
 	@Nullable
-	public Vertex prev;
-	public VertexFlags flags;
+	Vertex prev;
+	VertexFlags flags;
 
-	public Vertex(Point64 pt, VertexFlags flags, Vertex prev) {
+	Vertex(Point64 pt, VertexFlags flags, Vertex prev) {
 		this.pt = pt.clone();
 		this.flags = flags;
 		next = null;

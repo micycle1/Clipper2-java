@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.TreeSet;
 
 import clipper2.Clipper;
+import clipper2.Nullable;
 import clipper2.core.ClipType;
 import clipper2.core.FillRule;
 import clipper2.core.InternalClipper;
@@ -45,6 +46,158 @@ public class ClipperBase {
 	public boolean succeeded;
 	private boolean preserveCollinear;
 	private boolean reverseSolution;
+
+	/**
+	 * Path data structure for clipping solutions.
+	 */
+	static class OutRec {
+
+		int idx;
+		@Nullable
+		OutRec owner;
+		@Nullable
+		List<OutRec> splits;
+		@Nullable
+		Active frontEdge;
+		@Nullable
+		Active backEdge;
+		@Nullable
+		OutPt pts;
+		@Nullable
+		PolyPathBase polypath;
+		Rect64 bounds;
+		Path64 path;
+		boolean isOpen;
+
+		OutRec() {
+			bounds = new Rect64();
+			path = new Path64();
+		}
+
+	}
+
+	static class Active {
+
+		Point64 bot;
+		Point64 top;
+		long curX; // current (updated at every new scanline)
+		double dx;
+		int windDx; // 1 or -1 depending on winding direction
+		int windCount;
+		int windCount2; // winding count of the opposite polytype
+		@Nullable
+		OutRec outrec;
+		// AEL: 'active edge list' (Vatti's AET - active edge table)
+		// a linked list of all edges (from left to right) that are present
+		// (or 'active') within the current scanbeam (a horizontal 'beam' that
+		// sweeps from bottom to top over the paths in the clipping operation).
+		@Nullable
+		Active prevInAEL;
+		@Nullable
+		Active nextInAEL;
+		// SEL: 'sorted edge list' (Vatti's ST - sorted table)
+		// linked list used when sorting edges into their new positions at the
+		// top of scanbeams, but also (re)used to process horizontals.
+		@Nullable
+		Active prevInSEL;
+		@Nullable
+		Active nextInSEL;
+		@Nullable
+		Active jump;
+		@Nullable
+		Vertex vertexTop;
+		LocalMinima localMin = new LocalMinima(); // the bottom of an edge 'bound' (also Vatti)
+		boolean isLeftBound;
+
+	}
+
+	/**
+	 * Vertex data structure for clipping solutions
+	 */
+	static class OutPt {
+
+		Point64 pt;
+		@Nullable
+		OutPt next;
+		OutPt prev;
+		OutRec outrec;
+		@Nullable
+		Joiner joiner;
+
+		OutPt(Point64 pt, OutRec outrec) {
+			this.pt = pt;
+			this.outrec = outrec;
+			next = this;
+			prev = this;
+			joiner = null;
+		}
+
+	}
+
+	/**
+	 * Structure used in merging "touching" solution polygons.
+	 */
+	static class Joiner {
+
+		int idx;
+		OutPt op1;
+		@Nullable
+		OutPt op2;
+		@Nullable
+		Joiner next1;
+		@Nullable
+		Joiner next2;
+		@Nullable
+		Joiner nextH;
+
+		public Joiner(OutPt op1, @Nullable OutPt op2, @Nullable Joiner nextH) {
+			this.idx = -1;
+			this.nextH = nextH;
+			this.op1 = op1;
+			this.op2 = op2;
+			next1 = op1.joiner;
+			op1.joiner = this;
+
+			if (op2 != null) {
+				next2 = op2.joiner;
+				op2.joiner = this;
+			} else {
+				next2 = null;
+			}
+		}
+	}
+
+	/**
+	 * A structure representing 2 intersecting edges. Intersections must be sorted
+	 * so they are processed from the largest y coordinates to the smallest while
+	 * keeping edges adjacent.
+	 */
+	static final class IntersectNode {
+
+		Point64 pt = new Point64();
+		Active edge1;
+		Active edge2;
+
+		IntersectNode() {
+		}
+
+		IntersectNode(Point64 pt, Active edge1, Active edge2) {
+			this.pt = pt.clone();
+			this.edge1 = edge1;
+			this.edge2 = edge2;
+		}
+
+		@Override
+		public IntersectNode clone() {
+			IntersectNode varCopy = new IntersectNode();
+
+			varCopy.pt = this.pt.clone();
+			varCopy.edge1 = this.edge1;
+			varCopy.edge2 = this.edge2;
+
+			return varCopy;
+		}
+	}
 
 	public ClipperBase() {
 		minimaList = new ArrayList<>();
@@ -110,28 +263,28 @@ public class ClipperBase {
 		 *                                  |                                           *
 		 *               +inf (180deg) <--- o --. -inf (0deg)                           *
 		 *******************************************************************************/
-		double dy = pt2.Y - pt1.Y;
+		double dy = pt2.y - pt1.y;
 		if (dy != 0) {
-			return (pt2.X - pt1.X) / dy;
+			return (pt2.x - pt1.x) / dy;
 		}
-		if (pt2.X > pt1.X) {
+		if (pt2.x > pt1.x) {
 			return Double.NEGATIVE_INFINITY;
 		}
 		return Double.POSITIVE_INFINITY;
 	}
 
 	private static long TopX(Active ae, long currentY) {
-		if ((currentY == ae.top.Y) || (ae.top.X == ae.bot.X)) {
-			return ae.top.X;
+		if ((currentY == ae.top.y) || (ae.top.x == ae.bot.x)) {
+			return ae.top.x;
 		}
-		if (currentY == ae.bot.Y) {
-			return ae.bot.X;
+		if (currentY == ae.bot.y) {
+			return ae.bot.x;
 		}
-		return ae.bot.X + (long) Math.rint(ae.dx * (currentY - ae.bot.Y));
+		return ae.bot.x + (long) Math.rint(ae.dx * (currentY - ae.bot.y));
 	}
 
 	private static boolean IsHorizontal(Active ae) {
-		return (ae.top.Y == ae.bot.Y);
+		return (ae.top.y == ae.bot.y);
 	}
 
 	private static boolean IsHeadingRightHorz(Active ae) {
@@ -164,21 +317,21 @@ public class ClipperBase {
 
 		if (InternalClipper.IsAlmostZero(ae1.dx)) {
 			if (IsHorizontal(ae2)) {
-				return new Point64(ae1.bot.X, ae2.bot.Y);
+				return new Point64(ae1.bot.x, ae2.bot.y);
 			}
-			b2 = ae2.bot.Y - (ae2.bot.X / ae2.dx);
-			return new Point64(ae1.bot.X, (long) Math.rint(ae1.bot.X / ae2.dx + b2));
+			b2 = ae2.bot.y - (ae2.bot.x / ae2.dx);
+			return new Point64(ae1.bot.x, (long) Math.rint(ae1.bot.x / ae2.dx + b2));
 		}
 
 		if (InternalClipper.IsAlmostZero(ae2.dx)) {
 			if (IsHorizontal(ae1)) {
-				return new Point64(ae2.bot.X, ae1.bot.Y);
+				return new Point64(ae2.bot.x, ae1.bot.y);
 			}
-			b1 = ae1.bot.Y - (ae1.bot.X / ae1.dx);
-			return new Point64(ae2.bot.X, (long) Math.rint(ae2.bot.X / ae1.dx + b1));
+			b1 = ae1.bot.y - (ae1.bot.x / ae1.dx);
+			return new Point64(ae2.bot.x, (long) Math.rint(ae2.bot.x / ae1.dx + b1));
 		}
-		b1 = ae1.bot.X - ae1.bot.Y * ae1.dx;
-		b2 = ae2.bot.X - ae2.bot.Y * ae2.dx;
+		b1 = ae1.bot.x - ae1.bot.y * ae1.dx;
+		b2 = ae2.bot.x - ae2.bot.y * ae2.dx;
 		double q = (b2 - b1) / (ae1.dx - ae2.dx);
 		return (Math.abs(ae1.dx) < Math.abs(ae2.dx)) ? new Point64((long) Math.rint(ae1.dx * q + b1), (long) Math.rint(q))
 				: new Point64((long) Math.rint(ae2.dx * q + b2), (long) Math.rint(q));
@@ -225,11 +378,11 @@ public class ClipperBase {
 	private static Vertex GetCurrYMaximaVertex(Active ae) {
 		Vertex result = ae.vertexTop;
 		if (ae.windDx > 0) {
-			while (result.next.pt.Y == result.pt.Y) {
+			while (result.next.pt.y == result.pt.y) {
 				result = result.next;
 			}
 		} else {
-			while (result.prev.pt.Y == result.pt.Y) {
+			while (result.prev.pt.y == result.pt.y) {
 				result = result.prev;
 			}
 		}
@@ -242,14 +395,14 @@ public class ClipperBase {
 	private static Active GetHorzMaximaPair(Active horz, Vertex maxVert) {
 		// we can't be sure whether the MaximaPair is on the left or right, so ...
 		Active result = horz.prevInAEL;
-		while (result != null && result.curX >= maxVert.pt.X) {
+		while (result != null && result.curX >= maxVert.pt.x) {
 			if (result.vertexTop == maxVert) {
 				return result; // Found!
 			}
 			result = result.prevInAEL;
 		}
 		result = horz.nextInAEL;
-		while (result != null && TopX(result, horz.top.Y) <= maxVert.pt.X) {
+		while (result != null && TopX(result, horz.top.y) <= maxVert.pt.x) {
 			if (result.vertexTop == maxVert) {
 				return result; // Found!
 			}
@@ -298,15 +451,15 @@ public class ClipperBase {
 		double area = 0.0;
 		OutPt op2 = op;
 		do {
-			area += (double) (op2.prev.pt.Y + op2.pt.Y) * (op2.prev.pt.X - op2.pt.X);
+			area += (double) (op2.prev.pt.y + op2.pt.y) * (op2.prev.pt.x - op2.pt.x);
 			op2 = op2.next;
 		} while (op2 != op);
 		return area * 0.5;
 	}
 
 	private static double AreaTriangle(Point64 pt1, Point64 pt2, Point64 pt3) {
-		return (double) (pt3.Y + pt1.Y) * (pt3.X - pt1.X) + (double) (pt1.Y + pt2.Y) * (pt1.X - pt2.X)
-				+ (double) (pt2.Y + pt3.Y) * (pt2.X - pt3.X);
+		return (double) (pt3.y + pt1.y) * (pt3.x - pt1.x) + (double) (pt1.y + pt2.y) * (pt1.x - pt2.x)
+				+ (double) (pt2.y + pt3.y) * (pt2.x - pt3.x);
 	}
 
 	private static OutRec GetRealOutRec(OutRec outRec) {
@@ -366,12 +519,12 @@ public class ClipperBase {
 
 	protected final void Reset() {
 		if (!isSortedMinimaList) {
-			minimaList.sort((locMin1, locMin2) -> Long.compare(locMin2.vertex.pt.Y, locMin1.vertex.pt.Y));
+			minimaList.sort((locMin1, locMin2) -> Long.compare(locMin2.vertex.pt.y, locMin1.vertex.pt.y));
 			isSortedMinimaList = true;
 		}
 
 		for (int i = minimaList.size() - 1; i >= 0; i--) {
-			scanlineList.add(minimaList.get(i).vertex.pt.Y);
+			scanlineList.add(minimaList.get(i).vertex.pt.y);
 		}
 
 		currentBotY = 0;
@@ -401,7 +554,7 @@ public class ClipperBase {
 	}
 
 	private boolean HasLocMinAtY(long y) {
-		return (currentLocMin < minimaList.size() && minimaList.get(currentLocMin).vertex.pt.Y == y);
+		return (currentLocMin < minimaList.size() && minimaList.get(currentLocMin).vertex.pt.y == y);
 	}
 
 	private LocalMinima PopLocalMinima() {
@@ -450,10 +603,10 @@ public class ClipperBase {
 			boolean goingup, goingup0;
 			if (isOpen) {
 				currv = v0.next;
-				while (v0 != currv && currv.pt.Y == v0.pt.Y) {
+				while (v0 != currv && currv.pt.y == v0.pt.y) {
 					currv = currv.next;
 				}
-				goingup = currv.pt.Y <= v0.pt.Y;
+				goingup = currv.pt.y <= v0.pt.y;
 				if (goingup) {
 					v0.flags = VertexFlags.OpenStart;
 					AddLocMin(v0, polytype, true);
@@ -462,23 +615,23 @@ public class ClipperBase {
 				}
 			} else { // closed path
 				prevv = v0.prev;
-				while (!v0.equals(prevv) && prevv.pt.Y == v0.pt.Y) {
+				while (!v0.equals(prevv) && prevv.pt.y == v0.pt.y) {
 					prevv = prevv.prev;
 				}
 				if (v0.equals(prevv)) {
 					continue; // only open paths can be completely flat
 				}
-				goingup = prevv.pt.Y > v0.pt.Y;
+				goingup = prevv.pt.y > v0.pt.y;
 			}
 
 			goingup0 = goingup;
 			prevv = v0;
 			currv = v0.next;
 			while (!v0.equals(currv)) {
-				if (currv.pt.Y > prevv.pt.Y && goingup) {
+				if (currv.pt.y > prevv.pt.y && goingup) {
 					prevv.flags = VertexFlags.forValue(prevv.flags.getValue() | VertexFlags.LocalMax.getValue());
 					goingup = false;
-				} else if (currv.pt.Y < prevv.pt.Y && !goingup) {
+				} else if (currv.pt.y < prevv.pt.y && !goingup) {
 					goingup = true;
 					AddLocMin(prevv, polytype, isOpen);
 				}
@@ -581,6 +734,8 @@ public class ClipperBase {
 					return false;
 				}
 				break;
+			case EvenOdd :
+				break;
 		}
 
 		switch (cliptype) {
@@ -604,10 +759,8 @@ public class ClipperBase {
 					default -> ae.windCount2 == 0;
 				};
 				return (GetPolyType(ae) == PathType.Subject) ? result : !result;
-
 			case Xor :
 				return true; // XOr is always contributing unless open
-
 			default :
 				return false;
 		}
@@ -752,18 +905,18 @@ public class ClipperBase {
 
 		// for starting open paths, place them according to
 		// the direction they're about to turn
-		if (!IsMaxima(resident) && (resident.top.Y > newcomer.top.Y)) {
+		if (!IsMaxima(resident) && (resident.top.y > newcomer.top.y)) {
 			return InternalClipper.CrossProduct(newcomer.bot, resident.top, NextVertex(resident).pt) <= 0;
 		}
 
-		if (!IsMaxima(newcomer) && (newcomer.top.Y > resident.top.Y)) {
+		if (!IsMaxima(newcomer) && (newcomer.top.y > resident.top.y)) {
 			return InternalClipper.CrossProduct(newcomer.bot, newcomer.top, NextVertex(newcomer).pt) >= 0;
 		}
 
-		long y = newcomer.bot.Y;
+		long y = newcomer.bot.y;
 		boolean newcomerIsLeft = newcomer.isLeftBound;
 
-		if (resident.bot.Y != y || resident.localMin.vertex.pt.Y != y) {
+		if (resident.bot.y != y || resident.localMin.vertex.pt.y != y) {
 			return newcomer.isLeftBound;
 		}
 		// resident must also have just been inserted
@@ -824,7 +977,7 @@ public class ClipperBase {
 			} else {
 				leftBound = new Active();
 				leftBound.bot = localMinima.vertex.pt;
-				leftBound.curX = localMinima.vertex.pt.X;
+				leftBound.curX = localMinima.vertex.pt.x;
 				leftBound.windDx = -1;
 				leftBound.vertexTop = localMinima.vertex.prev;
 				leftBound.top = localMinima.vertex.prev.pt;
@@ -838,7 +991,7 @@ public class ClipperBase {
 			} else {
 				rightBound = new Active();
 				rightBound.bot = localMinima.vertex.pt;
-				rightBound.curX = localMinima.vertex.pt.X;
+				rightBound.curX = localMinima.vertex.pt.x;
 				rightBound.windDx = 1;
 				rightBound.vertexTop = localMinima.vertex.next;
 				rightBound.top = localMinima.vertex.next.pt;
@@ -874,7 +1027,7 @@ public class ClipperBase {
 					leftBound = tempRefleftBound3.argValue;
 				}
 				// so when leftBound has windDx == 1, the polygon will be oriented
-				// counter-clockwise in Cartesian coords (clockwise with inverted Y).
+				// counter-clockwise in Cartesian coords (clockwise with inverted y).
 			} else if (leftBound == null) {
 				leftBound = rightBound;
 				rightBound = null;
@@ -918,7 +1071,7 @@ public class ClipperBase {
 				if (IsHorizontal(rightBound)) {
 					PushHorz(rightBound);
 				} else {
-					InsertScanline(rightBound.top.Y);
+					InsertScanline(rightBound.top.y);
 				}
 			} else if (contributing) {
 				StartOpenPath(leftBound, leftBound.bot);
@@ -927,7 +1080,7 @@ public class ClipperBase {
 			if (IsHorizontal(leftBound)) {
 				PushHorz(leftBound);
 			} else {
-				InsertScanline(leftBound.top.Y);
+				InsertScanline(leftBound.top.y);
 			}
 		} // while (HasLocMinAtY())
 	}
@@ -955,7 +1108,7 @@ public class ClipperBase {
 
 	private boolean TestJoinWithPrev2(Active e, Point64 currPt) {
 		return IsHotEdge(e) && !IsOpen(e) && (e.prevInAEL != null) && !IsOpen(e.prevInAEL) && IsHotEdge(e.prevInAEL)
-				&& (e.prevInAEL.top.Y < e.bot.Y) && (Math.abs(TopX(e.prevInAEL, currPt.Y) - currPt.X) < 2)
+				&& (e.prevInAEL.top.y < e.bot.y) && (Math.abs(TopX(e.prevInAEL, currPt.y) - currPt.x) < 2)
 				&& (InternalClipper.CrossProduct(e.prevInAEL.top, currPt, e.top) == 0);
 	}
 
@@ -968,7 +1121,7 @@ public class ClipperBase {
 
 	private boolean TestJoinWithNext2(Active e, Point64 currPt) {
 		return IsHotEdge(e) && !IsOpen(e) && (e.nextInAEL != null) && !IsOpen(e.nextInAEL) && IsHotEdge(e.nextInAEL)
-				&& (e.nextInAEL.top.Y < e.bot.Y) && (Math.abs(TopX(e.nextInAEL, currPt.Y) - currPt.X) < 2)
+				&& (e.nextInAEL.top.y < e.bot.y) && (Math.abs(TopX(e.nextInAEL, currPt.y) - currPt.x) < 2)
 				&& (InternalClipper.CrossProduct(e.nextInAEL.top, currPt, e.top) == 0);
 	}
 
@@ -1176,12 +1329,12 @@ public class ClipperBase {
 		ae.bot = ae.top;
 		ae.vertexTop = NextVertex(ae);
 		ae.top = ae.vertexTop.pt;
-		ae.curX = ae.bot.X;
+		ae.curX = ae.bot.x;
 		SetDx(ae);
 		if (IsHorizontal(ae)) {
 			return;
 		}
-		InsertScanline(ae.top.Y);
+		InsertScanline(ae.top.y);
 		if (TestJoinWithPrev1(ae)) {
 			OutPt op1 = AddOutPt(ae.prevInAEL, ae.bot);
 			OutPt op2 = AddOutPt(ae, ae.bot);
@@ -1530,7 +1683,7 @@ public class ClipperBase {
 
 		// rounding errors can occasionally place the calculated intersection
 		// point either below or above the scanbeam, so check and correct ...
-		if (pt.Y > currentBotY) {
+		if (pt.y > currentBotY) {
 			// ae.curr.y is still the bottom of scanbeam
 			// use the more vertical of the 2 edges to derive pt.x ...
 			if (Math.abs(ae1.dx) < Math.abs(ae2.dx)) {
@@ -1538,12 +1691,12 @@ public class ClipperBase {
 			} else {
 				pt = new Point64(TopX(ae2, currentBotY), currentBotY);
 			}
-		} else if (pt.Y < topY) {
+		} else if (pt.y < topY) {
 			// topY is at the top of the scanbeam
-			if (ae1.top.Y == topY) {
-				pt = new Point64(ae1.top.X, topY);
-			} else if (ae2.top.Y == topY) {
-				pt = new Point64(ae2.top.X, topY);
+			if (ae1.top.y == topY) {
+				pt = new Point64(ae1.top.x, topY);
+			} else if (ae2.top.y == topY) {
+				pt = new Point64(ae2.top.x, topY);
 			} else if (Math.abs(ae1.dx) < Math.abs(ae2.dx)) {
 				pt = new Point64(ae1.curX, topY);
 			} else {
@@ -1643,9 +1796,9 @@ public class ClipperBase {
 
 		// First we do a quicksort so intersections proceed in a bottom up order ...
 		intersectList.sort((a, b) -> {
-			var cmp = Long.compare(b.pt.Y, a.pt.Y); // sorting Y dsc
+			var cmp = Long.compare(b.pt.y, a.pt.y); // sorting y dsc
 			if (cmp == 0) {
-				return Long.compare(a.pt.X, b.pt.X); // sorting X asc
+				return Long.compare(a.pt.x, b.pt.x); // sorting x asc
 			}
 			return cmp;
 		});
@@ -1702,7 +1855,7 @@ public class ClipperBase {
 	}
 
 	private boolean ResetHorzDirection(Active horz, Active maxPair, OutObject<Long> leftX, OutObject<Long> rightX) {
-		if (horz.bot.X == horz.top.X) {
+		if (horz.bot.x == horz.top.x) {
 			// the horizontal edge is going nowhere ...
 			leftX.argValue = horz.curX;
 			rightX.argValue = horz.curX;
@@ -1713,29 +1866,29 @@ public class ClipperBase {
 			return ae != null;
 		}
 
-		if (horz.curX < horz.top.X) {
+		if (horz.curX < horz.top.x) {
 			leftX.argValue = horz.curX;
-			rightX.argValue = horz.top.X;
+			rightX.argValue = horz.top.x;
 			return true;
 		}
-		leftX.argValue = horz.top.X;
+		leftX.argValue = horz.top.x;
 		rightX.argValue = horz.curX;
 		return false; // right to left
 	}
 
 	private boolean HorzIsSpike(Active horz) {
 		Point64 nextPt = NextVertex(horz).pt;
-		return (horz.bot.X < horz.top.X) != (horz.top.X < nextPt.X);
+		return (horz.bot.x < horz.top.x) != (horz.top.x < nextPt.x);
 	}
 
 	private void TrimHorz(Active horzEdge, boolean preserveCollinear) {
 		boolean wasTrimmed = false;
 		Point64 pt = NextVertex(horzEdge).pt;
 
-		while (pt.Y == horzEdge.top.Y) {
+		while (pt.y == horzEdge.top.y) {
 			// always trim 180 deg. spikes (in closed paths)
 			// but otherwise break if preserveCollinear = true
-			if (preserveCollinear && (pt.X < horzEdge.top.X) != (horzEdge.bot.X < horzEdge.top.X)) {
+			if (preserveCollinear && (pt.x < horzEdge.top.x) != (horzEdge.bot.x < horzEdge.top.x)) {
 				break;
 			}
 
@@ -1770,7 +1923,7 @@ public class ClipperBase {
 	{
 		Point64 pt;
 		boolean horzIsOpen = IsOpen(horz);
-		long Y = horz.bot.Y;
+		long Y = horz.bot.y;
 
 		Vertex vertexmax = null;
 		Active maxPair = null;
@@ -1842,27 +1995,27 @@ public class ClipperBase {
 						break;
 					}
 
-					if (ae.curX == horz.top.X && !IsHorizontal(ae)) {
+					if (ae.curX == horz.top.x && !IsHorizontal(ae)) {
 						pt = NextVertex(horz).pt;
 						if (isLeftToRight) {
 							// with open paths we'll only break once past horz's end
 							if (IsOpen(ae) && !IsSamePolyType(ae, horz) && !IsHotEdge(ae)) {
-								if (TopX(ae, pt.Y) > pt.X) {
+								if (TopX(ae, pt.y) > pt.x) {
 									break;
 								}
 							}
 							// otherwise we'll only break when horz's outslope is greater than e's
-							else if (TopX(ae, pt.Y) >= pt.X) {
+							else if (TopX(ae, pt.y) >= pt.x) {
 								break;
 							}
 						} else // with open paths we'll only break once past horz's end
 						if (IsOpen(ae) && !IsSamePolyType(ae, horz) && !IsHotEdge(ae)) {
-							if (TopX(ae, pt.Y) < pt.X) {
+							if (TopX(ae, pt.y) < pt.x) {
 								break;
 							}
 						}
 						// otherwise we'll only break when horz's outslope is greater than e's
-						else if (TopX(ae, pt.Y) <= pt.X) {
+						else if (TopX(ae, pt.y) <= pt.x) {
 							break;
 						}
 					}
@@ -1920,7 +2073,7 @@ public class ClipperBase {
 				return;
 			}
 
-			if (NextVertex(horz).pt.Y != horz.top.Y) {
+			if (NextVertex(horz).pt.y != horz.top.y) {
 				break;
 			}
 
@@ -1977,8 +2130,8 @@ public class ClipperBase {
 		Active ae = actives;
 		while (ae != null) {
 			// NB 'ae' will never be horizontal here
-			if (ae.top.Y == y) {
-				ae.curX = ae.top.X;
+			if (ae.top.y == y) {
+				ae.curX = ae.top.x;
 				if (IsMaxima(ae)) {
 					ae = DoMaxima(ae); // TOP OF BOUND (MAXIMA)
 					continue;
@@ -2061,7 +2214,7 @@ public class ClipperBase {
 	}
 
 	private static boolean AreReallyClose(Point64 pt1, Point64 pt2) {
-		return (Math.abs(pt1.X - pt2.X) < 2) && (Math.abs(pt1.Y - pt2.Y) < 2);
+		return (Math.abs(pt1.x - pt2.x) < 2) && (Math.abs(pt1.y - pt2.y) < 2);
 	}
 
 	private static boolean IsValidClosedPath(OutPt op) {
@@ -2080,48 +2233,48 @@ public class ClipperBase {
 
 	private static boolean PointBetween(Point64 pt, Point64 corner1, Point64 corner2) {
 		// NB points may not be collinear
-		return ValueEqualOrBetween(pt.X, corner1.X, corner2.X) && ValueEqualOrBetween(pt.Y, corner1.Y, corner2.Y);
+		return ValueEqualOrBetween(pt.x, corner1.x, corner2.x) && ValueEqualOrBetween(pt.y, corner1.y, corner2.y);
 	}
 
 	private static boolean CollinearSegsOverlap(Point64 seg1a, Point64 seg1b, Point64 seg2a, Point64 seg2b) {
 		// precondition: seg1 and seg2 are collinear
-		if (seg1a.X == seg1b.X) {
-			if (seg2a.X != seg1a.X || seg2a.X != seg2b.X) {
+		if (seg1a.x == seg1b.x) {
+			if (seg2a.x != seg1a.x || seg2a.x != seg2b.x) {
 				return false;
 			}
-		} else if (seg1a.X < seg1b.X) {
-			if (seg2a.X < seg2b.X) {
-				if (seg2a.X >= seg1b.X || seg2b.X <= seg1a.X) {
+		} else if (seg1a.x < seg1b.x) {
+			if (seg2a.x < seg2b.x) {
+				if (seg2a.x >= seg1b.x || seg2b.x <= seg1a.x) {
 					return false;
 				}
-			} else if (seg2b.X >= seg1b.X || seg2a.X <= seg1a.X) {
+			} else if (seg2b.x >= seg1b.x || seg2a.x <= seg1a.x) {
 				return false;
 			}
-		} else if (seg2a.X < seg2b.X) {
-			if (seg2a.X >= seg1a.X || seg2b.X <= seg1b.X) {
+		} else if (seg2a.x < seg2b.x) {
+			if (seg2a.x >= seg1a.x || seg2b.x <= seg1b.x) {
 				return false;
 			}
-		} else if (seg2b.X >= seg1a.X || seg2a.X <= seg1b.X) {
+		} else if (seg2b.x >= seg1a.x || seg2a.x <= seg1b.x) {
 			return false;
 		}
 
-		if (seg1a.Y == seg1b.Y) {
-			if (seg2a.Y != seg1a.Y || seg2a.Y != seg2b.Y) {
+		if (seg1a.y == seg1b.y) {
+			if (seg2a.y != seg1a.y || seg2a.y != seg2b.y) {
 				return false;
 			}
-		} else if (seg1a.Y < seg1b.Y) {
-			if (seg2a.Y < seg2b.Y) {
-				if (seg2a.Y >= seg1b.Y || seg2b.Y <= seg1a.Y) {
+		} else if (seg1a.y < seg1b.y) {
+			if (seg2a.y < seg2b.y) {
+				if (seg2a.y >= seg1b.y || seg2b.y <= seg1a.y) {
 					return false;
 				}
-			} else if (seg2b.Y >= seg1b.Y || seg2a.Y <= seg1a.Y) {
+			} else if (seg2b.y >= seg1b.y || seg2a.y <= seg1a.y) {
 				return false;
 			}
-		} else if (seg2a.Y < seg2b.Y) {
-			if (seg2a.Y >= seg1a.Y || seg2b.Y <= seg1b.Y) {
+		} else if (seg2a.y < seg2b.y) {
+			if (seg2a.y >= seg1a.y || seg2b.y <= seg1b.y) {
 				return false;
 			}
-		} else if (seg2b.Y >= seg1a.Y || seg2a.Y <= seg1b.Y) {
+		} else if (seg2b.y >= seg1a.y || seg2a.y <= seg1b.y) {
 			return false;
 		}
 		return true;
@@ -2317,19 +2470,19 @@ public class ClipperBase {
 		OutRec outRec = GetRealOutRec(op.argValue.outrec);
 		op2.argValue = op.argValue;
 		if (outRec.frontEdge != null) {
-			while (op.argValue.prev != outRec.pts && op.argValue.prev.pt.Y == op.argValue.pt.Y) {
+			while (op.argValue.prev != outRec.pts && op.argValue.prev.pt.y == op.argValue.pt.y) {
 				op.argValue = op.argValue.prev;
 			}
-			while (op2.argValue != outRec.pts && op2.argValue.next.pt.Y == op2.argValue.pt.Y) {
+			while (op2.argValue != outRec.pts && op2.argValue.next.pt.y == op2.argValue.pt.y) {
 				op2.argValue = op2.argValue.next;
 			}
 			return op2.argValue != op.argValue;
 		}
 
-		while (op.argValue.prev != op2.argValue && op.argValue.prev.pt.Y == op.argValue.pt.Y) {
+		while (op.argValue.prev != op2.argValue && op.argValue.prev.pt.y == op.argValue.pt.y) {
 			op.argValue = op.argValue.prev;
 		}
-		while (op2.argValue.next != op.argValue && op2.argValue.next.pt.Y == op2.argValue.pt.Y) {
+		while (op2.argValue.next != op.argValue && op2.argValue.next.pt.y == op2.argValue.pt.y) {
 			op2.argValue = op2.argValue.next;
 		}
 		return op2.argValue != op.argValue && op2.argValue.next != op.argValue;
@@ -2375,7 +2528,7 @@ public class ClipperBase {
 				OutPt op2b;
 				OutObject<OutPt> tempOutop2b = new OutObject<>(); // NOTE SYNTAX
 				if (GetHorzExtendedHorzSeg(tempRefop2a, tempOutop2b)
-						&& HorzEdgesOverlap(op1a.pt.X, op1b.pt.X, op2a.pt.X, tempOutop2b.argValue.pt.X)) {
+						&& HorzEdgesOverlap(op1a.pt.x, op1b.pt.x, op2a.pt.x, tempOutop2b.argValue.pt.x)) {
 					op2b = tempOutop2b.argValue;
 					op2a = tempRefop2a.argValue;
 					// overlap found so promote to a 'real' join
@@ -2388,13 +2541,13 @@ public class ClipperBase {
 						AddJoin(op1a, op2a);
 					} else if (op1b.pt.opEquals(op2b.pt)) {
 						AddJoin(op1b, op2b);
-					} else if (ValueBetween(op1a.pt.X, op2a.pt.X, op2b.pt.X)) {
+					} else if (ValueBetween(op1a.pt.x, op2a.pt.x, op2b.pt.x)) {
 						AddJoin(op1a, InsertOp(op1a.pt, op2a));
-					} else if (ValueBetween(op1b.pt.X, op2a.pt.X, op2b.pt.X)) {
+					} else if (ValueBetween(op1b.pt.x, op2a.pt.x, op2b.pt.x)) {
 						AddJoin(op1b, InsertOp(op1b.pt, op2a));
-					} else if (ValueBetween(op2a.pt.X, op1a.pt.X, op1b.pt.X)) {
+					} else if (ValueBetween(op2a.pt.x, op1a.pt.x, op1b.pt.x)) {
 						AddJoin(op2a, InsertOp(op2a.pt, op1a));
-					} else if (ValueBetween(op2b.pt.X, op1a.pt.X, op1b.pt.X)) {
+					} else if (ValueBetween(op2b.pt.x, op1a.pt.x, op1b.pt.x)) {
 						AddJoin(op2b, InsertOp(op2b.pt, op1a));
 					}
 					break;
@@ -2516,15 +2669,15 @@ public class ClipperBase {
 		// perpendicular distance of point (x0,y0) = (a*x0 + b*y0 + C)/Sqrt(a*a + b*b)
 		// where ax + by +c = 0 is the equation of the line
 		// see https://en.wikipedia.org/wiki/Distancefromapointtoaline
-		double a = (linePt1.Y - linePt2.Y);
-		double b = (linePt2.X - linePt1.X);
-		double c = a * linePt1.X + b * linePt1.Y;
-		double q = a * pt.X + b * pt.Y - c;
+		double a = (linePt1.y - linePt2.y);
+		double b = (linePt2.x - linePt1.x);
+		double c = a * linePt1.x + b * linePt1.y;
+		double q = a * pt.x + b * pt.y - c;
 		return (q * q) / (a * a + b * b);
 	}
 
 	private static double DistanceSqr(Point64 pt1, Point64 pt2) {
-		return (double) (pt1.X - pt2.X) * (pt1.X - pt2.X) + (double) (pt1.Y - pt2.Y) * (pt1.Y - pt2.Y);
+		return (double) (pt1.x - pt2.x) * (pt1.x - pt2.x) + (double) (pt1.y - pt2.y) * (pt1.y - pt2.y);
 	}
 
 	private OutRec ProcessJoin(Joiner j) {
@@ -2979,17 +3132,17 @@ public class ClipperBase {
 		}
 		Rect64 result = new Rect64(Long.MAX_VALUE, Long.MAX_VALUE, -Long.MAX_VALUE, -Long.MAX_VALUE);
 		for (Point64 pt : path) {
-			if (pt.X < result.left) {
-				result.left = pt.X;
+			if (pt.x < result.left) {
+				result.left = pt.x;
 			}
-			if (pt.X > result.right) {
-				result.right = pt.X;
+			if (pt.x > result.right) {
+				result.right = pt.x;
 			}
-			if (pt.Y < result.top) {
-				result.top = pt.Y;
+			if (pt.y < result.top) {
+				result.top = pt.y;
 			}
-			if (pt.Y > result.bottom) {
-				result.bottom = pt.Y;
+			if (pt.y > result.bottom) {
+				result.bottom = pt.y;
 			}
 		}
 		return result;
@@ -3110,17 +3263,17 @@ public class ClipperBase {
 		for (Vertex t : vertexList) {
 			Vertex v = t;
 			do {
-				if (v.pt.X < bounds.left) {
-					bounds.left = v.pt.X;
+				if (v.pt.x < bounds.left) {
+					bounds.left = v.pt.x;
 				}
-				if (v.pt.X > bounds.right) {
-					bounds.right = v.pt.X;
+				if (v.pt.x > bounds.right) {
+					bounds.right = v.pt.x;
 				}
-				if (v.pt.Y < bounds.top) {
-					bounds.top = v.pt.Y;
+				if (v.pt.y < bounds.top) {
+					bounds.top = v.pt.y;
 				}
-				if (v.pt.Y > bounds.bottom) {
-					bounds.bottom = v.pt.Y;
+				if (v.pt.y > bounds.bottom) {
+					bounds.bottom = v.pt.y;
 				}
 				v = v.next;
 			} while (v != t);
