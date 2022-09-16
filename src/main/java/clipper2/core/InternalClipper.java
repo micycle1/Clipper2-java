@@ -107,13 +107,13 @@ public final class InternalClipper {
 				}
 			}
 
-			Point64 prev = new Point64();
+			Point64 prev;
 
-			Point64 curr = polygon.get(i).clone();
+			Point64 curr = polygon.get(i);
 			if (i > 0) {
-				prev = polygon.get(i - 1).clone();
+				prev = polygon.get(i - 1);
 			} else {
-				prev = polygon.get(len - 1).clone();
+				prev = polygon.get(len - 1);
 			}
 
 			if (curr.y == pt.y) {
@@ -129,7 +129,7 @@ public final class InternalClipper {
 			} else if (pt.x > prev.x && pt.x > curr.x) {
 				val = 1 - val; // toggle val
 			} else {
-				double d = CrossProduct(prev.clone(), curr.clone(), pt.clone());
+				double d = CrossProduct(prev, curr, pt);
 				if (d == 0) {
 					return PointInPolygonResult.IsOn;
 				}

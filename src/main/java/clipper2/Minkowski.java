@@ -49,11 +49,11 @@ public class Minkowski {
 			Path64 path2 = new Path64(patLen);
 			if (isSum) {
 				for (Point64 basePt : pattern) {
-					path2.add(Point64.opAdd(pathPt.clone(), basePt.clone()));
+					path2.add(Point64.opAdd(pathPt, basePt));
 				}
 			} else {
 				for (Point64 basePt : pattern) {
-					path2.add(Point64.opSubtract(pathPt.clone(), basePt.clone()));
+					path2.add(Point64.opSubtract(pathPt, basePt));
 				}
 			}
 			tmp.add(path2);

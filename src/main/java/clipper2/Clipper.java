@@ -218,10 +218,10 @@ public final class Clipper {
 		if (cnt < 3) {
 			return 0.0;
 		}
-		Point64 prevPt = path.get(cnt - 1).clone();
+		Point64 prevPt = path.get(cnt - 1);
 		for (Point64 pt : path) {
 			a += (double) (prevPt.y + pt.y) * (prevPt.x - pt.x);
-			prevPt = pt.clone();
+			prevPt = pt;
 		}
 		return a * 0.5;
 	}
@@ -250,10 +250,10 @@ public final class Clipper {
 		if (cnt < 3) {
 			return 0.0;
 		}
-		PointD prevPt = path.get(cnt - 1).clone();
+		PointD prevPt = path.get(cnt - 1);
 		for (PointD pt : path) {
 			a += (prevPt.y + pt.y) * (prevPt.x - pt.x);
-			prevPt = pt.clone();
+			prevPt = pt;
 		}
 		return a * 0.5;
 	}
@@ -318,14 +318,14 @@ public final class Clipper {
 		Point64 result = new Point64();
 		result.x = (long) (pt.x * scale);
 		result.y = (long) (pt.y * scale);
-		return result.clone();
+		return result;
 	}
 
 	public static PointD ScalePointD(Point64 pt, double scale) {
 		PointD result = new PointD();
 		result.x = pt.x * scale;
 		result.y = pt.y * scale;
-		return result.clone();
+		return result;
 	}
 
 	public static Path64 ScalePath(Path64 path, double scale) {
@@ -356,7 +356,7 @@ public final class Clipper {
 		}
 		PathD result = new PathD(path.size());
 		for (PointD pt : path) {
-			result.add(new PointD(pt.clone(), scale));
+			result.add(new PointD(pt, scale));
 		}
 		return result;
 	}
@@ -377,7 +377,7 @@ public final class Clipper {
 		int cnt = path.size();
 		Path64 res = new Path64(cnt);
 		for (PointD pt : path) {
-			res.add(new Point64(pt.clone(), scale));
+			res.add(new Point64(pt, scale));
 		}
 		return res;
 	}
@@ -395,7 +395,7 @@ public final class Clipper {
 		int cnt = path.size();
 		PathD res = new PathD(cnt);
 		for (Point64 pt : path) {
-			res.add(new PointD(pt.clone(), scale));
+			res.add(new PointD(pt, scale));
 		}
 		return res;
 	}
@@ -413,7 +413,7 @@ public final class Clipper {
 	public static Path64 Path64(PathD path) {
 		Path64 result = new Path64(path.size());
 		for (PointD pt : path) {
-			result.add(new Point64(pt.clone()));
+			result.add(new Point64(pt));
 		}
 		return result;
 	}
@@ -437,7 +437,7 @@ public final class Clipper {
 	public static PathD PathD(Path64 path) {
 		PathD result = new PathD(path.size());
 		for (Point64 pt : path) {
-			result.add(new PointD(pt.clone()));
+			result.add(new PointD(pt));
 		}
 		return result;
 	}
@@ -586,16 +586,16 @@ public final class Clipper {
 		if (cnt == 0) {
 			return result;
 		}
-		PointD lastPt = path.get(0).clone();
-		result.add(lastPt.clone());
+		PointD lastPt = path.get(0);
+		result.add(lastPt);
 		for (int i = 1; i < cnt; i++) {
-			if (!PointsNearEqual(lastPt.clone(), path.get(i).clone(), minEdgeLenSqrd)) {
-				lastPt = path.get(i).clone();
-				result.add(lastPt.clone());
+			if (!PointsNearEqual(lastPt, path.get(i), minEdgeLenSqrd)) {
+				lastPt = path.get(i);
+				result.add(lastPt);
 			}
 		}
 
-		if (isClosedPath && PointsNearEqual(lastPt.clone(), result.get(0).clone(), minEdgeLenSqrd)) {
+		if (isClosedPath && PointsNearEqual(lastPt, result.get(0), minEdgeLenSqrd)) {
 			result.remove(result.size() - 1);
 		}
 
@@ -608,15 +608,15 @@ public final class Clipper {
 		if (cnt == 0) {
 			return result;
 		}
-		Point64 lastPt = path.get(0).clone();
-		result.add(lastPt.clone());
+		Point64 lastPt = path.get(0);
+		result.add(lastPt);
 		for (int i = 1; i < cnt; i++) {
-			if (!path.get(i).equals(lastPt.clone())) {
-				lastPt = path.get(i).clone();
-				result.add(lastPt.clone());
+			if (!path.get(i).equals(lastPt)) {
+				lastPt = path.get(i);
+				result.add(lastPt);
 			}
 		}
-		if (isClosedPath && result.get(0).equals(lastPt.clone())) {
+		if (isClosedPath && result.get(0).equals(lastPt)) {
 			result.remove(result.size() - 1);
 		}
 		return result;
@@ -688,7 +688,7 @@ public final class Clipper {
 		}
 		for (int i = begin + 1; i < end; ++i) {
 			// PerpendicDistFromLineSqrd - avoids expensive Sqrt()
-			double d = PerpendicDistFromLineSqrd(path.get(i).clone(), path.get(begin).clone(), path.get(end).clone());
+			double d = PerpendicDistFromLineSqrd(path.get(i), path.get(begin), path.get(end));
 			if (d <= max_d) {
 				continue;
 			}
@@ -737,7 +737,7 @@ public final class Clipper {
 		Path64 result = new Path64(len);
 		for (int i = 0; i < len; ++i) {
 			if (flags.get(i).booleanValue()) {
-				result.add(path.get(i).clone());
+				result.add(path.get(i));
 			}
 		}
 		return result;
@@ -772,12 +772,12 @@ public final class Clipper {
 	public static void RDP(PathD path, int begin, int end, double epsSqrd, List<Boolean> flags) {
 		int idx = 0;
 		double max_d = 0;
-		while (end > begin && path.get(begin).equals(path.get(end).clone())) {
+		while (end > begin && path.get(begin).equals(path.get(end))) {
 			flags.set(end--, false);
 		}
 		for (int i = begin + 1; i < end; ++i) {
 			// PerpendicDistFromLineSqrd - avoids expensive Sqrt()
-			double d = PerpendicDistFromLineSqrd(path.get(i).clone(), path.get(begin).clone(), path.get(end).clone());
+			double d = PerpendicDistFromLineSqrd(path.get(i), path.get(begin), path.get(end));
 			if (d <= max_d) {
 				continue;
 			}
@@ -808,7 +808,7 @@ public final class Clipper {
 		PathD result = new PathD(len);
 		for (int i = 0; i < len; ++i) {
 			if (flags.get(i).booleanValue()) {
-				result.add(path.get(i).clone());
+				result.add(path.get(i));
 			}
 		}
 		return result;
@@ -831,40 +831,40 @@ public final class Clipper {
 		int i = 0;
 		if (!isOpen) {
 			while (i < len - 1
-					&& InternalClipper.CrossProduct(path.get(len - 1).clone(), path.get(i).clone(), path.get(i + 1).clone()) == 0) {
+					&& InternalClipper.CrossProduct(path.get(len - 1), path.get(i), path.get(i + 1)) == 0) {
 				i++;
 			}
 			while (i < len - 1
-					&& InternalClipper.CrossProduct(path.get(len - 2).clone(), path.get(len - 1).clone(), path.get(i).clone()) == 0) {
+					&& InternalClipper.CrossProduct(path.get(len - 2), path.get(len - 1), path.get(i)) == 0) {
 				len--;
 			}
 		}
 
 		if (len - i < 3) {
-			if (!isOpen || len < 2 || path.get(0).equals(path.get(1).clone())) {
+			if (!isOpen || len < 2 || path.get(0).equals(path.get(1))) {
 				return new Path64();
 			}
 			return path;
 		}
 
 		Path64 result = new Path64(len - i);
-		Point64 last = path.get(i).clone();
-		result.add(last.clone());
+		Point64 last = path.get(i);
+		result.add(last);
 		for (i++; i < len - 1; i++) {
-			if (InternalClipper.CrossProduct(last.clone(), path.get(i).clone(), path.get(i + 1).clone()) == 0) {
+			if (InternalClipper.CrossProduct(last, path.get(i), path.get(i + 1)) == 0) {
 				continue;
 			}
-			last = path.get(i).clone();
-			result.add(last.clone());
+			last = path.get(i);
+			result.add(last);
 		}
 
 		if (isOpen) {
-			result.add(path.get(len - 1).clone());
-		} else if (InternalClipper.CrossProduct(last.clone(), path.get(len - 1).clone(), result.get(0).clone()) != 0) {
-			result.add(path.get(len - 1).clone());
+			result.add(path.get(len - 1));
+		} else if (InternalClipper.CrossProduct(last, path.get(len - 1), result.get(0)) != 0) {
+			result.add(path.get(len - 1));
 		} else {
-			while (result.size() > 2 && InternalClipper.CrossProduct(result.get(result.size() - 1).clone(),
-					result.get(result.size() - 2).clone(), result.get(0).clone()) == 0) {
+			while (result.size() > 2 && InternalClipper.CrossProduct(result.get(result.size() - 1),
+					result.get(result.size() - 2), result.get(0)) == 0) {
 				result.remove(result.size() - 1);
 			}
 			if (result.size() < 3) {
@@ -889,7 +889,7 @@ public final class Clipper {
 	}
 
 	public static PointInPolygonResult PointInPolygon(Point64 pt, Path64 polygon) {
-		return InternalClipper.PointInPolygon(pt.clone(), polygon);
+		return InternalClipper.PointInPolygon(pt, polygon);
 	}
 
 	public static Path64 Ellipse(Point64 center, double radiusX, double radiusY) {
