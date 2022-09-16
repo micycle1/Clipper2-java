@@ -25,7 +25,7 @@ import tangible.RefObject;
  * calling Execute. And Execute can be called multiple times (ie with different
  * ClipTypes & FillRules) without having to reload these paths.
  */
-public class ClipperBase {
+abstract class ClipperBase {
 
 	private ClipType cliptype;
 	private FillRule fillrule;
@@ -199,7 +199,39 @@ public class ClipperBase {
 		}
 	}
 
-	public ClipperBase() {
+	/**
+	 * Vertex: a pre-clipping data structure. It is used to separate polygons into
+	 * ascending and descending 'bounds' (or sides) that start at local minima and
+	 * ascend to a local maxima, before descending again.
+	 */
+	class Vertex {
+
+		Point64 pt = new Point64();
+		@Nullable
+		Vertex next;
+		@Nullable
+		Vertex prev;
+		int flags;
+
+		Vertex(Point64 pt, int flags, Vertex prev) {
+			this.pt = pt.clone();
+			this.flags = flags;
+			next = null;
+			this.prev = prev;
+		}
+	}
+
+	class VertexFlags {
+
+		static final int None = 0;
+		static final int OpenStart = 1;
+		static final int OpenEnd = 2;
+		static final int LocalMax = 4;
+		static final int LocalMin = 8;
+
+	}
+
+	protected ClipperBase() {
 		minimaList = new ArrayList<>();
 		intersectList = new ArrayList<>();
 		vertexList = new ArrayList<>();
@@ -242,7 +274,7 @@ public class ClipperBase {
 	}
 
 	private static boolean IsOpenEnd(Vertex v) {
-		return (v.flags.getValue() & (VertexFlags.OpenStart.getValue() | VertexFlags.OpenEnd.getValue())) != VertexFlags.None.getValue();
+		return (v.flags & (VertexFlags.OpenStart | VertexFlags.OpenEnd)) != VertexFlags.None;
 	}
 
 	private static Active GetPrevHotEdge(Active ae) {
@@ -356,7 +388,7 @@ public class ClipperBase {
 	}
 
 	private static boolean IsMaxima(Vertex vertex) {
-		return ((vertex.flags.getValue() & VertexFlags.LocalMax.getValue()) != VertexFlags.None.getValue());
+		return ((vertex.flags & VertexFlags.LocalMax) != VertexFlags.None);
 	}
 
 	private static boolean IsMaxima(Active ae) {
@@ -451,15 +483,14 @@ public class ClipperBase {
 		double area = 0.0;
 		OutPt op2 = op;
 		do {
-			area += (double) (op2.prev.pt.y + op2.pt.y) * (op2.prev.pt.x - op2.pt.x);
+			area += (op2.prev.pt.y + op2.pt.y) * (op2.prev.pt.x - op2.pt.x);
 			op2 = op2.next;
 		} while (op2 != op);
 		return area * 0.5;
 	}
 
 	private static double AreaTriangle(Point64 pt1, Point64 pt2, Point64 pt3) {
-		return (double) (pt3.y + pt1.y) * (pt3.x - pt1.x) + (double) (pt1.y + pt2.y) * (pt1.x - pt2.x)
-				+ (double) (pt2.y + pt3.y) * (pt2.x - pt3.x);
+		return (pt3.y + pt1.y) * (pt3.x - pt1.x) + (pt1.y + pt2.y) * (pt1.x - pt2.x) + (pt2.y + pt3.y) * (pt2.x - pt3.x);
 	}
 
 	private static OutRec GetRealOutRec(OutRec outRec) {
@@ -563,10 +594,10 @@ public class ClipperBase {
 
 	private void AddLocMin(Vertex vert, PathType polytype, boolean isOpen) {
 		// make sure the vertex is added only once ...
-		if ((vert.flags.getValue() & VertexFlags.LocalMin.getValue()) != VertexFlags.None.getValue()) {
+		if ((vert.flags & VertexFlags.LocalMin) != VertexFlags.None) {
 			return;
 		}
-		vert.flags = VertexFlags.forValue(vert.flags.getValue() | VertexFlags.LocalMin.getValue());
+		vert.flags |= VertexFlags.LocalMin;
 
 		LocalMinima lm = new LocalMinima(vert, polytype, isOpen);
 		minimaList.add(lm);
@@ -574,83 +605,83 @@ public class ClipperBase {
 
 	protected final void AddPathsToVertexList(Paths64 paths, PathType polytype, boolean isOpen) {
 		for (Path64 path : paths) {
-			Vertex v0 = null, prevv = null, currv;
+			Vertex v0 = null, prevV = null, currV;
 			for (Point64 pt : path) {
 				if (v0 == null) {
 					v0 = new Vertex(pt, VertexFlags.None, null);
 					vertexList.add(v0);
-					prevv = v0;
-				} else if (prevv.pt.opNotEquals(pt)) { // ie skips duplicates
-					currv = new Vertex(pt, VertexFlags.None, prevv);
-					vertexList.add(currv);
-					prevv.next = currv;
-					prevv = currv;
+					prevV = v0;
+				} else if (prevV.pt.opNotEquals(pt)) { // ie skips duplicates
+					currV = new Vertex(pt, VertexFlags.None, prevV);
+					vertexList.add(currV);
+					prevV.next = currV;
+					prevV = currV;
 				}
 			}
-			if (prevv == null || prevv.prev == null) {
+			if (prevV == null || prevV.prev == null) {
 				continue;
 			}
-			if (!isOpen && v0.pt.opEquals(prevv.pt)) {
-				prevv = prevv.prev;
+			if (!isOpen && v0.pt.opEquals(prevV.pt)) {
+				prevV = prevV.prev;
 			}
-			prevv.next = v0;
-			v0.prev = prevv;
-			if (!isOpen && prevv == prevv.next) {
+			prevV.next = v0;
+			v0.prev = prevV;
+			if (!isOpen && prevV == prevV.next) {
 				continue;
 			}
 
 			// OK, we have a valid path
 			boolean goingup, goingup0;
 			if (isOpen) {
-				currv = v0.next;
-				while (v0 != currv && currv.pt.y == v0.pt.y) {
-					currv = currv.next;
+				currV = v0.next;
+				while (v0 != currV && currV.pt.y == v0.pt.y) {
+					currV = currV.next;
 				}
-				goingup = currv.pt.y <= v0.pt.y;
+				goingup = currV.pt.y <= v0.pt.y;
 				if (goingup) {
 					v0.flags = VertexFlags.OpenStart;
 					AddLocMin(v0, polytype, true);
 				} else {
-					v0.flags = VertexFlags.forValue(VertexFlags.OpenStart.getValue() | VertexFlags.LocalMax.getValue());
+					v0.flags = VertexFlags.OpenStart | VertexFlags.LocalMax;
 				}
 			} else { // closed path
-				prevv = v0.prev;
-				while (!v0.equals(prevv) && prevv.pt.y == v0.pt.y) {
-					prevv = prevv.prev;
+				prevV = v0.prev;
+				while (!v0.equals(prevV) && prevV.pt.y == v0.pt.y) {
+					prevV = prevV.prev;
 				}
-				if (v0.equals(prevv)) {
+				if (v0.equals(prevV)) {
 					continue; // only open paths can be completely flat
 				}
-				goingup = prevv.pt.y > v0.pt.y;
+				goingup = prevV.pt.y > v0.pt.y;
 			}
 
 			goingup0 = goingup;
-			prevv = v0;
-			currv = v0.next;
-			while (!v0.equals(currv)) {
-				if (currv.pt.y > prevv.pt.y && goingup) {
-					prevv.flags = VertexFlags.forValue(prevv.flags.getValue() | VertexFlags.LocalMax.getValue());
+			prevV = v0;
+			currV = v0.next;
+			while (!v0.equals(currV)) {
+				if (currV.pt.y > prevV.pt.y && goingup) {
+					prevV.flags |= VertexFlags.LocalMax;
 					goingup = false;
-				} else if (currv.pt.y < prevv.pt.y && !goingup) {
+				} else if (currV.pt.y < prevV.pt.y && !goingup) {
 					goingup = true;
-					AddLocMin(prevv, polytype, isOpen);
+					AddLocMin(prevV, polytype, isOpen);
 				}
-				prevv = currv;
-				currv = currv.next;
+				prevV = currV;
+				currV = currV.next;
 			}
 
 			if (isOpen) {
-				prevv.flags = VertexFlags.forValue(prevv.flags.getValue() | VertexFlags.OpenEnd.getValue());
+				prevV.flags |= VertexFlags.OpenEnd;
 				if (goingup) {
-					prevv.flags = VertexFlags.forValue(prevv.flags.getValue() | VertexFlags.LocalMax.getValue());
+					prevV.flags |= VertexFlags.LocalMax;
 				} else {
-					AddLocMin(prevv, polytype, isOpen);
+					AddLocMin(prevV, polytype, isOpen);
 				}
 			} else if (goingup != goingup0) {
 				if (goingup0) {
-					AddLocMin(prevv, polytype, false);
+					AddLocMin(prevV, polytype, false);
 				} else {
-					prevv.flags = VertexFlags.forValue(prevv.flags.getValue() | VertexFlags.LocalMax.getValue());
+					prevV.flags = prevV.flags | VertexFlags.LocalMax;
 				}
 			}
 		}
@@ -972,7 +1003,7 @@ public class ClipperBase {
 		// NB horizontal local minima edges should contain locMin.vertex.prev
 		while (HasLocMinAtY(botY)) {
 			localMinima = PopLocalMinima();
-			if ((localMinima.vertex.flags.getValue() & VertexFlags.OpenStart.getValue()) != VertexFlags.None.getValue()) {
+			if ((localMinima.vertex.flags & VertexFlags.OpenStart) != VertexFlags.None) {
 				leftBound = null;
 			} else {
 				leftBound = new Active();
@@ -986,7 +1017,7 @@ public class ClipperBase {
 				SetDx(leftBound);
 			}
 
-			if ((localMinima.vertex.flags.getValue() & VertexFlags.OpenEnd.getValue()) != VertexFlags.None.getValue()) {
+			if ((localMinima.vertex.flags & VertexFlags.OpenEnd) != VertexFlags.None) {
 				rightBound = null;
 			} else {
 				rightBound = new Active();
@@ -2677,7 +2708,7 @@ public class ClipperBase {
 	}
 
 	private static double DistanceSqr(Point64 pt1, Point64 pt2) {
-		return (double) (pt1.x - pt2.x) * (pt1.x - pt2.x) + (double) (pt1.y - pt2.y) * (pt1.y - pt2.y);
+		return (pt1.x - pt2.x) * (pt1.x - pt2.x) + (pt1.y - pt2.y) * (pt1.y - pt2.y);
 	}
 
 	private OutRec ProcessJoin(Joiner j) {

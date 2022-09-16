@@ -6,19 +6,20 @@ public final class InternalClipper {
 
 	private static final double FLOATING_POINT_TOLERANCE = 1E-12;
 	private static final double DEFAULT_MIN_EDGE_LENGTH = 0.1;
+	
+	private InternalClipper() {
+	}
 
 	public static boolean IsAlmostZero(double value) {
 		return (Math.abs(value) <= FLOATING_POINT_TOLERANCE);
 	}
 
 	public static double CrossProduct(Point64 pt1, Point64 pt2, Point64 pt3) {
-		// typecast to double to avoid potential int overflow
-		return ((double) (pt2.x - pt1.x) * (pt3.y - pt2.y) - (double) (pt2.y - pt1.y) * (pt3.x - pt2.x));
+		return ((pt2.x - pt1.x) * (pt3.y - pt2.y) - (pt2.y - pt1.y) * (pt3.x - pt2.x));
 	}
 
 	public static double DotProduct(Point64 pt1, Point64 pt2, Point64 pt3) {
-		// typecast to double to avoid potential int overflow
-		return ((double) (pt2.x - pt1.x) * (pt3.x - pt2.x) + (double) (pt2.y - pt1.y) * (pt3.y - pt2.y));
+		return ((pt2.x - pt1.x) * (pt3.x - pt2.x) + (pt2.y - pt1.y) * (pt3.y - pt2.y));
 	}
 
 	public static double CrossProduct(PointD vec1, PointD vec2) {

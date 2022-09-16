@@ -19,8 +19,8 @@ public abstract class PolyPathBase implements Iterable<PolyPathBase> {
 	}
 
 	@Override
-	public final PolyPathEnum iterator() {
-		return new PolyPathEnum(children);
+	public final PolyPathIterator iterator() {
+		return new PolyPathIterator(children);
 	}
 
 	public final boolean getIsHole() {

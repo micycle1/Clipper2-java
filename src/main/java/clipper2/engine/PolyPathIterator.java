@@ -2,13 +2,14 @@ package clipper2.engine;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 
-class PolyPathEnum implements Iterator<PolyPathBase> {
+class PolyPathIterator implements Iterator<PolyPathBase> {
 
 	List<PolyPathBase> ppbList;
-	int position = -1;
+	int position = 0;
 
-	PolyPathEnum(List<PolyPathBase> childs) {
+	PolyPathIterator(List<PolyPathBase> childs) {
 		ppbList = childs;
 	}
 
@@ -19,11 +20,10 @@ class PolyPathEnum implements Iterator<PolyPathBase> {
 
 	@Override
 	public PolyPathBase next() {
-		position++;
 		if (position < 0 || position >= ppbList.size()) {
-			throw new IllegalStateException();
+			throw new NoSuchElementException();
 		}
-		return ppbList.get(position);
+		return ppbList.get(position++);
 	}
 
 }

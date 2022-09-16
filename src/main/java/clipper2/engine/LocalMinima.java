@@ -1,48 +1,53 @@
 package clipper2.engine;
 
 import clipper2.core.PathType;
+import clipper2.engine.ClipperBase.Vertex;
 
 final class LocalMinima {
 
 	Vertex vertex;
 	PathType polytype;
 	boolean isOpen = false;
-	
-	public LocalMinima() {
+
+	LocalMinima() {
 	}
 
-	public LocalMinima(Vertex vertex, PathType polytype) {
+	LocalMinima(Vertex vertex, PathType polytype) {
 		this(vertex, polytype, false);
 	}
 
-	public LocalMinima(Vertex vertex, PathType polytype, boolean isOpen) {
+	LocalMinima(Vertex vertex, PathType polytype, boolean isOpen) {
 		this.vertex = vertex;
 		this.polytype = polytype;
 		this.isOpen = isOpen;
 	}
 
-	public boolean opEquals(LocalMinima o) {
+	boolean opEquals(LocalMinima o) {
 		return vertex == o.vertex;
 	}
 
-	public boolean opNotEquals(LocalMinima o) {
+	boolean opNotEquals(LocalMinima o) {
 		return vertex != o.vertex;
 	}
 
 	@Override
-	public boolean equals(Object obj) { // TODO
-		boolean tempVar = obj instanceof LocalMinima;
-		LocalMinima minima = tempVar ? (LocalMinima) obj : null;
-		return tempVar && this == minima;
+	public
+	boolean equals(Object obj) {
+		if (obj instanceof LocalMinima minima) {
+			return this == minima;
+		}
+		return false;
 	}
 
 	@Override
-	public int hashCode() {
+	public
+	int hashCode() {
 		return vertex.hashCode();
 	}
 
 	@Override
-	public LocalMinima clone() {
+	protected
+	LocalMinima clone() {
 		LocalMinima varCopy = new LocalMinima();
 
 		varCopy.vertex = this.vertex;

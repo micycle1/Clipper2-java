@@ -17,7 +17,8 @@ import clipper2.engine.Clipper64;
 class TestLines {
 
 	private static final List<Arguments> testCases() throws IOException {
-		return ClipperFileIO.loadTestCases("Lines.txt").stream().map(t -> Arguments.of(t, t.caption(), t.clipType(), t.fillRule())).toList();
+		return ClipperFileIO.loadTestCases("Lines.txt").stream().map(t -> Arguments.of(t, t.caption(), t.clipType(), t.fillRule()))
+				.toList();
 	}
 
 	@MethodSource("testCases")
@@ -39,7 +40,8 @@ class TestLines {
 
 		if (test.count() > 0 && Math.abs(solution.size() - test.count()) > 2
 				&& Math.abs(solution.size() - test.count()) / test.count() > 0.02) {
-			assertTrue(Math.abs(solution.size() - test.count()) < 4, String.format("Incorrect count in test %1$s", test.caption()));
+			assertTrue(Math.abs(solution.size() - test.count()) < 4,
+					String.format("Vertex count incorrect. Difference=%s", (solution.size() - test.count())));
 		}
 	}
 }

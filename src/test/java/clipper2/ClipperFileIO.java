@@ -12,13 +12,13 @@ import clipper2.core.Path64;
 import clipper2.core.Paths64;
 import clipper2.core.Point64;
 
-public class ClipperFileIO {
+class ClipperFileIO {
 
-	record TestCase(String caption, ClipType clipType, FillRule fillRule, long area, int count, int GetIdx, Paths64 subj,
-			Paths64 subj_open, Paths64 clip) {
+	record TestCase(String caption, ClipType clipType, FillRule fillRule, long area, int count, int GetIdx, Paths64 subj, Paths64 subj_open,
+			Paths64 clip) {
 	}
 
-	public static List<TestCase> loadTestCases(String testFileName) throws IOException {
+	static List<TestCase> loadTestCases(String testFileName) throws IOException {
 		List<String> lines = Files.readAllLines(Paths.get("src/test/resources/%s".formatted(testFileName)));
 
 		String caption = "";
@@ -129,7 +129,7 @@ public class ClipperFileIO {
 		return cases;
 	}
 
-	public static Paths64 PathFromStr(String s) {
+	static Paths64 PathFromStr(String s) {
 		if (s == null) {
 			return null;
 		}
