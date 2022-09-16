@@ -40,6 +40,15 @@ public final class Rect64 {
 		bottom = top + value;
 	}
 
+	public Path64 AsPath() {
+		Path64 result = new Path64(4);
+		result.add(new Point64(left, top));
+		result.add(new Point64(right, top));
+		result.add(new Point64(right, bottom));
+		result.add(new Point64(left, bottom));
+		return result;
+	}
+
 	public boolean IsEmpty() {
 		return bottom <= top || right <= left;
 	}

@@ -289,6 +289,7 @@ public final class Clipper {
 		}
 		return bld.toString();
 	}
+
 	public static String PathDToString(PathD path) {
 		StringBuilder bld = new StringBuilder();
 		for (PointD pt : path) {
@@ -296,7 +297,7 @@ public final class Clipper {
 		}
 		return bld.toString() + '\n';
 	}
-	
+
 	public static String PathsDToString(PathsD paths) {
 		StringBuilder bld = new StringBuilder();
 		for (PathD path : paths) {
@@ -889,6 +890,72 @@ public final class Clipper {
 
 	public static PointInPolygonResult PointInPolygon(Point64 pt, Path64 polygon) {
 		return InternalClipper.PointInPolygon(pt.clone(), polygon);
+	}
+
+	public static Path64 Ellipse(Point64 center, double radiusX, double radiusY) {
+		return Ellipse(center, radiusX, radiusY, 0);
+	}
+
+	public static Path64 Ellipse(Point64 center, double radiusX) {
+		return Ellipse(center, radiusX, 0, 0);
+	}
+
+	public static Path64 Ellipse(Point64 center, double radiusX, double radiusY, int steps) {
+		if (radiusX <= 0) {
+			return new Path64();
+		}
+		if (radiusY <= 0) {
+			radiusY = radiusX;
+		}
+		if (steps <= 2) {
+			steps = (int) Math.ceil(Math.PI * Math.sqrt((radiusX + radiusY) / 2));
+		}
+
+		double si = Math.sin(2 * Math.PI / steps);
+		double co = Math.cos(2 * Math.PI / steps);
+		double dx = co, dy = si;
+		Path64 result = new Path64(steps);
+		result.add(new Point64(center.x + radiusX, center.x));
+		for (int i = 1; i < steps; ++i) {
+			result.add(new Point64(center.x + radiusX * dx, center.y + radiusY * dy));
+			double x = dx * co - dy * si;
+			dy = dy * co + dx * si;
+			dx = x;
+		}
+		return result;
+	}
+
+	public static PathD Ellipse(PointD center, double radiusX, double radiusY) {
+		return Ellipse(center, radiusX, radiusY, 0);
+	}
+
+	public static PathD Ellipse(PointD center, double radiusX) {
+		return Ellipse(center, radiusX, 0, 0);
+	}
+
+	public static PathD Ellipse(PointD center, double radiusX, double radiusY, int steps) {
+		if (radiusX <= 0) {
+			return new PathD();
+		}
+		if (radiusY <= 0) {
+			radiusY = radiusX;
+		}
+		if (steps <= 2) {
+			steps = (int) Math.ceil(Math.PI * Math.sqrt((radiusX + radiusY) / 2));
+		}
+
+		double si = Math.sin(2 * Math.PI / steps);
+		double co = Math.cos(2 * Math.PI / steps);
+		double dx = co, dy = si;
+		PathD result = new PathD(steps);
+		result.add(new PointD(center.x + radiusX, center.y));
+		for (int i = 1; i < steps; ++i) {
+			result.add(new PointD(center.x + radiusX * dx, center.y + radiusY * dy));
+			double x = dx * co - dy * si;
+			dy = dy * co + dx * si;
+			dx = x;
+		}
+		return result;
 	}
 
 }
