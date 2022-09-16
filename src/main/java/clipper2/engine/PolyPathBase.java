@@ -23,6 +23,10 @@ public abstract class PolyPathBase implements Iterable<PolyPathBase> {
 		return new PolyPathIterator(children);
 	}
 
+	/**
+	 * Indicates whether the Polygon property represents a hole or the outer bounds
+	 * of a polygon.
+	 */
 	public final boolean getIsHole() {
 		return GetIsHole();
 	}
@@ -38,12 +42,18 @@ public abstract class PolyPathBase implements Iterable<PolyPathBase> {
 		return result;
 	}
 
+	/**
+	 * Indicates the number of contained children.
+	 */
 	public final int getCount() {
 		return children.size();
 	}
 
 	public abstract PolyPathBase AddChild(Path64 p);
 
+	/**
+	 * This method clears the Polygon and deletes any contained children.
+	 */
 	public final void Clear() {
 		children.clear();
 	}

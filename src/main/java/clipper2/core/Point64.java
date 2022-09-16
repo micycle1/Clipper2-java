@@ -1,5 +1,16 @@
 package clipper2.core;
 
+/**
+ * The Point64 structure is used to represent a single vertex (or coordinate) in
+ * a series that together make a path or contour (see Path64). Closed paths are
+ * usually referred to as polygons, and open paths are referred to as lines or
+ * polylines.
+ * <p>
+ * All coordinates are represented internally using integers as this is the only
+ * way to ensure numerical robustness. While the library also accepts floating
+ * point coordinates (see PointD), these will be converted into integers
+ * internally (using user specified scaling).
+ */
 public final class Point64 {
 
 	public long x;

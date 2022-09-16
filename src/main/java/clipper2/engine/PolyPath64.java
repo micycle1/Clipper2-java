@@ -4,6 +4,11 @@ import clipper2.Clipper;
 import clipper2.Nullable;
 import clipper2.core.Path64;
 
+/**
+ * PolyPath64 objects are contained inside PolyTree64s and represents a single
+ * polygon contour. PolyPath64s can also contain children, and there's no limit
+ * to nesting. Each child's Polygon will be inside its parent's Polygon.
+ */
 public class PolyPath64 extends PolyPathBase {
 
 	private Path64 polygon;

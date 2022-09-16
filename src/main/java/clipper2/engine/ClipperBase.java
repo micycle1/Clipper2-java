@@ -245,6 +245,15 @@ abstract class ClipperBase {
 		return preserveCollinear;
 	}
 
+	/**
+	 * When adjacent edges are collinear in closed path solutions, the common vertex
+	 * can safely be removed to simplify the solution without altering path shape.
+	 * However, because some users prefer to retain these common vertices, this
+	 * feature is optional. Nevertheless, when adjacent edges in solutions are
+	 * collinear and also create a 'spike' by overlapping, the vertex creating the
+	 * spike will be removed irrespective of the PreserveCollinear setting. This
+	 * property is enabled by default.
+	 */
 	public final void setPreserveCollinear(boolean value) {
 		preserveCollinear = value;
 	}

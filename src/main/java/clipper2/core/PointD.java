@@ -1,5 +1,9 @@
 package clipper2.core;
 
+/**
+ * The PointD structure is used to represent a single floating point coordinate.
+ * A series of these coordinates forms a PathD structure.
+ */
 public final class PointD {
 
 	public double x;

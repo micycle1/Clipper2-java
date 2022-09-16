@@ -266,10 +266,34 @@ public final class Clipper {
 		return a;
 	}
 
+	/**
+	 * This function assesses the winding orientation of closed paths.
+	 * <p>
+	 * Positive winding paths will be oriented in an anti-clockwise direction in
+	 * Cartesian coordinates (where coordinate values increase when heading
+	 * rightward and upward). Nevertheless it's common for graphics libraries to use
+	 * inverted Y-axes (where Y values decrease heading upward). In these libraries,
+	 * paths with Positive winding will be oriented clockwise.
+	 * <p>
+	 * Note: Self-intersecting polygons have indeterminate orientation since some
+	 * path segments will commonly wind in opposite directions to other segments.
+	 */
 	public static boolean IsPositive(Path64 poly) {
 		return Area(poly) >= 0;
 	}
 
+	/**
+	 * This function assesses the winding orientation of closed paths.
+	 * <p>
+	 * Positive winding paths will be oriented in an anti-clockwise direction in
+	 * Cartesian coordinates (where coordinate values increase when heading
+	 * rightward and upward). Nevertheless it's common for graphics libraries to use
+	 * inverted Y-axes (where Y values decrease heading upward). In these libraries,
+	 * paths with Positive winding will be oriented clockwise.
+	 * <p>
+	 * Note: Self-intersecting polygons have indeterminate orientation since some
+	 * path segments will commonly wind in opposite directions to other segments.
+	 */
 	public static boolean IsPositive(PathD poly) {
 		return Area(poly) >= 0;
 	}
@@ -822,20 +846,36 @@ public final class Clipper {
 		return result;
 	}
 
+	/**
+	 * This function removes the vertices between adjacent collinear segments. It
+	 * will also remove duplicate vertices (adjacent vertices with identical
+	 * coordinates).
+	 * <p>
+	 * Note: Duplicate vertices will be removed automatically from clipping
+	 * solutions, but not collinear edges unless the Clipper object's
+	 * PreserveCollinear property had been disabled.
+	 */
 	public static Path64 TrimCollinear(Path64 path) {
 		return TrimCollinear(path, false);
 	}
 
+	/**
+	 * This function removes the vertices between adjacent collinear segments. It
+	 * will also remove duplicate vertices (adjacent vertices with identical
+	 * coordinates).
+	 * <p>
+	 * Note: Duplicate vertices will be removed automatically from clipping
+	 * solutions, but not collinear edges unless the Clipper object's
+	 * PreserveCollinear property had been disabled.
+	 */
 	public static Path64 TrimCollinear(Path64 path, boolean isOpen) {
 		int len = path.size();
 		int i = 0;
 		if (!isOpen) {
-			while (i < len - 1
-					&& InternalClipper.CrossProduct(path.get(len - 1), path.get(i), path.get(i + 1)) == 0) {
+			while (i < len - 1 && InternalClipper.CrossProduct(path.get(len - 1), path.get(i), path.get(i + 1)) == 0) {
 				i++;
 			}
-			while (i < len - 1
-					&& InternalClipper.CrossProduct(path.get(len - 2), path.get(len - 1), path.get(i)) == 0) {
+			while (i < len - 1 && InternalClipper.CrossProduct(path.get(len - 2), path.get(len - 1), path.get(i)) == 0) {
 				len--;
 			}
 		}
@@ -863,8 +903,8 @@ public final class Clipper {
 		} else if (InternalClipper.CrossProduct(last, path.get(len - 1), result.get(0)) != 0) {
 			result.add(path.get(len - 1));
 		} else {
-			while (result.size() > 2 && InternalClipper.CrossProduct(result.get(result.size() - 1),
-					result.get(result.size() - 2), result.get(0)) == 0) {
+			while (result.size() > 2
+					&& InternalClipper.CrossProduct(result.get(result.size() - 1), result.get(result.size() - 2), result.get(0)) == 0) {
 				result.remove(result.size() - 1);
 			}
 			if (result.size() < 3) {
@@ -874,10 +914,34 @@ public final class Clipper {
 		return result;
 	}
 
+	/**
+	 * This function removes the vertices between adjacent collinear segments. It
+	 * will also remove duplicate vertices (adjacent vertices with identical
+	 * coordinates).
+	 * <p>
+	 * With floating point paths, the precision parameter indicates the decimal
+	 * precision that's required when determining collinearity.
+	 * <p>
+	 * Note: Duplicate vertices will be removed automatically from clipping
+	 * solutions, but not collinear edges unless the Clipper object's
+	 * PreserveCollinear property had been disabled.
+	 */
 	public static PathD TrimCollinear(PathD path, int precision) {
 		return TrimCollinear(path, precision, false);
 	}
 
+	/**
+	 * This function removes the vertices between adjacent collinear segments. It
+	 * will also remove duplicate vertices (adjacent vertices with identical
+	 * coordinates).
+	 * <p>
+	 * With floating point paths, the precision parameter indicates the decimal
+	 * precision that's required when determining collinearity.
+	 * <p>
+	 * Note: Duplicate vertices will be removed automatically from clipping
+	 * solutions, but not collinear edges unless the Clipper object's
+	 * PreserveCollinear property had been disabled.
+	 */
 	public static PathD TrimCollinear(PathD path, int precision, boolean isOpen) {
 		if (precision < -8 || precision > 8) {
 			throw new IllegalArgumentException("Error: Precision is out of range.");
