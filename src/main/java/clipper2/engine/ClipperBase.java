@@ -389,7 +389,7 @@ abstract class ClipperBase {
 		return ae.vertexTop.prev;
 	}
 
-	private Vertex PrevPrevVertex(Active ae) {
+	private static Vertex PrevPrevVertex(Active ae) {
 		if (ae.windDx > 0) {
 			return ae.vertexTop.prev.prev;
 		}
@@ -404,7 +404,7 @@ abstract class ClipperBase {
 		return IsMaxima(ae.vertexTop);
 	}
 
-	private Active GetMaximaPair(Active ae) {
+	private static Active GetMaximaPair(Active ae) {
 		Active ae2 = null;
 		ae2 = ae.nextInAEL;
 		while (ae2 != null) {
@@ -520,7 +520,7 @@ abstract class ClipperBase {
 		outrec.backEdge = null;
 	}
 
-	private boolean OutrecIsAscending(Active hotEdge) {
+	private static boolean OutrecIsAscending(Active hotEdge) {
 		return (hotEdge == hotEdge.outrec.frontEdge);
 	}
 
@@ -930,7 +930,7 @@ abstract class ClipperBase {
 		}
 	}
 
-	private boolean IsValidAelOrder(Active resident, Active newcomer) {
+	private static boolean IsValidAelOrder(Active resident, Active newcomer) {
 		if (newcomer.curX != resident.curX) {
 			return newcomer.curX > resident.curX;
 		}
@@ -996,7 +996,7 @@ abstract class ClipperBase {
 		}
 	}
 
-	private void InsertRightEdge(Active ae, Active ae2) {
+	private static void InsertRightEdge(Active ae, Active ae2) {
 		ae2.nextInAEL = ae.nextInAEL;
 		if (ae.nextInAEL != null) {
 			ae.nextInAEL.prevInAEL = ae2;
@@ -1152,14 +1152,14 @@ abstract class ClipperBase {
 				&& (InternalClipper.CrossProduct(e.prevInAEL.top, currPt, e.top) == 0);
 	}
 
-	private boolean TestJoinWithNext1(Active e) {
+	private static boolean TestJoinWithNext1(Active e) {
 		// this is marginally quicker than TestJoinWithNext2
 		// but can only be used when e.NextInAEL.currX is accurate
 		return IsHotEdge(e) && !IsOpen(e) && (e.nextInAEL != null) && (e.nextInAEL.curX == e.curX) && IsHotEdge(e.nextInAEL)
 				&& !IsOpen(e.nextInAEL) && (InternalClipper.CrossProduct(e.nextInAEL.top, e.bot, e.top) == 0);
 	}
 
-	private boolean TestJoinWithNext2(Active e, Point64 currPt) {
+	private static boolean TestJoinWithNext2(Active e, Point64 currPt) {
 		return IsHotEdge(e) && !IsOpen(e) && (e.nextInAEL != null) && !IsOpen(e.nextInAEL) && IsHotEdge(e.nextInAEL)
 				&& (e.nextInAEL.top.y < e.bot.y) && (Math.abs(TopX(e.nextInAEL, currPt.y) - currPt.x) < 2)
 				&& (InternalClipper.CrossProduct(e.nextInAEL.top, currPt, e.top) == 0);
@@ -1262,7 +1262,7 @@ abstract class ClipperBase {
 		return result;
 	}
 
-	private void JoinOutrecPaths(Active ae1, Active ae2) {
+	private static void JoinOutrecPaths(Active ae1, Active ae2) {
 		// join ae2 outrec path onto ae1 outrec path and then delete ae2 outrec path
 		// pointers. (NB Only very rarely do the joining ends share the same coords.)
 		OutPt p1Start = ae1.outrec.pts;
@@ -1316,7 +1316,7 @@ abstract class ClipperBase {
 		ae2.outrec = null;
 	}
 
-	private OutPt AddOutPt(Active ae, Point64 pt) {
+	private static OutPt AddOutPt(Active ae, Point64 pt) {
 		OutPt newOp;
 
 		// Outrec.OutPts: a circular doubly-linked-list of POutPt where ...
@@ -1382,7 +1382,7 @@ abstract class ClipperBase {
 		}
 	}
 
-	private Active FindEdgeWithMatchingLocMin(Active e) {
+	private static Active FindEdgeWithMatchingLocMin(Active e) {
 		Active result = e.nextInAEL;
 		while (result != null) {
 			if (result.localMin.opEquals(e.localMin)) {
@@ -1757,7 +1757,7 @@ abstract class ClipperBase {
 		return res;
 	}
 
-	private void Insert1Before2InSEL(Active ae1, Active ae2) {
+	private static void Insert1Before2InSEL(Active ae1, Active ae2) {
 		ae1.prevInSEL = ae2.prevInSEL;
 		if (ae1.prevInSEL != null) {
 			ae1.prevInSEL.nextInSEL = ae1;
@@ -1894,7 +1894,7 @@ abstract class ClipperBase {
 		}
 	}
 
-	private boolean ResetHorzDirection(Active horz, Active maxPair, OutObject<Long> leftX, OutObject<Long> rightX) {
+	private static boolean ResetHorzDirection(Active horz, Active maxPair, OutObject<Long> leftX, OutObject<Long> rightX) {
 		if (horz.bot.x == horz.top.x) {
 			// the horizontal edge is going nowhere ...
 			leftX.argValue = horz.curX;
@@ -1916,7 +1916,7 @@ abstract class ClipperBase {
 		return false; // right to left
 	}
 
-	private boolean HorzIsSpike(Active horz) {
+	private static boolean HorzIsSpike(Active horz) {
 		Point64 nextPt = NextVertex(horz).pt;
 		return (horz.bot.x < horz.top.x) != (horz.top.x < nextPt.x);
 	}
@@ -2338,7 +2338,7 @@ abstract class ClipperBase {
 		return false;
 	}
 
-	private Joiner GetHorzTrialParent(OutPt op) {
+	private static Joiner GetHorzTrialParent(OutPt op) {
 		Joiner joiner = op.joiner;
 		while (joiner != null) {
 			if (joiner.op1 == op) {
@@ -2506,7 +2506,7 @@ abstract class ClipperBase {
 		}
 	}
 
-	private boolean GetHorzExtendedHorzSeg(RefObject<OutPt> op, OutObject<OutPt> op2) {
+	private static boolean GetHorzExtendedHorzSeg(RefObject<OutPt> op, OutObject<OutPt> op2) {
 		OutRec outRec = GetRealOutRec(op.argValue.outrec);
 		op2.argValue = op.argValue;
 		if (outRec.frontEdge != null) {
@@ -2604,8 +2604,10 @@ abstract class ClipperBase {
 	}
 
 	private void AddJoin(OutPt op1, OutPt op2) {
-		if ((op1.outrec == op2.outrec)
-				&& ((op1 == op2) || ((op1.next == op2) && (op1 != op1.outrec.pts)) || ((op2.next == op1) && (op2 != op1.outrec.pts)))) {
+		if ((op1.outrec == op2.outrec) && ((op1 == op2) ||
+		// unless op1.next or op1.prev crosses the start-end divide
+		// don't waste time trying to join adjacent vertices
+				((op1.next == op2) && (op1 != op1.outrec.pts)) || ((op2.next == op1) && (op2 != op1.outrec.pts)))) {
 			return;
 		}
 
@@ -3095,7 +3097,7 @@ abstract class ClipperBase {
 		}
 	}
 
-	public final boolean BuildPath(OutPt op, boolean reverse, boolean isOpen, Path64 path) {
+	public static final boolean BuildPath(OutPt op, boolean reverse, boolean isOpen, Path64 path) {
 		if (op.next == op || (!isOpen && op.next == op.prev)) {
 			return false;
 		}
@@ -3166,7 +3168,7 @@ abstract class ClipperBase {
 		return result == PointInPolygonResult.IsInside;
 	}
 
-	private Rect64 GetBounds(Path64 path) {
+	private static Rect64 GetBounds(Path64 path) {
 		if (path.isEmpty()) {
 			return new Rect64();
 		}

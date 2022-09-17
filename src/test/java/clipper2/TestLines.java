@@ -39,8 +39,8 @@ class TestLines {
 		}
 
 		if (test.count() > 0 && Math.abs(solution.size() - test.count()) > 2
-				&& Math.abs(solution.size() - test.count()) / test.count() > 0.02) {
-			assertTrue(Math.abs(solution.size() - test.count()) < 4,
+				&& Math.abs(solution.size() - test.count()) / test.count() > 0.03) {
+			assertTrue(Math.abs(solution.size() - test.count()) <= 4,
 					String.format("Vertex count incorrect. Difference=%s", (solution.size() - test.count())));
 		}
 	}
