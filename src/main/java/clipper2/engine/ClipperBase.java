@@ -1671,12 +1671,10 @@ abstract class ClipperBase {
 				ae = tempOutae.argValue;
 				DoHorizontal(ae);
 			}
-			ae = tempOutae.argValue;
 			ConvertHorzTrialsToJoins();
 			currentBotY = y; // bottom of scanbeam
 			OutObject<Long> tempOuty2 = new OutObject<>();
 			if (!PopScanline(tempOuty2)) {
-				y = tempOuty2.argValue;
 				break; // y new top of scanbeam
 			} else {
 				y = tempOuty2.argValue;
@@ -1688,7 +1686,6 @@ abstract class ClipperBase {
 				ae = tempOutae2.argValue;
 				DoHorizontal(ae);
 			}
-			ae = tempOutae2.argValue;
 		}
 
 		if (succeeded) {
@@ -2544,7 +2541,6 @@ abstract class ClipperBase {
 			OutPt op1b;
 			OutObject<OutPt> tempOutop1b = new OutObject<>();
 			if (!GetHorzExtendedHorzSeg(tempRefop1a, tempOutop1b)) {
-				op1b = tempOutop1b.argValue;
 				op1a = tempRefop1a.argValue;
 				if (op1a.outrec.frontEdge == null) {
 					CleanCollinear(op1a.outrec);
@@ -2562,7 +2558,7 @@ abstract class ClipperBase {
 				op2a = joiner.op1;
 				RefObject<OutPt> tempRefop2a = new RefObject<>(op2a);
 				OutPt op2b;
-				OutObject<OutPt> tempOutop2b = new OutObject<>(); // NOTE SYNTAX
+				OutObject<OutPt> tempOutop2b = new OutObject<>();
 				if (GetHorzExtendedHorzSeg(tempRefop2a, tempOutop2b)
 						&& HorzEdgesOverlap(op1a.pt.x, op1b.pt.x, op2a.pt.x, tempOutop2b.argValue.pt.x)) {
 					op2b = tempOutop2b.argValue;
@@ -2587,9 +2583,6 @@ abstract class ClipperBase {
 						AddJoin(op2b, InsertOp(op2b.pt, op1a));
 					}
 					break;
-				} else {
-					op2b = tempOutop2b.argValue;
-					op2a = tempRefop2a.argValue;
 				}
 				joiner = joiner.nextH;
 			}
@@ -2730,13 +2723,11 @@ abstract class ClipperBase {
 		if (!IsValidClosedPath(op2)) {
 			RefObject<OutPt> tempRefop2 = new RefObject<>(op2);
 			SafeDisposeOutPts(tempRefop2);
-			op2 = tempRefop2.argValue;
 			return or1;
 		}
 		if ((or1.pts == null) || !IsValidClosedPath(op1)) {
 			RefObject<OutPt> tempRefop1 = new RefObject<>(op1);
 			SafeDisposeOutPts(tempRefop1);
-			op1 = tempRefop1.argValue;
 			return or2;
 		}
 		if (or1 == or2 && ((op1 == op2) || (op1.next == op2) || (op1.prev == op2))) {
@@ -2977,13 +2968,9 @@ abstract class ClipperBase {
 
 	private void CleanCollinear(OutRec outrec) {
 		outrec = GetRealOutRec(outrec);
-		// NOTE potentially buggy
 		RefObject<OutPt> tempRefpts = new RefObject<>(outrec.pts);
 		if (outrec == null || outrec.isOpen || outrec.frontEdge != null || !ValidateClosedPathEx(tempRefpts)) {
-//			outrec.pts = tempRefpts.argValue;
 			return;
-		} else {
-			outrec.pts = tempRefpts.argValue;
 		}
 
 		OutPt startOp = outrec.pts;
@@ -3002,7 +2989,6 @@ abstract class ClipperBase {
 				op2 = DisposeOutPt(op2);
 				RefObject<OutPt> tempRefop2 = new RefObject<>(op2);
 				if (!ValidateClosedPathEx(tempRefop2)) {
-					op2 = tempRefop2.argValue;
 					outrec.pts = null;
 					return;
 				} else {
@@ -3017,10 +3003,8 @@ abstract class ClipperBase {
 			}
 		}
 		RefObject<OutPt> tempRefObject = new RefObject<>(outrec.pts);
-		FixSelfIntersects(tempRefObject); // NOTE BUGGY
-		if (outrec.pts != tempRefObject.argValue) {
-			outrec.pts = tempRefObject.argValue;
-		}
+		FixSelfIntersects(tempRefObject);
+		outrec.pts = tempRefObject.argValue;
 	}
 
 	private OutPt DoSplitOp(RefObject<OutPt> outRecOp, OutPt splitOp) {
@@ -3066,7 +3050,7 @@ abstract class ClipperBase {
 		return result;
 	}
 
-	private void FixSelfIntersects(RefObject<OutPt> op) { // TODO BUGGY -- op.pts not updated within method!
+	private void FixSelfIntersects(RefObject<OutPt> op) {
 		if (!IsValidClosedPath(op.argValue)) {
 			return;
 		}
