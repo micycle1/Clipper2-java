@@ -186,17 +186,6 @@ abstract class ClipperBase {
 			this.edge1 = edge1;
 			this.edge2 = edge2;
 		}
-
-		@Override
-		public IntersectNode clone() {
-			IntersectNode varCopy = new IntersectNode();
-
-			varCopy.pt = this.pt.clone();
-			varCopy.edge1 = this.edge1;
-			varCopy.edge2 = this.edge2;
-
-			return varCopy;
-		}
 	}
 
 	/**
@@ -374,8 +363,8 @@ abstract class ClipperBase {
 		b1 = ae1.bot.x - ae1.bot.y * ae1.dx;
 		b2 = ae2.bot.x - ae2.bot.y * ae2.dx;
 		double q = (b2 - b1) / (ae1.dx - ae2.dx);
-		return (Math.abs(ae1.dx) < Math.abs(ae2.dx)) ? new Point64((long) Math.rint(ae1.dx * q + b1), (long) Math.rint(q))
-				: new Point64((long) Math.rint(ae2.dx * q + b2), (long) Math.rint(q));
+		return (Math.abs(ae1.dx) < Math.abs(ae2.dx)) ? new Point64((long) (ae1.dx * q + b1), (long) (q))
+				: new Point64((long) (ae2.dx * q + b2), (long) (q));
 	}
 
 	private static void SetDx(Active ae) {
@@ -1242,7 +1231,7 @@ abstract class ClipperBase {
 			result = outrec.pts;
 
 			outrec.owner = GetRealOutRec(outrec.owner);
-			if (usingPolytree && outrec.owner.frontEdge == null) { // NOTE strange c# syntax
+			if (usingPolytree && outrec.owner.frontEdge == null) {
 				outrec.owner = GetRealOutRec(outrec.owner.owner);
 			}
 		}
@@ -1836,11 +1825,13 @@ abstract class ClipperBase {
 
 		// First we do a quicksort so intersections proceed in a bottom up order ...
 		intersectList.sort((a, b) -> {
-			var cmp = Long.compare(b.pt.y, a.pt.y); // sorting y dsc
-			if (cmp == 0) {
-				return Long.compare(a.pt.x, b.pt.x); // sorting x asc
+			if (a.pt.y == b.pt.y) {
+				if (a.pt.x == b.pt.x) {
+					return 0;
+				}
+				return (a.pt.x < b.pt.x) ? -1 : 1;
 			}
-			return cmp;
+			return (a.pt.y > b.pt.y) ? -1 : 1;
 		});
 
 		// Now as we process these intersections, we must sometimes adjust the order
@@ -2271,9 +2262,14 @@ abstract class ClipperBase {
 		return (val == end1) || (val == end2) || ((val > end1) == (val < end2));
 	}
 
-	private static boolean PointBetween(Point64 pt, Point64 corner1, Point64 corner2) {
+	private static boolean PointEqualOrBetween(Point64 pt, Point64 corner1, Point64 corner2) {
 		// NB points may not be collinear
 		return ValueEqualOrBetween(pt.x, corner1.x, corner2.x) && ValueEqualOrBetween(pt.y, corner1.y, corner2.y);
+	}
+
+	private static boolean PointBetween(Point64 pt, Point64 corner1, Point64 corner2) {
+		// NB points may not be collinear
+		return ValueBetween(pt.x, corner1.x, corner2.x) && ValueBetween(pt.y, corner1.y, corner2.y);
 	}
 
 	private static boolean CollinearSegsOverlap(Point64 seg1a, Point64 seg1b, Point64 seg2a, Point64 seg2b) {
@@ -2770,7 +2766,7 @@ abstract class ClipperBase {
 					// make sure op1.prev and op2.next match positions
 					// by inserting an extra vertex if needed
 					if (op1.prev.pt.opNotEquals(op2.next.pt)) {
-						if (PointBetween(op1.prev.pt, op2.pt, op2.next.pt)) {
+						if (PointEqualOrBetween(op1.prev.pt, op2.pt, op2.next.pt)) {
 							op2.next = InsertOp(op1.prev.pt, op2);
 						} else {
 							op1.prev = InsertOp(op2.next.pt, op1.prev);
@@ -2823,7 +2819,7 @@ abstract class ClipperBase {
 					// make sure op2.prev and op1.next match positions
 					// by inserting an extra vertex if needed
 					if (op2.prev.pt.opNotEquals(op1.next.pt)) {
-						if (PointBetween(op2.prev.pt, op1.pt, op1.next.pt)) {
+						if (PointEqualOrBetween(op2.prev.pt, op1.pt, op1.next.pt)) {
 							op1.next = InsertOp(op2.prev.pt, op1);
 						} else {
 							op2.prev = InsertOp(op1.next.pt, op2.prev);

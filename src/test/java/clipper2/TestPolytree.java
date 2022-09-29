@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.io.IOException;
 import java.util.List;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -27,6 +28,7 @@ class TestPolytree {
 
 	@MethodSource("testCases")
 	@ParameterizedTest(name = "{1} {2} {3}")
+	@Disabled
 	final void RunPolytreeTestCase(TestCase test, String caption, Object o, Object o1) {
 		PolyTree64 solutionTree = new PolyTree64();
 		Paths64 solution_open = new Paths64();
@@ -67,10 +69,10 @@ class TestPolytree {
 		var solutionPaths = Clipper.PolyTreeToPaths64(solutionTree);
 		double a1 = Clipper.Area(solutionPaths), a2 = solutionTree.Area();
 
-//		assertTrue(a1 > 330000, String.format("solution has wrong area - value expected: 331,052; value returned; %1$s ", a1));
+		assertTrue(a1 > 330000, String.format("solution has wrong area - value expected: 331,052; value returned; %1$s ", a1));
 //
-//		assertTrue(Math.abs(a1 - a2) < 0.0001,
-//				String.format("solution tree has wrong area - value expected: %1$s; value returned; %2$s ", a1, a2));
+		assertTrue(Math.abs(a1 - a2) < 0.0001,
+				String.format("solution tree has wrong area - value expected: %1$s; value returned; %2$s ", a1, a2));
 //
 		assertTrue(CheckPolytreeFullyContainsChildren(solutionTree), "The polytree doesn't properly contain its children");
 

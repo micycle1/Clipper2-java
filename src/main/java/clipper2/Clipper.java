@@ -32,7 +32,7 @@ public final class Clipper {
 
 	public static final Rect64 MaxInvalidRect64 = new Rect64(Long.MAX_VALUE, Long.MAX_VALUE, Long.MIN_VALUE, Long.MIN_VALUE);
 
-	public static final RectD MaxInvalidRectD = new RectD(Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE);
+	public static final RectD MaxInvalidRectD = new RectD(Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE);
 
 	public static Paths64 Intersect(Paths64 subject, Paths64 clip, FillRule fillRule) {
 		return BooleanOp(ClipType.Intersection, subject, clip, fillRule);

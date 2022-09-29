@@ -15,7 +15,7 @@ import clipper2.core.Point64;
 class ClipperFileIO {
 
 	record TestCase(String caption, ClipType clipType, FillRule fillRule, long area, int count, int GetIdx, Paths64 subj, Paths64 subj_open,
-			Paths64 clip) {
+			Paths64 clip, int testNum) {
 	}
 
 	static List<TestCase> loadTestCases(String testFileName) throws IOException {
@@ -36,7 +36,7 @@ class ClipperFileIO {
 		for (String s : lines) {
 			if (s.isBlank() || s.length() == 0) {
 				cases.add(new TestCase(caption, ct, fillRule, area, count, GetIdx, new Paths64(subj), new Paths64(subj_open),
-						new Paths64(clip)));
+						new Paths64(clip), cases.size()+1));
 				subj.clear();
 				subj_open.clear();
 				clip.clear();
@@ -122,8 +122,8 @@ class ClipperFileIO {
 		}
 
 		if (cases.isEmpty()) {
-			cases.add(
-					new TestCase(caption, ct, fillRule, area, count, GetIdx, new Paths64(subj), new Paths64(subj_open), new Paths64(clip)));
+			cases.add(new TestCase(caption, ct, fillRule, area, count, GetIdx, new Paths64(subj), new Paths64(subj_open), new Paths64(clip),
+					cases.size()+1));
 		}
 
 		return cases;
