@@ -3,6 +3,7 @@ package clipper2.engine;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.NavigableSet;
 import java.util.TreeSet;
 
 import clipper2.Clipper;
@@ -37,7 +38,7 @@ abstract class ClipperBase {
 	private List<Vertex> vertexList;
 	private List<OutRec> outrecList;
 	private List<Joiner> joinerList;
-	private TreeSet<Long> scanlineList;
+	private NavigableSet<Long> scanlineSet;
 	private int currentLocMin;
 	private long currentBotY;
 	private boolean isSortedMinimaList;
@@ -226,7 +227,7 @@ abstract class ClipperBase {
 		vertexList = new ArrayList<>();
 		outrecList = new ArrayList<>();
 		joinerList = new ArrayList<>();
-		scanlineList = new TreeSet<>();
+		scanlineSet = new TreeSet<>();
 		setPreserveCollinear(true);
 	}
 
@@ -530,7 +531,7 @@ abstract class ClipperBase {
 		while (actives != null) {
 			DeleteFromAEL(actives);
 		}
-		scanlineList.clear();
+		scanlineSet.clear();
 		DisposeIntersectNodes();
 		joinerList.clear();
 		horzJoiners = null;
@@ -553,7 +554,7 @@ abstract class ClipperBase {
 		}
 
 		for (int i = minimaList.size() - 1; i >= 0; i--) {
-			scanlineList.add(minimaList.get(i).vertex.pt.y);
+			scanlineSet.add(minimaList.get(i).vertex.pt.y);
 		}
 
 		currentBotY = 0;
@@ -563,22 +564,21 @@ abstract class ClipperBase {
 		succeeded = true;
 	}
 
+	/**
+	 * @deprecated Has been inlined in Java version since function is much simpler
+	 */
 	private void InsertScanline(long y) {
-		if (!scanlineList.contains(y)) {
-			scanlineList.add(y);
-		}
+		scanlineSet.add(y);
 	}
 
-    private long PopScanline() {
-		if (scanlineList.isEmpty()) {
-            return Long.MAX_VALUE;
+	/**
+	 * @deprecated Has been inlined in Java version since function is much simpler
+	 */
+	private long PopScanline() {
+		if (scanlineSet.isEmpty()) {
+			return Long.MAX_VALUE;
 		}
-
-        long y = scanlineList.pollLast();
-        while (!scanlineList.isEmpty() && scanlineList.last().equals(y)) {
-			scanlineList.pollLast();
-		}
-		return y;
+		return scanlineSet.pollLast();
 	}
 
 	private boolean HasLocMinAtY(long y) {
@@ -1099,7 +1099,7 @@ abstract class ClipperBase {
 				if (IsHorizontal(rightBound)) {
 					PushHorz(rightBound);
 				} else {
-					InsertScanline(rightBound.top.y);
+					scanlineSet.add(rightBound.top.y);
 				}
 			} else if (contributing) {
 				StartOpenPath(leftBound, leftBound.bot);
@@ -1108,7 +1108,7 @@ abstract class ClipperBase {
 			if (IsHorizontal(leftBound)) {
 				PushHorz(leftBound);
 			} else {
-				InsertScanline(leftBound.top.y);
+				scanlineSet.add(leftBound.top.y);
 			}
 		} // while (HasLocMinAtY())
 	}
@@ -1362,7 +1362,7 @@ abstract class ClipperBase {
 		if (IsHorizontal(ae)) {
 			return;
 		}
-		InsertScanline(ae.top.y);
+		scanlineSet.add(ae.top.y);
 		if (TestJoinWithPrev1(ae)) {
 			OutPt op1 = AddOutPt(ae.prevInAEL, ae.bot);
 			OutPt op2 = AddOutPt(ae, ae.bot);
@@ -1655,10 +1655,10 @@ abstract class ClipperBase {
 		fillrule = fillRule;
 		cliptype = ct;
 		Reset();
-        long y = PopScanline();
-        if (y==Long.MAX_VALUE) {
+		if (scanlineSet.isEmpty()) {
 			return;
 		}
+		long y = scanlineSet.pollLast();
 		while (succeeded) {
 			InsertLocalMinimaIntoAEL(y);
 			Active ae = null;
@@ -1669,10 +1669,10 @@ abstract class ClipperBase {
 			}
 			ConvertHorzTrialsToJoins();
 			currentBotY = y; // bottom of scanbeam
-            y = PopScanline();
-            if (y==Long.MAX_VALUE) {
+			if (scanlineSet.isEmpty()) {
 				break; // y new top of scanbeam
 			}
+			y = scanlineSet.pollLast();
 			DoIntersections(y);
 			DoTopOfScanbeam(y);
 			OutObject<Active> tempOutae2 = new OutObject<>();
