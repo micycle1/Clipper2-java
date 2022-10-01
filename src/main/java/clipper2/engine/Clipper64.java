@@ -66,13 +66,12 @@ public class Clipper64 extends ClipperBase {
 	 * @param solutionOpen
 	 * @return
 	 */
-	public final boolean Execute(ClipType clipType, FillRule fillRule, Paths64 solutionClosed,
-			Paths64 solutionOpen) {
+	public final boolean Execute(ClipType clipType, FillRule fillRule, Paths64 solutionClosed, Paths64 solutionOpen) {
 		solutionClosed.clear();
 		solutionOpen.clear();
-		ExecuteInternal(clipType, fillRule);
-		BuildPaths(solutionClosed, solutionOpen);
-		try { // NOTE avoid for now
+		try {
+			ExecuteInternal(clipType, fillRule);
+			BuildPaths(solutionClosed, solutionOpen);
 		} catch (Exception e) {
 			succeeded = false;
 		}
