@@ -650,16 +650,12 @@ public final class Clipper {
 		if (!polyPath.getPolygon().isEmpty()) {
 			paths.add(polyPath.getPolygon());
 		}
-		for (int i = 0; i < polyPath.getCount(); i++) {
-			AddPolyNodeToPaths((PolyPath64) polyPath.children.get(i), paths);
-		}
+		polyPath.iterator().forEachRemaining(p -> AddPolyNodeToPaths((PolyPath64) p, paths));
 	}
 
 	public static Paths64 PolyTreeToPaths64(PolyTree64 polyTree) {
 		Paths64 result = new Paths64();
-		for (int i = 0; i < polyTree.getCount(); i++) {
-			AddPolyNodeToPaths((PolyPath64) polyTree.children.get(i), result);
-		}
+		polyTree.iterator().forEachRemaining(p -> AddPolyNodeToPaths((PolyPath64) p, result));
 		return result;
 	}
 
@@ -667,9 +663,7 @@ public final class Clipper {
 		if (!polyPath.getPolygon().isEmpty()) {
 			paths.add(polyPath.getPolygon());
 		}
-		for (int i = 0; i < polyPath.getCount(); i++) {
-			AddPolyNodeToPathsD((PolyPathD) polyPath.children.get(i), paths);
-		}
+		polyPath.iterator().forEachRemaining(p -> AddPolyNodeToPathsD((PolyPathD) p, paths));
 	}
 
 	public static PathsD PolyTreeToPathsD(PolyTreeD polyTree) {

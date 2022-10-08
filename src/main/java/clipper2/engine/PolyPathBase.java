@@ -7,8 +7,8 @@ import clipper2.core.Path64;
 
 public abstract class PolyPathBase implements Iterable<PolyPathBase> {
 
-	public PolyPathBase parent;
-	public List<PolyPathBase> children = new ArrayList<>();
+	final PolyPathBase parent;
+	List<PolyPathBase> children = new ArrayList<>();
 
 	PolyPathBase(PolyPathBase parent) {
 		this.parent = parent;
@@ -28,10 +28,6 @@ public abstract class PolyPathBase implements Iterable<PolyPathBase> {
 	 * of a polygon.
 	 */
 	public final boolean getIsHole() {
-		return GetIsHole();
-	}
-
-	private boolean GetIsHole() {
 		boolean result = true;
 		PolyPathBase pp = parent;
 		while (pp != null) {

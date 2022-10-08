@@ -29,7 +29,7 @@ import tangible.RefObject;
 abstract class ClipperBase {
 
 	private ClipType cliptype;
-	private FillRule fillrule;
+	private FillRule fillrule = FillRule.EvenOdd;
 	private Active actives = null;
 	private Active sel = null;
 	private Joiner horzJoiners = null;
@@ -43,8 +43,8 @@ abstract class ClipperBase {
 	private long currentBotY;
 	private boolean isSortedMinimaList;
 	private boolean hasOpenPaths;
-	public boolean usingPolytree;
-	public boolean succeeded;
+	boolean usingPolytree;
+	boolean succeeded;
 	private boolean preserveCollinear;
 	private boolean reverseSolution;
 
@@ -1230,7 +1230,7 @@ abstract class ClipperBase {
 			result = outrec.pts;
 
 			outrec.owner = GetRealOutRec(outrec.owner);
-			if (usingPolytree && outrec.owner.frontEdge == null) {
+			if (usingPolytree && outrec.owner != null && outrec.owner.frontEdge == null) {
 				outrec.owner = GetRealOutRec(outrec.owner.owner);
 			}
 		}

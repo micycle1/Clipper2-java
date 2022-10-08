@@ -4,7 +4,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
-class PolyPathIterator implements Iterator<PolyPathBase> {
+public class PolyPathIterator implements Iterator<PolyPathBase> {
 
 	List<PolyPathBase> ppbList;
 	int position = 0;

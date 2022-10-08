@@ -91,7 +91,7 @@ public class Clipper64 extends ClipperBase {
 		try {
 			ExecuteInternal(clipType, fillRule);
 			BuildTree(polytree, openPaths);
-		} catch (java.lang.Exception e) {
+		} catch (Exception e) {
 			succeeded = false;
 		}
 

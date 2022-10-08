@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.stream.Stream;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -29,7 +28,6 @@ class TestPolytree {
 
 	@MethodSource("testCases")
 	@ParameterizedTest(name = "{1} {2} {3}")
-	@Disabled
 	final void RunPolytreeTestCase(TestCase test, String caption, Object o, Object o1) {
 		PolyTree64 solutionTree = new PolyTree64();
 		Paths64 solution_open = new Paths64();
@@ -44,7 +42,7 @@ class TestPolytree {
 
 		for (Point64 pt : pointsOfInterestOutside) {
 			for (var path : subject) {
-				assertSame(PointInPolygonResult.IsOutside, Clipper.PointInPolygon(pt, path),
+				assertEquals(PointInPolygonResult.IsOutside, Clipper.PointInPolygon(pt, path),
 						"outside point of interest found inside subject");
 			}
 		}
@@ -59,7 +57,7 @@ class TestPolytree {
 					poi_inside_counter++;
 				}
 			}
-			assertSame(1, poi_inside_counter, String.format("poi_inside_counter - expected 1 but got %1$s", poi_inside_counter));
+			assertEquals(1, poi_inside_counter, String.format("poi_inside_counter - expected 1 but got %1$s", poi_inside_counter));
 		}
 
 		clipper.AddSubject(subject);
@@ -71,10 +69,10 @@ class TestPolytree {
 		double a1 = Clipper.Area(solutionPaths), a2 = solutionTree.Area();
 
 		assertTrue(a1 > 330000, String.format("solution has wrong area - value expected: 331,052; value returned; %1$s ", a1));
-//
+		
 		assertTrue(Math.abs(a1 - a2) < 0.0001,
 				String.format("solution tree has wrong area - value expected: %1$s; value returned; %2$s ", a1, a2));
-//
+		
 		assertTrue(CheckPolytreeFullyContainsChildren(solutionTree), "The polytree doesn't properly contain its children");
 
 		for (Point64 pt : pointsOfInterestOutside) {
@@ -87,7 +85,7 @@ class TestPolytree {
 		}
 	}
 
-	private boolean CheckPolytreeFullyContainsChildren(PolyTree64 polytree) {
+	private static boolean CheckPolytreeFullyContainsChildren(PolyTree64 polytree) {
 		for (var p : polytree) {
 			PolyPath64 child = (PolyPath64) p;
 			if (child.getCount() > 0 && !PolyPathFullyContainsChildren(child)) {
@@ -97,7 +95,7 @@ class TestPolytree {
 		return true;
 	}
 
-	private boolean PolyPathFullyContainsChildren(PolyPath64 pp) {
+	private static boolean PolyPathFullyContainsChildren(PolyPath64 pp) {
 		for (var c : pp) {
 			var child = (PolyPath64) c;
 			for (Point64 pt : child.getPolygon()) {
@@ -112,7 +110,7 @@ class TestPolytree {
 		return true;
 	}
 
-	private boolean PolytreeContainsPoint(PolyTree64 pp, Point64 pt) {
+	private static boolean PolytreeContainsPoint(PolyTree64 pp, Point64 pt) {
 		int counter = 0;
 		for (int i = 0; i < pp.getCount(); i++) {
 			PolyPath64 child = (PolyPath64) pp.get(i);
@@ -124,12 +122,12 @@ class TestPolytree {
 		return counter != 0;
 	}
 
-	private void PolyPathContainsPoint(PolyPath64 pp, Point64 pt, RefObject<Integer> counter) {
+	private static void PolyPathContainsPoint(PolyPath64 pp, Point64 pt, RefObject<Integer> counter) {
 		if (Clipper.PointInPolygon(pt, pp.getPolygon()) != PointInPolygonResult.IsOutside) {
 			if (pp.getIsHole()) {
-				--counter.argValue;
+				counter.argValue--;
 			} else {
-				++counter.argValue;
+				counter.argValue++;
 			}
 		}
 		for (int i = 0; i < pp.getCount(); i++) {
