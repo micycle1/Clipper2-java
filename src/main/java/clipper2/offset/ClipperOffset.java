@@ -406,7 +406,6 @@ public class ClipperOffset {
 		} else if (sinA < -1.0) {
 			sinA = -1.0;
 		}
-
 		boolean almostNoAngle = (AlmostZero(sinA) && cosA > 0);
 		if (almostNoAngle || (sinA * group_delta < 0)) {
 			group.outPath.add(GetPerpendic(path.get(j), normals.get(k)));
@@ -416,18 +415,19 @@ public class ClipperOffset {
 			group.outPath.add(GetPerpendic(path.get(j), normals.get(j)));
 		} else if (joinType == JoinType.Round) {
 			DoRound(group, path, j, k, Math.atan2(sinA, cosA));
+		} else if (joinType == JoinType.Miter) {
+			// miter unless the angle is so acute the miter would exceeds ML
+			if (cosA > tmpLimit - 1)
+				DoMiter(group, path, j, k, cosA);
+			else
+				DoSquare(group, path, j, k);
 		}
-		// else miter when the angle isn't too acute (and hence exceed ML)
-		else if (joinType == JoinType.Miter && cosA > tmpLimit - 1) {
+		// don't bother squaring angles that deviate < ~20 degrees because
+		// squaring will be indistinguishable from mitering and just be a lot slower
+		else if (Math.abs(sinA) < 0.25)
 			DoMiter(group, path, j, k, cosA);
-		}
-		// else only square angles that deviate > 90 degrees
-		else if (cosA < -0.001) {
+		else
 			DoSquare(group, path, j, k);
-		} else {
-			// don't square shallow angles that are safe to miter
-			DoMiter(group, path, j, k, cosA);
-		}
 
 	}
 

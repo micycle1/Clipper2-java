@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -21,9 +22,9 @@ import tangible.RefObject;
 
 class TestPolytree {
 
-	private static final List<Arguments> testCases() throws IOException {
+	private static final Stream<Arguments> testCases() throws IOException {
 		return ClipperFileIO.loadTestCases("PolytreeHoleOwner2.txt").stream()
-				.map(t -> Arguments.of(t, t.caption(), t.clipType(), t.fillRule())).toList();
+				.map(t -> Arguments.of(t, t.caption(), t.clipType(), t.fillRule()));
 	}
 
 	@MethodSource("testCases")
