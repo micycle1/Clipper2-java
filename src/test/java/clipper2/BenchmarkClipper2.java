@@ -4,6 +4,7 @@ import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 import org.openjdk.jmh.annotations.Level;
+import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Setup;
 
 import org.openjdk.jmh.annotations.Benchmark;
@@ -20,13 +21,16 @@ import clipper2.core.Point64;
 import clipper2.engine.Clipper64;
 
 /**
- * Benchmark class is located within test folder in order to be found by
- * jmh-maven-plugin.
+ * Benchmarks for Clipper 2. Class is located within test folder in order to be
+ * found by jmh-maven-plugin.
  */
-public class Benchmarks {
-	
+@Measurement(time = 3) // run each benchmark continuously upto 3s
+public class BenchmarkClipper2 {
+
 	private static final int DisplayWidth = 800;
 	private static final int DisplayHeight = 600;
+
+	private static long seed = 0;
 
 	@State(Scope.Benchmark)
 	public static class BenchmarkState {
@@ -35,12 +39,12 @@ public class Benchmarks {
 		Paths64 clip;
 		Paths64 solution;
 
-		@Param({ "1000", "2000", "3000", "4000" })
+		@Param({ "1000", "2000", "4000" })
 		public int edgeCount;
 
 		@Setup(Level.Invocation)
 		public void setup() {
-			Random rand = new Random();
+			Random rand = new Random(seed++);
 
 			subj = new Paths64();
 			clip = new Paths64();
@@ -54,10 +58,10 @@ public class Benchmarks {
 
 	@Benchmark
 	@OutputTimeUnit(TimeUnit.SECONDS)
-	public void Intersection_N(BenchmarkState state) {
+	public void Intersection(BenchmarkState state) {
 		Clipper64 c = new Clipper64();
-		c.AddSubject(state.subj);
-		c.AddClip(state.clip);
+		c.AddSubject(state.subj); // closed
+		c.AddClip(state.clip); // closed
 		c.Execute(ClipType.Intersection, FillRule.NonZero, state.solution);
 	}
 
@@ -69,8 +73,9 @@ public class Benchmarks {
 
 	private static Path64 MakeRandomPath(int width, int height, int count, Random rand) {
 		Path64 result = new Path64(count);
-		for (int i = 0; i < count; ++i)
+		for (int i = 0; i < count; ++i) {
 			result.add(MakeRandomPt(width, height, rand));
+		}
 		return result;
 	}
 
