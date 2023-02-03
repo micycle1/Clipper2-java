@@ -4,12 +4,12 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
-public class PolyPathIterator implements Iterator<PolyPathBase> {
+public class NodeIterator implements Iterator<PolyPathNode> {
 
-	List<PolyPathBase> ppbList;
+	List<PolyPathNode> ppbList;
 	int position = 0;
 
-	PolyPathIterator(List<PolyPathBase> childs) {
+	NodeIterator(List<PolyPathNode> childs) {
 		ppbList = childs;
 	}
 
@@ -19,7 +19,7 @@ public class PolyPathIterator implements Iterator<PolyPathBase> {
 	}
 
 	@Override
-	public PolyPathBase next() {
+	public PolyPathNode next() {
 		if (position < 0 || position >= ppbList.size()) {
 			throw new NoSuchElementException();
 		}

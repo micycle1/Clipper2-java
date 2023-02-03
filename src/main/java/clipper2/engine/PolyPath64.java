@@ -9,7 +9,7 @@ import clipper2.core.Path64;
  * polygon contour. PolyPath64s can also contain children, and there's no limit
  * to nesting. Each child's Polygon will be inside its parent's Polygon.
  */
-public class PolyPath64 extends PolyPathBase {
+public class PolyPath64 extends PolyPathNode {
 
 	private Path64 polygon;
 
@@ -17,12 +17,12 @@ public class PolyPath64 extends PolyPathBase {
 		this(null);
 	}
 
-	public PolyPath64(@Nullable PolyPathBase parent) {
+	public PolyPath64(@Nullable PolyPathNode parent) {
 		super(parent);
 	}
 
 	@Override
-	public PolyPathBase AddChild(Path64 p) {
+	public PolyPathNode AddChild(Path64 p) {
 		PolyPath64 newChild = new PolyPath64(this);
 		newChild.setPolygon(p);
 		children.add(newChild);
@@ -38,7 +38,7 @@ public class PolyPath64 extends PolyPathBase {
 
 	public final double Area() {
 		double result = getPolygon() == null ? 0 : Clipper.Area(getPolygon());
-		for (PolyPathBase polyPathBase : children) {
+		for (PolyPathNode polyPathBase : children) {
 			PolyPath64 child = (PolyPath64) polyPathBase;
 			result += child.Area();
 		}

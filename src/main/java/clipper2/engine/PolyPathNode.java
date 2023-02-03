@@ -1,26 +1,28 @@
 package clipper2.engine;
 
+import clipper2.Nullable;
+import clipper2.core.Path64;
+
 import java.util.ArrayList;
 import java.util.List;
 
-import clipper2.core.Path64;
+public abstract class PolyPathNode implements Iterable<PolyPathNode> {
 
-public abstract class PolyPathBase implements Iterable<PolyPathBase> {
+	@Nullable
+	final PolyPathNode parent;
+	List<PolyPathNode> children = new ArrayList<>();
 
-	final PolyPathBase parent;
-	List<PolyPathBase> children = new ArrayList<>();
-
-	PolyPathBase(PolyPathBase parent) {
+	PolyPathNode(PolyPathNode parent) {
 		this.parent = parent;
 	}
 
-	PolyPathBase() {
+	PolyPathNode() {
 		this(null);
 	}
 
 	@Override
-	public final PolyPathIterator iterator() {
-		return new PolyPathIterator(children);
+	public final NodeIterator iterator() {
+		return new NodeIterator(children);
 	}
 
 	/**
@@ -29,7 +31,7 @@ public abstract class PolyPathBase implements Iterable<PolyPathBase> {
 	 */
 	public final boolean getIsHole() {
 		boolean result = true;
-		PolyPathBase pp = parent;
+		PolyPathNode pp = parent;
 		while (pp != null) {
 			result = !result;
 			pp = pp.parent;
@@ -45,7 +47,7 @@ public abstract class PolyPathBase implements Iterable<PolyPathBase> {
 		return children.size();
 	}
 
-	public abstract PolyPathBase AddChild(Path64 p);
+	public abstract PolyPathNode AddChild(Path64 p);
 
 	/**
 	 * This method clears the Polygon and deletes any contained children.

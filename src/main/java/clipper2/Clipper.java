@@ -1,10 +1,5 @@
 package clipper2;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
 import clipper2.core.ClipType;
 import clipper2.core.FillRule;
 import clipper2.core.InternalClipper;
@@ -18,22 +13,31 @@ import clipper2.core.PointD;
 import clipper2.core.Rect64;
 import clipper2.core.RectD;
 import clipper2.engine.Clipper64;
+import clipper2.engine.ClipperBase;
 import clipper2.engine.ClipperD;
 import clipper2.engine.PointInPolygonResult;
 import clipper2.engine.PolyPath64;
-import clipper2.engine.PolyPathBase;
 import clipper2.engine.PolyPathD;
+import clipper2.engine.PolyPathNode;
 import clipper2.engine.PolyTree64;
 import clipper2.engine.PolyTreeD;
 import clipper2.offset.ClipperOffset;
 import clipper2.offset.EndType;
 import clipper2.offset.JoinType;
+import clipper2.rectclip.RectClip;
+import clipper2.rectclip.RectClipLines;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 public final class Clipper {
 
 	public static final Rect64 MaxInvalidRect64 = new Rect64(Long.MAX_VALUE, Long.MAX_VALUE, Long.MIN_VALUE, Long.MIN_VALUE);
 
 	public static final RectD MaxInvalidRectD = new RectD(Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE);
+	public static final String PRECISION_RANGE_ERROR = "Error: Precision is out of range.";
 
 	public static Paths64 Intersect(Paths64 subject, Paths64 clip, FillRule fillRule) {
 		return BooleanOp(ClipType.Intersection, subject, clip, fillRule);
@@ -43,8 +47,8 @@ public final class Clipper {
 		return Intersect(subject, clip, fillRule, 2);
 	}
 
-	public static PathsD Intersect(PathsD subject, PathsD clip, FillRule fillRule, int roundingDecimalPrecision) {
-		return BooleanOp(ClipType.Intersection, subject, clip, fillRule, roundingDecimalPrecision);
+	public static PathsD Intersect(PathsD subject, PathsD clip, FillRule fillRule, int precision) {
+		return BooleanOp(ClipType.Intersection, subject, clip, fillRule, precision);
 	}
 
 	public static Paths64 Union(Paths64 subject, FillRule fillRule) {
@@ -63,8 +67,8 @@ public final class Clipper {
 		return Union(subject, clip, fillRule, 2);
 	}
 
-	public static PathsD Union(PathsD subject, PathsD clip, FillRule fillRule, int roundingDecimalPrecision) {
-		return BooleanOp(ClipType.Union, subject, clip, fillRule, roundingDecimalPrecision);
+	public static PathsD Union(PathsD subject, PathsD clip, FillRule fillRule, int precision) {
+		return BooleanOp(ClipType.Union, subject, clip, fillRule, precision);
 	}
 
 	public static Paths64 Difference(Paths64 subject, Paths64 clip, FillRule fillRule) {
@@ -75,8 +79,8 @@ public final class Clipper {
 		return Difference(subject, clip, fillRule, 2);
 	}
 
-	public static PathsD Difference(PathsD subject, PathsD clip, FillRule fillRule, int roundingDecimalPrecision) {
-		return BooleanOp(ClipType.Difference, subject, clip, fillRule, roundingDecimalPrecision);
+	public static PathsD Difference(PathsD subject, PathsD clip, FillRule fillRule, int precision) {
+		return BooleanOp(ClipType.Difference, subject, clip, fillRule, precision);
 	}
 
 	public static Paths64 Xor(Paths64 subject, Paths64 clip, FillRule fillRule) {
@@ -87,8 +91,8 @@ public final class Clipper {
 		return Xor(subject, clip, fillRule, 2);
 	}
 
-	public static PathsD Xor(PathsD subject, PathsD clip, FillRule fillRule, int roundingDecimalPrecision) {
-		return BooleanOp(ClipType.Xor, subject, clip, fillRule, roundingDecimalPrecision);
+	public static PathsD Xor(PathsD subject, PathsD clip, FillRule fillRule, int precision) {
+		return BooleanOp(ClipType.Xor, subject, clip, fillRule, precision);
 	}
 
 	public static Paths64 BooleanOp(ClipType clipType, Paths64 subject, Paths64 clip, FillRule fillRule) {
@@ -109,10 +113,9 @@ public final class Clipper {
 		return BooleanOp(clipType, subject, clip, fillRule, 2);
 	}
 
-	public static PathsD BooleanOp(ClipType clipType, PathsD subject, @Nullable PathsD clip, FillRule fillRule,
-			int roundingDecimalPrecision) {
+	public static PathsD BooleanOp(ClipType clipType, PathsD subject, @Nullable PathsD clip, FillRule fillRule, int precision) {
 		PathsD solution = new PathsD();
-		ClipperD c = new ClipperD(roundingDecimalPrecision);
+		ClipperD c = new ClipperD(precision);
 		c.AddSubjectsD(subject);
 		if (clip != null) {
 			c.AddClipsD(clip);
@@ -184,7 +187,7 @@ public final class Clipper {
 
 	public static PathsD InflatePaths(PathsD paths, double delta, JoinType joinType, EndType endType, double miterLimit, int precision) {
 		if (precision < -8 || precision > 8) {
-			throw new IllegalArgumentException("Error: Precision is out of range.");
+			throw new IllegalArgumentException(PRECISION_RANGE_ERROR);
 		}
 		double scale = Math.pow(10, precision);
 		Paths64 tmp = ScalePaths64(paths, scale);
@@ -192,6 +195,157 @@ public final class Clipper {
 		co.AddPaths(tmp, joinType, endType);
 		tmp = co.Execute(delta * scale);
 		return ScalePathsD(tmp, 1 / scale);
+	}
+
+	public static Path64 RectClip(Rect64 rect, Path64 path)
+	{
+		if (rect.IsEmpty() || path.isEmpty()) return new Path64();
+		RectClip rc = new RectClip(rect);
+		return rc.ExecuteInternal(path);
+	}
+
+	public static Paths64 RectClip(Rect64 rect, Paths64 paths)
+	{
+		if (rect.IsEmpty() || paths.isEmpty()) return new Paths64();
+
+		Paths64 result = new Paths64(paths.size());
+		RectClip rc = new RectClip(rect);
+		for (Path64 path : paths) {
+			Rect64 pathRec = ClipperBase.GetBounds(path);
+			if (!rect.Intersects(pathRec))
+				continue;
+			else if (rect.Contains(pathRec))
+				result.add(path);
+			else
+			{
+				Path64 p = rc.ExecuteInternal(path);
+				if (p.size() > 0) result.add(p);
+			}
+		}
+		return result;
+	}
+
+	public static PathD RectClip(RectD rect, PathD path){
+		return RectClip(rect, path, 2);
+	}
+
+	public static PathD RectClip(RectD rect, PathD path, int precision)
+	{
+		if (precision < -8 || precision > 8)
+			throw new IllegalArgumentException(PRECISION_RANGE_ERROR);
+		if (rect.IsEmpty() || path.size() == 0) return new PathD();
+		double scale = Math.pow(10, precision);
+		Rect64 r = ScaleRect(rect, scale);
+		Path64 tmpPath = ScalePath64(path, scale);
+		RectClip rc = new RectClip(r);
+		tmpPath = rc.ExecuteInternal(tmpPath);
+		return ScalePathD(tmpPath, 1 / scale);
+	}
+
+	public static PathsD RectClip(RectD rect, PathsD paths)
+	{
+		return RectClip(rect, paths, 2);
+	}
+
+	public static PathsD RectClip(RectD rect, PathsD paths, int precision)
+	{
+		if (precision < -8 || precision > 8)
+			throw new IllegalArgumentException(PRECISION_RANGE_ERROR);
+		if (rect.IsEmpty() || paths.size() == 0) return new PathsD();
+		double scale = Math.pow(10, precision);
+		Rect64 r = ScaleRect(rect, scale);
+		RectClip rc = new RectClip(r);
+		PathsD result = new PathsD(paths.size());
+		for (PathD p : paths) {
+			RectD pathRec = ClipperBase.GetBounds(p);
+			if (!rect.Intersects(pathRec))
+				continue;
+			else if (rect.Contains(pathRec))
+				result.add(p);
+			else
+			{
+				Path64 p64 = ScalePath64(p, scale);
+				p64 = rc.ExecuteInternal(p64);
+				if (p64.size() > 0)
+					result.add(ScalePathD(p64, 1 / scale));
+			}
+		}
+		return result;
+	}
+	public static Paths64 RectClipLines(Rect64 rect, Path64 path)
+	{
+		if (rect.IsEmpty() || path.size() == 0) return new Paths64();
+		RectClipLines rco = new RectClipLines(rect);
+		return rco.NewExecuteInternal(path);
+	}
+
+	public static Paths64 RectClipLines(Rect64 rect, Paths64 paths)
+	{
+		Paths64 result = new Paths64(paths.size());
+		if (rect.IsEmpty() || paths.size() == 0) return result;
+		RectClipLines rco = new RectClipLines(rect);
+		for (Path64 path : paths) {
+			Rect64 pathRec = ClipperBase.GetBounds(path);
+			if (!rect.Intersects(pathRec))
+				continue;
+			else if (rect.Contains(pathRec))
+				result.add(path);
+			else
+			{
+				Paths64 pp = rco.NewExecuteInternal(path);
+				if (pp.size() > 0) result.addAll(pp);
+			}
+		}
+		return result;
+	}
+
+	public static PathsD RectClipLines(RectD rect, PathD path)
+	{
+		return RectClipLines(rect, path, 2);
+	}
+
+	public static PathsD RectClipLines(RectD rect, PathD path, int precision)
+	{
+		if (precision < -8 || precision > 8)
+			throw new IllegalArgumentException(PRECISION_RANGE_ERROR);
+		if (rect.IsEmpty() || path.size() == 0) return new PathsD();
+		double scale = Math.pow(10, precision);
+		Rect64 r = ScaleRect(rect, scale);
+		Path64 tmpPath = ScalePath64(path, scale);
+		RectClipLines rco = new RectClipLines(r);
+		Paths64 tmpPaths = rco.NewExecuteInternal(tmpPath);
+		return ScalePathsD(tmpPaths, 1 / scale);
+	}
+	public static PathsD RectClipLines(RectD rect, PathsD paths)
+	{
+		return RectClipLines(rect, paths, 2);
+	}
+
+	public static PathsD RectClipLines(RectD rect, PathsD paths, int precision)
+	{
+		if (precision < -8 || precision > 8)
+			throw new IllegalArgumentException(PRECISION_RANGE_ERROR);
+		PathsD result = new PathsD(paths.size());
+		if (rect.IsEmpty() || paths.size() == 0) return result;
+		double scale = Math.pow(10, precision);
+		Rect64 r = ScaleRect(rect, scale);
+		RectClipLines rco = new RectClipLines(r);
+		for (PathD p : paths) {
+			RectD pathRec = ClipperBase.GetBounds(p);
+			if (!rect.Intersects(pathRec))
+				continue;
+			else if (rect.Contains(pathRec))
+				result.add(p);
+			else
+			{
+				Path64 p64 = ScalePath64(p, scale);
+				Paths64 pp64 = rco.NewExecuteInternal(p64);
+				if (pp64.size() == 0) continue;
+				PathsD ppd = ScalePathsD(pp64, 1 / scale);
+				result.addAll(ppd);
+			}
+		}
+		return result;
 	}
 
 	public static Paths64 MinkowskiSum(Path64 pattern, Path64 path, boolean isClosed) {
@@ -350,6 +504,17 @@ public final class Clipper {
 		PointD result = new PointD();
 		result.x = pt.x * scale;
 		result.y = pt.y * scale;
+		return result;
+	}
+
+	public static Rect64 ScaleRect(RectD rec, double scale)
+	{
+		Rect64 result = new Rect64(
+			(long) (rec.left * scale),
+			(long) (rec.top * scale),
+			(long) (rec.right * scale),
+			(long) (rec.bottom * scale)
+		);
 		return result;
 	}
 
@@ -528,6 +693,18 @@ public final class Clipper {
 		return result;
 	}
 
+	public static Rect64 GetBounds(Path64 path)
+	{
+		Rect64 result = MaxInvalidRect64;
+		for (Point64 pt : path) {
+			if (pt.x < result.left) result.left = pt.x;
+			if (pt.x > result.right) result.right = pt.x;
+			if (pt.y < result.top) result.top = pt.y;
+			if (pt.y > result.bottom) result.bottom = pt.y;
+		}
+		return result.IsEmpty() ? new Rect64() : result;
+	}
+
 	public static Rect64 GetBounds(Paths64 paths) {
 		Rect64 result = MaxInvalidRect64;
 		for (Path64 path : paths) {
@@ -669,7 +846,7 @@ public final class Clipper {
 
 	public static PathsD PolyTreeToPathsD(PolyTreeD polyTree) {
 		PathsD result = new PathsD();
-		for (PolyPathBase polyPathBase : polyTree) {
+		for (PolyPathNode polyPathBase : polyTree) {
 			PolyPathD p = (PolyPathD) polyPathBase;
 			AddPolyNodeToPathsD(p, result);
 		}
@@ -939,7 +1116,7 @@ public final class Clipper {
 	 */
 	public static PathD TrimCollinear(PathD path, int precision, boolean isOpen) {
 		if (precision < -8 || precision > 8) {
-			throw new IllegalArgumentException("Error: Precision is out of range.");
+			throw new IllegalArgumentException(PRECISION_RANGE_ERROR);
 		}
 		double scale = Math.pow(10, precision);
 		Path64 p = ScalePath64(path, scale);

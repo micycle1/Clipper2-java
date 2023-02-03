@@ -6,6 +6,6 @@ package tangible;
 //
 //	This class is used to replicate the ability to have 'out' parameters in Java.
 //----------------------------------------------------------------------------------------
-public final class OutObject<T> {
+public class OutObject<T> {
 	public T argValue;
 }

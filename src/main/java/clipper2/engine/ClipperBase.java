@@ -1,10 +1,6 @@
 package clipper2.engine;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.NavigableSet;
-import java.util.TreeSet;
+import static clipper2.Clipper.MaxInvalidRectD;
 
 import clipper2.Clipper;
 import clipper2.Nullable;
@@ -12,13 +8,21 @@ import clipper2.core.ClipType;
 import clipper2.core.FillRule;
 import clipper2.core.InternalClipper;
 import clipper2.core.Path64;
+import clipper2.core.PathD;
 import clipper2.core.PathType;
 import clipper2.core.Paths64;
 import clipper2.core.Point64;
 import clipper2.core.PointD;
 import clipper2.core.Rect64;
+import clipper2.core.RectD;
 import tangible.OutObject;
 import tangible.RefObject;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.NavigableSet;
+import java.util.TreeSet;
 
 /**
  * Subject and Clip paths are passed to a Clipper object via AddSubject,
@@ -26,7 +30,7 @@ import tangible.RefObject;
  * calling Execute. And Execute can be called multiple times (ie with different
  * ClipTypes & FillRules) without having to reload these paths.
  */
-abstract class ClipperBase {
+public abstract class ClipperBase {
 
 	private ClipType cliptype;
 	private FillRule fillrule = FillRule.EvenOdd;
@@ -65,7 +69,7 @@ abstract class ClipperBase {
 		@Nullable
 		OutPt pts;
 		@Nullable
-		PolyPathBase polypath;
+		PolyPathNode polypath;
 		Rect64 bounds;
 		Path64 path;
 		boolean isOpen;
@@ -3158,7 +3162,19 @@ abstract class ClipperBase {
 		return result == PointInPolygonResult.IsInside;
 	}
 
-	private static Rect64 GetBounds(Path64 path) {
+	public static RectD GetBounds(PathD path)
+	{
+		RectD result = MaxInvalidRectD;
+		for (PointD pt : path) {
+			if (pt.x < result.left) result.left = pt.x;
+			if (pt.x > result.right) result.right = pt.x;
+			if (pt.y < result.top) result.top = pt.y;
+			if (pt.y > result.bottom) result.bottom = pt.y;
+		}
+		return result.IsEmpty() ? new RectD() : result;
+	}
+
+	public static Rect64 GetBounds(Path64 path) {
 		if (path.isEmpty()) {
 			return new Rect64();
 		}
@@ -3232,7 +3248,7 @@ abstract class ClipperBase {
 		}
 	}
 
-	protected final boolean BuildTree(PolyPathBase polytree, Paths64 solutionOpen) {
+	protected final boolean BuildTree(PolyPathNode polytree, Paths64 solutionOpen) {
 		polytree.Clear();
 		solutionOpen.clear();
 
@@ -3279,7 +3295,7 @@ abstract class ClipperBase {
 				}
 			}
 
-			PolyPathBase ownerPP;
+			PolyPathNode ownerPP;
 			if (outrec.owner != null && outrec.owner.polypath != null) {
 				ownerPP = outrec.owner.polypath;
 			} else {

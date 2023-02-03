@@ -5,7 +5,7 @@ import clipper2.Nullable;
 import clipper2.core.Path64;
 import clipper2.core.PathD;
 
-public class PolyPathD extends PolyPathBase {
+public class PolyPathD extends PolyPathNode {
 
 	private PathD polygon;
 	private double scale;
@@ -14,12 +14,12 @@ public class PolyPathD extends PolyPathBase {
 		this(null);
 	}
 
-	PolyPathD(@Nullable PolyPathBase parent) {
+	PolyPathD(@Nullable PolyPathNode parent) {
 		super(parent);
 	}
 
 	@Override
-	public PolyPathBase AddChild(Path64 p) {
+	public PolyPathNode AddChild(Path64 p) {
 		PolyPathD newChild = new PolyPathD(this);
 		newChild.setScale(scale);
 		newChild.setPolygon(Clipper.ScalePathD(p, scale));
@@ -36,7 +36,7 @@ public class PolyPathD extends PolyPathBase {
 
 	public final double Area() {
 		double result = getPolygon() == null ? 0 : Clipper.Area(getPolygon());
-		for (PolyPathBase polyPathBase : children) {
+		for (PolyPathNode polyPathBase : children) {
 			PolyPathD child = (PolyPathD) polyPathBase;
 			result += child.Area();
 		}
