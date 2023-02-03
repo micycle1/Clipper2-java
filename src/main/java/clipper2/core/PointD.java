@@ -62,7 +62,8 @@ public final class PointD {
 
 	@Override
 	public boolean equals(Object obj) {
-		if (obj instanceof PointD p) {
+		if (obj instanceof PointD) {
+			PointD p = (PointD) obj;
 			return opEquals(this, p);
 		}
 		return false;

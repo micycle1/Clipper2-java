@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.Arrays;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.params.ParameterizedTest;
@@ -25,8 +25,8 @@ class TestPolygons {
 	@ParameterizedTest(name = "{1}: {2} {3}")
 	final void RunPolygonsTestCase(TestCase test, int testNum, Object o, Object o1) {
 		Clipper64 c64 = new Clipper64();
-		var solution = new Paths64();
-		var solution_open = new Paths64();
+		Paths64 solution = new Paths64();
+		Paths64 solution_open = new Paths64();
 
 		c64.AddSubject(test.subj());
 		c64.AddOpenSubject(test.subj_open());
@@ -42,7 +42,7 @@ class TestPolygons {
 			assertTrue(countDiff <= 4);
 		} else if (test.testNum() == 27) {
 			assertTrue(countDiff <= 2);
-		} else if (List.of(18, 32, 42, 43, 45, 87, 102, 103, 111, 118, 183).contains(test.testNum())) {
+		} else if (Arrays.asList(18, 32, 42, 43, 45, 87, 102, 103, 111, 118, 183).contains(test.testNum())) {
 			assertTrue(countDiff <= 1);
 		} else if (test.testNum() >= 120) {
 			if (test.count() > 0) {
@@ -53,7 +53,7 @@ class TestPolygons {
 			assertEquals(0, countDiff, String.format("Vertex count incorrect. Expected=%s; actual=%s", test.count(), measuredCount));
 		}
 
-		if (List.of(22, 23, 24).contains(test.testNum())) {
+		if (Arrays.asList(22, 23, 24).contains(test.testNum())) {
 			assertTrue(areaDiff <= 8);
 		} else if (test.area() > 0 && areaDiff > 100) {
 			assertTrue(areaDiff / test.area() <= 0.02);

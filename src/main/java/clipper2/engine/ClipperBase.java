@@ -768,24 +768,37 @@ abstract class ClipperBase {
 
 		switch (cliptype) {
 			case Intersection :
-				return switch (fillrule) {
-					case Positive -> ae.windCount2 > 0;
-					case Negative -> ae.windCount2 < 0;
-					default -> ae.windCount2 != 0;
-				};
+				switch (fillrule) {
+					case Positive:
+						return ae.windCount2 > 0;
+					case Negative:
+						return ae.windCount2 < 0;
+					default:
+						return ae.windCount2 != 0;
+				}
 			case Union :
-				return switch (fillrule) {
-					case Positive -> ae.windCount2 <= 0;
-					case Negative -> ae.windCount2 >= 0;
-					default -> ae.windCount2 == 0;
-				};
+				switch (fillrule) {
+					case Positive:
+						return ae.windCount2 <= 0;
+					case Negative:
+						return ae.windCount2 >= 0;
+					default:
+						return ae.windCount2 == 0;
+				}
 
 			case Difference :
-				boolean result = switch (fillrule) {
-					case Positive -> ae.windCount2 <= 0;
-					case Negative -> ae.windCount2 >= 0;
-					default -> ae.windCount2 == 0;
-				};
+				boolean result;
+				switch (fillrule) {
+					case Positive:
+						result = ae.windCount2 <= 0;
+						break;
+					case Negative:
+						result = ae.windCount2 >= 0;
+						break;
+					default:
+						result = ae.windCount2 == 0;
+						break;
+				}
 				return (GetPolyType(ae) == PathType.Subject) ? result : !result;
 			case Xor :
 				return true; // XOr is always contributing unless open
@@ -811,11 +824,14 @@ abstract class ClipperBase {
 				break;
 		}
 
-		return switch (cliptype) {
-			case Intersection -> isInClip;
-			case Union -> !isInSubj && !isInClip;
-			default -> !isInClip;
-		};
+		switch (cliptype) {
+			case Intersection:
+				return isInClip;
+			case Union:
+				return !isInSubj && !isInClip;
+			default:
+				return !isInClip;
+		}
 	}
 
 	private void SetWindCountForClosedPathEdge(Active ae) {
