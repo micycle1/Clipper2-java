@@ -183,7 +183,7 @@ abstract class ClipperBase {
 		}
 
 		IntersectNode(Point64 pt, Active edge1, Active edge2) {
-			this.pt = pt.clone();
+			this.pt = pt;
 			this.edge1 = edge1;
 			this.edge2 = edge2;
 		}
@@ -204,7 +204,7 @@ abstract class ClipperBase {
 		int flags;
 
 		Vertex(Point64 pt, int flags, Vertex prev) {
-			this.pt = pt.clone();
+			this.pt = pt;
 			this.flags = flags;
 			next = null;
 			this.prev = prev;
