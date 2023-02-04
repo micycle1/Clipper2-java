@@ -39,7 +39,7 @@ public class ClipperOffset {
 
 	private static final double TWO_PI = Math.PI * 2;
 
-	private final List<Group> groups = new ArrayList<>();
+	private final List<Group> _groupList = new ArrayList<>();
 	private final PathD normals = new PathD();
 	private final Paths64 solution = new Paths64();
 	private double group_delta, abs_group_delta, tmpLimit, stepsPerRad;
@@ -136,7 +136,7 @@ public class ClipperOffset {
 	}
 
 	public final void Clear() {
-		groups.clear();
+		_groupList.clear();
 	}
 
 	public final void AddPath(Path64 path, JoinType joinType, EndType endType) {
@@ -153,13 +153,15 @@ public class ClipperOffset {
 		if (cnt == 0) {
 			return;
 		}
-		groups.add(new Group(paths, joinType, endType));
+		_groupList.add(new Group(paths, joinType, endType));
 	}
 
 	public final Paths64 Execute(double delta) {
 		solution.clear();
+		if (_groupList.size() == 0) return solution;
+
 		if (Math.abs(delta) < 0.5) {
-			for (Group group : groups) {
+			for (Group group : _groupList) {
 				for (Path64 path : group.inPaths) {
 					solution.add(path);
 				}
@@ -169,21 +171,19 @@ public class ClipperOffset {
 
 		tmpLimit = (getMiterLimit() <= 1 ? 2.0 : 2.0 / Clipper.Sqr(getMiterLimit()));
 
-		for (Group group : groups) {
+		for (Group group : _groupList) {
 			DoGroupOffset(group, delta);
 		}
 
-		if (getMergeGroups() && !groups.isEmpty()) {
-			// clean up self-intersections ...
-			Clipper64 c = new Clipper64();
-			c.setPreserveCollinear(getPreserveCollinear());
-			c.setReverseSolution(getReverseSolution() != groups.get(0).pathsReversed);
-			c.AddSubject(solution);
-			if (groups.get(0).pathsReversed) {
-				c.Execute(ClipType.Union, FillRule.Negative, solution);
-			} else {
-				c.Execute(ClipType.Union, FillRule.Positive, solution);
-			}
+		// clean up self-intersections ...
+		Clipper64 c = new Clipper64();
+		c.setPreserveCollinear(getPreserveCollinear());
+		c.setReverseSolution(getReverseSolution() != _groupList.get(0).pathsReversed);
+		c.AddSubject(solution);
+		if (_groupList.get(0).pathsReversed) {
+			c.Execute(ClipType.Union, FillRule.Negative, solution);
+		} else {
+			c.Execute(ClipType.Union, FillRule.Positive, solution);
 		}
 		return solution;
 	}
@@ -590,19 +590,6 @@ public class ClipperOffset {
 				} else {
 					OffsetOpenPath(group, path, group.endType);
 				}
-			}
-		}
-
-		if (!getMergeGroups()) {
-			// clean up self-intersections
-			Clipper64 c = new Clipper64();
-			c.setPreserveCollinear(getPreserveCollinear());
-			c.setReverseSolution(getReverseSolution() != group.pathsReversed);
-			c.AddSubject(group.outPaths);
-			if (group.pathsReversed) {
-				c.Execute(ClipType.Union, FillRule.Negative, group.outPaths);
-			} else {
-				c.Execute(ClipType.Union, FillRule.Positive, group.outPaths);
 			}
 		}
 		solution.addAll(group.outPaths);

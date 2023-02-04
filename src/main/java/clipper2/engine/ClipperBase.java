@@ -1814,7 +1814,7 @@ abstract class ClipperBase {
 			node.edge1.curX = node.pt.x;
 			node.edge2.curX = node.pt.x;
 			CheckJoinLeft(node.edge2, node.pt);
-			CheckJoinRight(node.edge1, node.pt);
+			CheckJoinRight(node.edge1, node.pt, true);
 		}
 	}
 
@@ -2173,42 +2173,51 @@ abstract class ClipperBase {
 
 	private void CheckJoinLeft(Active e, Point64 currPt)
 	{
+		@Nullable Active prev = e.prevInAEL;
 		if (IsOpen(e) || !IsHotEdge(e) ||
-				e.prevInAEL == null || IsOpen(e.prevInAEL) ||
-				!IsHotEdge(e.prevInAEL) || e.curX != e.prevInAEL.curX ||
-				currPt.y <= e.top.y || currPt.y <= e.prevInAEL.top.y ||
+				prev == null || IsOpen(prev) ||
+				!IsHotEdge(prev) || e.curX != prev.curX ||
+				currPt.y <= e.top.y || currPt.y <= prev.top.y ||
 				IsJoined(e) || IsOpen(e) ||
-				InternalClipper.CrossProduct(e.top, currPt, e.prevInAEL.top) != 0)
+				InternalClipper.CrossProduct(e.top, currPt, prev.top) != 0)
 			return;
 
-		if (e.outrec.idx == e.prevInAEL.outrec.idx)
-			AddLocalMaxPoly(e.prevInAEL, e, currPt);
-		else if (e.outrec.idx < e.prevInAEL.outrec.idx)
-			JoinOutrecPaths(e, e.prevInAEL);
+		if (e.outrec.idx == prev.outrec.idx)
+			AddLocalMaxPoly(prev, e, currPt);
+		else if (e.outrec.idx < prev.outrec.idx)
+			JoinOutrecPaths(e, prev);
 		else
-			JoinOutrecPaths(e.prevInAEL, e);
-		e.prevInAEL.joinWith = JoinWith.Right;
+			JoinOutrecPaths(prev, e);
+		prev.joinWith = JoinWith.Right;
 		e.joinWith = JoinWith.Left;
 	}
 
 	private void CheckJoinRight(Active e, Point64 currPt)
 	{
-		if (IsOpen(e) || !IsHotEdge(e) ||
-				e.nextInAEL == null || IsOpen(e.nextInAEL) ||
-				!IsHotEdge(e.nextInAEL) || e.curX != e.nextInAEL.curX ||
-				currPt.y <= e.top.y || currPt.y <= e.nextInAEL.top.y ||
-				IsJoined(e) || IsOpen(e) ||
-				InternalClipper.CrossProduct(e.top, currPt, e.nextInAEL.top) != 0)
+		CheckJoinRight(e,currPt, false);
+	}
+
+	private void CheckJoinRight(Active e, Point64 currPt, boolean checkNextCurrX)
+	{
+		@Nullable Active next = e.nextInAEL;
+		if (IsOpen(e) || !IsHotEdge(e) || IsJoined(e) ||
+				next == null || IsOpen(next) || !IsHotEdge(next) ||
+				currPt.y < e.top.y + 2 || currPt.y < next.top.y + 2) // avoids trivial joins
 			return;
 
-		if (e.outrec.idx == e.nextInAEL.outrec.idx)
-			AddLocalMaxPoly(e, e.nextInAEL, currPt);
-		else if (e.outrec.idx < e.nextInAEL.outrec.idx)
-			JoinOutrecPaths(e, e.nextInAEL);
+		if (checkNextCurrX) next.curX = TopX(next, currPt.y);
+		if (e.curX != next.curX  ||
+				(InternalClipper.CrossProduct(e.top, currPt, next.top) != 0))
+			return;
+
+		if (e.outrec.idx == next.outrec.idx)
+			AddLocalMaxPoly(e, next, currPt);
+		else if (e.outrec.idx < next.outrec.idx)
+			JoinOutrecPaths(e, next);
 		else
-			JoinOutrecPaths(e.nextInAEL, e);
+			JoinOutrecPaths(next, e);
 		e.joinWith = JoinWith.Right;
-		e.nextInAEL.joinWith = JoinWith.Left;
+		next.joinWith = JoinWith.Left;
 	}
 
 	private static void FixOutRecPts(OutRec outrec)

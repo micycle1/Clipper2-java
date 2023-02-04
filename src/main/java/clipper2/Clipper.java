@@ -1063,6 +1063,193 @@ public final class Clipper {
 		return result;
 	}
 
+	private static int GetNext(int current, int high, final /*ref*/ boolean[] flags)
+	{
+		++current;
+		while (current <= high && flags[current]) ++current;
+		if (current <= high) return current;
+		current = 0;
+		while (flags[current]) ++current;
+		return current;
+	}
+
+	private static int GetPrior(int current, int high, final /*ref*/ boolean[] flags)
+	{
+		if (current == 0) current = high;
+		else --current;
+		while (current > 0 && flags[current]) --current;
+		if (!flags[current]) return current;
+		current = high;
+		while (flags[current]) --current;
+		return current;
+	}
+
+	public static Path64 SimplifyPath(Path64 path, double epsilon)
+	{
+		return SimplifyPath(path, epsilon, false);
+	}
+
+	public static Path64 SimplifyPath(Path64 path, double epsilon, boolean isOpenPath)
+	{
+		int len = path.size(), high = len - 1;
+		double epsSqr = Sqr(epsilon);
+		if (len < 4) return path;
+
+		boolean[] flags = new boolean[len];
+		double[] dsq = new double[len];
+		int prev = high, curr = 0, start, next, prior2, next2;
+		if (isOpenPath)
+		{
+			dsq[0] = Double.MAX_VALUE;
+			dsq[high] = Double.MAX_VALUE;
+		}
+		else
+		{
+			dsq[0] = PerpendicDistFromLineSqrd(path.get(0), path.get(high), path.get(1));
+			dsq[high] = PerpendicDistFromLineSqrd(path.get(high), path.get(0), path.get(high - 1));
+		}
+		for (int i = 1; i < high; ++i)
+			dsq[i] = PerpendicDistFromLineSqrd(path.get(i), path.get(i - 1), path.get(i + 1));
+
+		for (; ; )
+		{
+			if (dsq[curr] > epsSqr)
+			{
+				start = curr;
+				do
+				{
+					curr = GetNext(curr, high, /*ref*/ flags);
+				} while (curr != start && dsq[curr] > epsSqr);
+				if (curr == start) break;
+			}
+
+			prev = GetPrior(curr, high, /*ref*/ flags);
+			next = GetNext(curr, high, /*ref*/ flags);
+			if (next == prev) break;
+
+			if (dsq[next] < dsq[curr])
+			{
+				flags[next] = true;
+				next = GetNext(next, high, /*ref*/ flags);
+				next2 = GetNext(next, high, /*ref*/ flags);
+				dsq[curr] = PerpendicDistFromLineSqrd(path.get(curr), path.get(prev), path.get(next));
+				if (next != high || !isOpenPath)
+					dsq[next] = PerpendicDistFromLineSqrd(path.get(next), path.get(curr), path.get(next2));
+				curr = next;
+			}
+			else
+			{
+				flags[curr] = true;
+				curr = next;
+				next = GetNext(next, high, /*ref*/ flags);
+				prior2 = GetPrior(prev, high, /*ref*/ flags);
+				dsq[curr] = PerpendicDistFromLineSqrd(path.get(curr), path.get(prev), path.get(next));
+				if (prev != 0 || !isOpenPath)
+					dsq[prev] = PerpendicDistFromLineSqrd(path.get(prev), path.get(prior2), path.get(curr));
+			}
+		}
+		Path64 result = new Path64(len);
+		for (int i = 0; i < len; i++)
+			if (!flags[i]) result.add(path.get(i));
+		return result;
+	}
+
+	public static Paths64 SimplifyPaths(Paths64 paths, double epsilon)
+	{
+		return SimplifyPaths(paths, epsilon, false);
+	}
+
+	public static Paths64 SimplifyPaths(Paths64 paths, double epsilon, boolean isOpenPath)
+	{
+		Paths64 result = new Paths64(paths.size());
+		for (Path64 path : paths)
+		result.add(SimplifyPath(path, epsilon, isOpenPath));
+		return result;
+	}
+
+	public static PathD SimplifyPath(PathD path, double epsilon)
+	{
+		return SimplifyPath(path, epsilon, false);
+	}
+
+	public static PathD SimplifyPath(PathD path, double epsilon, boolean isOpenPath)
+	{
+		int len = path.size(), high = len - 1;
+		double epsSqr = Sqr(epsilon);
+		if (len < 4) return path;
+
+		boolean[] flags = new boolean[len];
+		double[] dsq = new double[len];
+		int prev = high, curr = 0, start, next, prior2, next2;
+		if (isOpenPath)
+		{
+			dsq[0] = Double.MAX_VALUE;
+			dsq[high] = Double.MAX_VALUE;
+		}
+		else
+		{
+			dsq[0] = PerpendicDistFromLineSqrd(path.get(0), path.get(high), path.get(1));
+			dsq[high] = PerpendicDistFromLineSqrd(path.get(high), path.get(0), path.get(high - 1));
+		}
+		for (int i = 1; i < high; ++i)
+			dsq[i] = PerpendicDistFromLineSqrd(path.get(i), path.get(i - 1), path.get(i + 1));
+
+		for (; ; )
+		{
+			if (dsq[curr] > epsSqr)
+			{
+				start = curr;
+				do
+				{
+					curr = GetNext(curr, high, /*ref*/ flags);
+				} while (curr != start && dsq[curr] > epsSqr);
+				if (curr == start) break;
+			}
+
+			prev = GetPrior(curr, high, /*ref*/ flags);
+			next = GetNext(curr, high, /*ref*/ flags);
+			if (next == prev) break;
+
+			if (dsq[next] < dsq[curr])
+			{
+				flags[next] = true;
+				next = GetNext(next, high, /*ref*/ flags);
+				next2 = GetNext(next, high, /*ref*/ flags);
+				dsq[curr] = PerpendicDistFromLineSqrd(path.get(curr), path.get(prev), path.get(next));
+				if (next != high || !isOpenPath)
+					dsq[next] = PerpendicDistFromLineSqrd(path.get(next), path.get(curr), path.get(next2));
+				curr = next;
+			}
+			else
+			{
+				flags[curr] = true;
+				curr = next;
+				next = GetNext(next, high, /*ref*/ flags);
+				prior2 = GetPrior(prev, high, /*ref*/ flags);
+				dsq[curr] = PerpendicDistFromLineSqrd(path.get(curr), path.get(prev), path.get(next));
+				if (prev != 0 || !isOpenPath)
+					dsq[prev] = PerpendicDistFromLineSqrd(path.get(prev), path.get(prior2), path.get(curr));
+			}
+		}
+		PathD result = new PathD(len);
+		for (int i = 0; i < len; i++)
+			if (!flags[i]) result.add(path.get(i));
+		return result;
+	}
+
+	public static PathsD SimplifyPaths(PathsD paths, double epsilon)
+	{
+		return SimplifyPaths(paths, epsilon, false);
+	}
+
+	public static PathsD SimplifyPaths(PathsD paths, double epsilon, boolean isOpenPath)
+	{
+		PathsD result = new PathsD(paths.size());
+		for (PathD path : paths)
+		result.add(SimplifyPath(path, epsilon, isOpenPath));
+		return result;
+	}
+
 	/**
 	 * This function removes the vertices between adjacent collinear segments. It
 	 * will also remove duplicate vertices (adjacent vertices with identical
