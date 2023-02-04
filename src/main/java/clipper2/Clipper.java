@@ -21,8 +21,8 @@ import clipper2.engine.Clipper64;
 import clipper2.engine.ClipperD;
 import clipper2.engine.PointInPolygonResult;
 import clipper2.engine.PolyPath64;
+import clipper2.engine.PolyPathBase;
 import clipper2.engine.PolyPathD;
-import clipper2.engine.PolyPathNode;
 import clipper2.engine.PolyTree64;
 import clipper2.engine.PolyTreeD;
 import clipper2.offset.ClipperOffset;
@@ -35,9 +35,7 @@ public final class Clipper {
 
 	public static final Rect64 MaxInvalidRect64 = new Rect64(Long.MAX_VALUE, Long.MAX_VALUE, Long.MIN_VALUE, Long.MIN_VALUE);
 
-	public static final RectD MaxInvalidRectD = new RectD(Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE,
-			-Double.MAX_VALUE);
-	private static final String PRECISION_RANGE_ERROR = "Error: Precision is out of range.";
+	public static final RectD MaxInvalidRectD = new RectD(Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE);
 
 	public static Paths64 Intersect(Paths64 subject, Paths64 clip, FillRule fillRule) {
 		return BooleanOp(ClipType.Intersection, subject, clip, fillRule);
@@ -109,6 +107,15 @@ public final class Clipper {
 		return solution;
 	}
 
+	public static void BooleanOp(ClipType clipType, @Nullable Paths64 subject, @Nullable Paths64 clip, PolyTree64 polytree, FillRule fillRule) {
+		if (subject == null) return;
+		Clipper64 c = new Clipper64();
+		c.AddPaths(subject, PathType.Subject);
+		if (clip != null)
+			c.AddPaths(clip, PathType.Clip);
+		c.Execute(clipType, fillRule, polytree);
+	}
+
 	public static PathsD BooleanOp(ClipType clipType, PathsD subject, PathsD clip, FillRule fillRule) {
 		return BooleanOp(clipType, subject, clip, fillRule, 2);
 	}
@@ -116,12 +123,25 @@ public final class Clipper {
 	public static PathsD BooleanOp(ClipType clipType, PathsD subject, @Nullable PathsD clip, FillRule fillRule, int precision) {
 		PathsD solution = new PathsD();
 		ClipperD c = new ClipperD(precision);
-		c.AddSubjectsD(subject);
+		c.AddSubjects(subject);
 		if (clip != null) {
-			c.AddClipsD(clip);
+			c.AddClips(clip);
 		}
 		c.Execute(clipType, fillRule, solution);
 		return solution;
+	}
+
+	public static void BooleanOp(ClipType clipType, @Nullable PathsD subject, @Nullable PathsD clip, PolyTreeD polytree, FillRule fillRule) {
+		BooleanOp(clipType, subject, clip, polytree, fillRule, 2);
+	}
+
+	public static void BooleanOp(ClipType clipType, @Nullable PathsD subject, @Nullable PathsD clip, PolyTreeD polytree, FillRule fillRule, int precision) {
+		if (subject == null) return;
+		ClipperD c = new ClipperD(precision);
+		c.AddPaths(subject, PathType.Subject);
+		if (clip != null)
+			c.AddPaths(clip, PathType.Clip);
+		c.Execute(clipType, fillRule, polytree);
 	}
 
 	public static Paths64 InflatePaths(Paths64 paths, double delta, JoinType joinType, EndType endType) {
@@ -185,11 +205,8 @@ public final class Clipper {
 		return InflatePaths(paths, delta, joinType, endType, 2.0, 2);
 	}
 
-	public static PathsD InflatePaths(PathsD paths, double delta, JoinType joinType, EndType endType, double miterLimit,
-			int precision) {
-		if (precision < -8 || precision > 8) {
-			throw new IllegalArgumentException(PRECISION_RANGE_ERROR);
-		}
+	public static PathsD InflatePaths(PathsD paths, double delta, JoinType joinType, EndType endType, double miterLimit, int precision) {
+		InternalClipper.CheckPrecision(precision);
 		double scale = Math.pow(10, precision);
 		Paths64 tmp = ScalePaths64(paths, scale);
 		ClipperOffset co = new ClipperOffset(miterLimit);
@@ -234,9 +251,7 @@ public final class Clipper {
 	}
 
 	public static PathD RectClip(RectD rect, PathD path, int precision) {
-		if (precision < -8 || precision > 8) {
-			throw new IllegalArgumentException(PRECISION_RANGE_ERROR);
-		}
+		InternalClipper.CheckPrecision(precision);
 		if (rect.IsEmpty() || path.size() == 0) {
 			return new PathD();
 		}
@@ -253,9 +268,7 @@ public final class Clipper {
 	}
 
 	public static PathsD RectClip(RectD rect, PathsD paths, int precision) {
-		if (precision < -8 || precision > 8) {
-			throw new IllegalArgumentException(PRECISION_RANGE_ERROR);
-		}
+		InternalClipper.CheckPrecision(precision);
 		if (rect.IsEmpty() || paths.size() == 0) {
 			return new PathsD();
 		}
@@ -315,9 +328,7 @@ public final class Clipper {
 	}
 
 	public static PathsD RectClipLines(RectD rect, PathD path, int precision) {
-		if (precision < -8 || precision > 8) {
-			throw new IllegalArgumentException(PRECISION_RANGE_ERROR);
-		}
+		InternalClipper.CheckPrecision(precision);
 		if (rect.IsEmpty() || path.size() == 0) {
 			return new PathsD();
 		}
@@ -334,9 +345,7 @@ public final class Clipper {
 	}
 
 	public static PathsD RectClipLines(RectD rect, PathsD paths, int precision) {
-		if (precision < -8 || precision > 8) {
-			throw new IllegalArgumentException(PRECISION_RANGE_ERROR);
-		}
+		InternalClipper.CheckPrecision(precision);
 		PathsD result = new PathsD(paths.size());
 		if (rect.IsEmpty() || paths.size() == 0) {
 			return result;
@@ -882,7 +891,7 @@ public final class Clipper {
 
 	public static PathsD PolyTreeToPathsD(PolyTreeD polyTree) {
 		PathsD result = new PathsD();
-		for (PolyPathNode polyPathBase : polyTree) {
+		for (PolyPathBase polyPathBase : polyTree) {
 			PolyPathD p = (PolyPathD) polyPathBase;
 			AddPolyNodeToPathsD(p, result);
 		}
@@ -1151,9 +1160,7 @@ public final class Clipper {
 	 * PreserveCollinear property had been disabled.
 	 */
 	public static PathD TrimCollinear(PathD path, int precision, boolean isOpen) {
-		if (precision < -8 || precision > 8) {
-			throw new IllegalArgumentException(PRECISION_RANGE_ERROR);
-		}
+		InternalClipper.CheckPrecision(precision);
 		double scale = Math.pow(10, precision);
 		Path64 p = ScalePath64(path, scale);
 		p = TrimCollinear(p, isOpen);
@@ -1164,6 +1171,17 @@ public final class Clipper {
 		return InternalClipper.PointInPolygon(pt, polygon);
 	}
 
+	public static PointInPolygonResult PointInPolygon(PointD pt, PathD polygon) {
+		return PointInPolygon(pt, polygon, 2);
+	}
+
+	public static PointInPolygonResult PointInPolygon(PointD pt, PathD polygon, int precision) {
+		InternalClipper.CheckPrecision(precision);
+		double scale = Math.pow(10, precision);
+		Point64 p = new Point64(pt, scale);
+		Path64 path = ScalePath64(polygon, scale);
+		return InternalClipper.PointInPolygon(p, path);
+	}
 	public static Path64 Ellipse(Point64 center, double radiusX, double radiusY) {
 		return Ellipse(center, radiusX, radiusY, 0);
 	}

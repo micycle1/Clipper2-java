@@ -1,16 +1,16 @@
 package clipper2;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-
 import clipper2.core.ClipType;
 import clipper2.core.FillRule;
 import clipper2.core.Path64;
 import clipper2.core.Paths64;
 import clipper2.core.Point64;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 
 class ClipperFileIO {
 
@@ -194,7 +194,7 @@ class ClipperFileIO {
 
 	static Paths64 PathFromStr(String s) {
 		if (s == null) {
-			return null;
+			return new Paths64();
 		}
 		Path64 p = new Path64();
 		Paths64 pp = new Paths64();

@@ -24,7 +24,6 @@ public class ClipperD extends ClipperBase {
 	}
 
 	/**
-	 *
 	 * @param roundingDecimalPrecision default = 2
 	 */
 	public ClipperD(int roundingDecimalPrecision) {
@@ -35,47 +34,47 @@ public class ClipperD extends ClipperBase {
 		_invScale = 1 / _scale;
 	}
 
-	public final void AddPathD(PathD path, PathType polytype) {
-		AddPathD(path, polytype, false);
+	public void AddPath(PathD path, PathType polytype) {
+		AddPath(path, polytype, false);
 	}
 
-	public final void AddPathD(PathD path, PathType polytype, boolean isOpen) {
+	public void AddPath(PathD path, PathType polytype, boolean isOpen) {
 		super.AddPath(Clipper.ScalePath64(path, _scale), polytype, isOpen);
 	}
 
-	public final void AddPathsD(PathsD paths, PathType polytype) {
-		AddPathsD(paths, polytype, false);
+	public void AddPaths(PathsD paths, PathType polytype) {
+		AddPaths(paths, polytype, false);
 	}
 
-	public final void AddPathsD(PathsD paths, PathType polytype, boolean isOpen) {
+	public void AddPaths(PathsD paths, PathType polytype, boolean isOpen) {
 		super.AddPaths(Clipper.ScalePaths64(paths, _scale), polytype, isOpen);
 	}
 
-	public final void AddSubjectD(PathD path) {
-		AddPathD(path, PathType.Subject);
+	public void AddSubject(PathD path) {
+		AddPath(path, PathType.Subject);
 	}
 
-	public final void AddOpenSubjectD(PathD path) {
-		AddPathD(path, PathType.Subject, true);
+	public void AddOpenSubject(PathD path) {
+		AddPath(path, PathType.Subject, true);
 	}
 
-	public final void AddClipD(PathD path) {
-		AddPathD(path, PathType.Clip);
+	public void AddClip(PathD path) {
+		AddPath(path, PathType.Clip);
 	}
 
-	public final void AddSubjectsD(PathsD paths) {
-		AddPathsD(paths, PathType.Subject);
+	public void AddSubjects(PathsD paths) {
+		AddPaths(paths, PathType.Subject);
 	}
 
-	public final void AddOpenSubjectsD(PathsD paths) {
-		AddPathsD(paths, PathType.Subject, true);
+	public void AddOpenSubjects(PathsD paths) {
+		AddPaths(paths, PathType.Subject, true);
 	}
 
-	public final void AddClipsD(PathsD paths) {
-		AddPathsD(paths, PathType.Clip);
+	public void AddClips(PathsD paths) {
+		AddPaths(paths, PathType.Clip);
 	}
 
-	public final boolean Execute(ClipType clipType, FillRule fillRule, PathsD solutionClosed, PathsD solutionOpen) {
+	public boolean Execute(ClipType clipType, FillRule fillRule, PathsD solutionClosed, PathsD solutionOpen) {
 		Paths64 solClosed64 = new Paths64(), solOpen64 = new Paths64();
 
 		boolean success = true;
@@ -84,11 +83,11 @@ public class ClipperD extends ClipperBase {
 		try {
 			ExecuteInternal(clipType, fillRule);
 			BuildPaths(solClosed64, solOpen64);
-		} catch (java.lang.Exception e) {
+		} catch (Exception e) {
 			success = false;
 		}
 
-		ClearSolution();
+		ClearSolutionOnly();
 		if (!success) {
 			return false;
 		}
@@ -103,8 +102,36 @@ public class ClipperD extends ClipperBase {
 		return true;
 	}
 
-	public final boolean Execute(ClipType clipType, FillRule fillRule, PathsD solutionClosed) {
+	public boolean Execute(ClipType clipType, FillRule fillRule, PathsD solutionClosed) {
 		return Execute(clipType, fillRule, solutionClosed, new PathsD());
+	}
+
+	public boolean Execute(ClipType clipType, FillRule fillRule, PolyTreeD polytree, PathsD openPaths) {
+		polytree.Clear();
+		polytree.setScale(_scale);
+		openPaths.clear();
+		Paths64 oPaths = new Paths64();
+		boolean success = true;
+		try {
+			ExecuteInternal(clipType, fillRule);
+			BuildTree(polytree, oPaths);
+		} catch (Exception e) {
+			success = false;
+		}
+		ClearSolutionOnly();
+		if (!success) {
+			return false;
+		}
+		if (oPaths.size() > 0) {
+			for (Path64 path : oPaths)
+				openPaths.add(Clipper.ScalePathD(path, _invScale));
+		}
+
+		return true;
+	}
+
+	public boolean Execute(ClipType clipType, FillRule fillRule, PolyTreeD polytree) {
+		return Execute(clipType, fillRule, polytree, new PathsD());
 	}
 
 }

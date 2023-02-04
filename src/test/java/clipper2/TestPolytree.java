@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import clipper2.core.Path64;
-import clipper2.engine.PolyPathNode;
+import clipper2.engine.PolyPathBase;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -89,7 +89,7 @@ class TestPolytree {
 	}
 
 	private static boolean CheckPolytreeFullyContainsChildren(PolyTree64 polytree) {
-		for (PolyPathNode p : polytree) {
+		for (PolyPathBase p : polytree) {
 			PolyPath64 child = (PolyPath64) p;
 			if (child.getCount() > 0 && !PolyPathFullyContainsChildren(child)) {
 				return false;
@@ -99,7 +99,7 @@ class TestPolytree {
 	}
 
 	private static boolean PolyPathFullyContainsChildren(PolyPath64 pp) {
-		for (PolyPathNode c : pp) {
+		for (PolyPathBase c : pp) {
 			PolyPath64 child = (PolyPath64) c;
 			for (Point64 pt : child.getPolygon()) {
 				if (Clipper.PointInPolygon(pt, pp.getPolygon()) == PointInPolygonResult.IsOutside) {

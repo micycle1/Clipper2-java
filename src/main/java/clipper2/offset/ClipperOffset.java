@@ -373,7 +373,7 @@ public class ClipperOffset {
 			pt2.Negate();
 		}
 
-		int steps = (int) Math.ceil(stepsPerRad * Math.abs(angle));
+		int steps = (int) Math.floor(stepsPerRad * Math.abs(angle));
 		double stepSin = Math.sin(angle / steps);
 		double stepCos = Math.cos(angle / steps);
 
@@ -396,6 +396,10 @@ public class ClipperOffset {
 	}
 
 	private void OffsetPoint(Group group, Path64 path, int j, RefObject<Integer> k) {
+		OffsetPoint(group, path, j, k, false);
+	}
+
+	private void OffsetPoint(Group group, Path64 path, int j, RefObject<Integer> k, boolean reversing) {
 		// Let A = change in angle where edges join
 		// A == 0: ie no change in angle (flat join)
 		// A == PI: edges 'spike'
@@ -408,8 +412,10 @@ public class ClipperOffset {
 		} else if (sinA < -1.0) {
 			sinA = -1.0;
 		}
-		boolean almostNoAngle = (AlmostZero(sinA) && cosA > 0);
-		if (almostNoAngle || (sinA * group_delta < 0)) {
+		boolean almostNoAngle = AlmostZero(cosA - 1);
+		boolean is180DegSpike = AlmostZero(cosA + 1) && reversing;
+		if (almostNoAngle || is180DegSpike || (sinA * group_delta < 0)) {
+			//almost no angle or concave
 			group.outPath.add(GetPerpendic(path.get(j), normals.get(k.argValue)));
 			if (!almostNoAngle) {
 				group.outPath.add(path.get(j));
@@ -505,7 +511,7 @@ public class ClipperOffset {
 		// offset the left side going back
 		k = new RefObject<>(0);
 		for (int i = highI; i > 0; i--) {
-			OffsetPoint(group, path, i, k);
+			OffsetPoint(group, path, i, k, true);
 		}
 
 		group.outPaths.add(group.outPath);

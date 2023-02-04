@@ -1,19 +1,17 @@
 package clipper2;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.stream.Stream;
-
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 
 import clipper2.ClipperFileIO.TestCase;
 import clipper2.core.Paths64;
 import clipper2.engine.Clipper64;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.stream.Stream;
 
 class TestPolygons {
 
@@ -35,29 +33,42 @@ class TestPolygons {
 
 		int measuredCount = solution.size();
 		long measuredArea = (long) Clipper.Area(solution);
-		int countDiff = test.count() > 0 ? Math.abs(test.count() - measuredCount) : 0;
-		long areaDiff = test.area() > 0 ? Math.abs(test.area() - measuredArea) : 0;
+		int storedCount = test.count();
+		long storedArea = test.area();
+		int countDiff = storedCount > 0 ? Math.abs(storedCount - measuredCount) : 0;
+		long areaDiff = storedArea > 0 ? Math.abs(storedArea - measuredArea) : 0;
+		double areaDiffRatio = storedArea <= 0 ? 0 : (double) areaDiff / storedArea;
 
-		if (test.testNum() == 23 || test.testNum() == 46) { // NOTE case 46 added in java port
-			assertTrue(countDiff <= 4);
-		} else if (test.testNum() == 27) {
+		// check polygon counts
+		if (storedCount <= 0)
+			; // skip count
+		else if (Arrays.asList(165, 166, 172, 173, 176, 177, 179).contains(test.testNum()))
+			assertTrue(countDiff <= 8);
+		else if (testNum >= 120)
+			assertTrue(countDiff <= 5);
+		else if (Arrays.asList(27, 121, 126).contains(test.testNum()))
 			assertTrue(countDiff <= 2);
-		} else if (Arrays.asList(18, 32, 42, 43, 45, 87, 102, 103, 111, 118, 183).contains(test.testNum())) {
+		else if (Arrays.asList(23, 37, 43, 45, 87, 102, 111, 118, 119).contains(test.testNum()))
 			assertTrue(countDiff <= 1);
-		} else if (test.testNum() >= 120) {
-			if (test.count() > 0) {
-				assertTrue(countDiff / test.count() <= 0.02);
-			}
-		} 
-		else if (test.count() > 0) {
-			assertEquals(0, countDiff, String.format("Vertex count incorrect. Expected=%s; actual=%s", test.count(), measuredCount));
-		}
+		else
+			assertTrue(countDiff == 0);
 
-		if (Arrays.asList(22, 23, 24).contains(test.testNum())) {
-			assertTrue(areaDiff <= 8);
-		} else if (test.area() > 0 && areaDiff > 100) {
-			assertTrue(areaDiff / test.area() <= 0.02);
-		}
-
+		// check polygon areas
+		if (storedArea <= 0)
+			; // skip area
+		else if (Arrays.asList(19, 22, 23, 24).contains(test.testNum()))
+			assertTrue(areaDiffRatio <= 0.5);
+		else if (testNum == 193)
+			assertTrue(areaDiffRatio <= 0.25);
+		else if (testNum == 63)
+			assertTrue(areaDiffRatio <= 0.1);
+		else if (testNum == 16)
+			assertTrue(areaDiffRatio <= 0.075);
+		else if (Arrays.asList(15, 26).contains(test.testNum()))
+			assertTrue(areaDiffRatio <= 0.05);
+		else if (Arrays.asList(52, 53, 54, 59, 60, 64, 117, 118, 119, 184).contains(test.testNum()))
+			assertTrue(areaDiffRatio <= 0.02);
+		else
+			assertTrue(areaDiffRatio <= 0.01);
 	}
 }

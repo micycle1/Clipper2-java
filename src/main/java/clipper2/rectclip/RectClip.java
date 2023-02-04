@@ -22,7 +22,7 @@ import tangible.RefObject;
  * This function is extremely fast when compared to the Library's general
  * purpose Intersect clipper. Where Intersect has roughly O(n³) performance,
  * RectClip has O(n) performance.
- * 
+ *
  * @since 1.0.6
  */
 public class RectClip {
@@ -135,14 +135,14 @@ public class RectClip {
 		 */
 		switch (loc.argValue) {
 			case LEFT:
-				if (InternalClipper.SegmentsIntersect(p, p2, rectPath.get(0), rectPath.get(3), true)) {
-					InternalClipper.GetIntersectPoint64(p, p2, rectPath.get(0), rectPath.get(3), ip);
+				if (InternalClipper.SegsIntersect(p, p2, rectPath.get(0), rectPath.get(3), true)) {
+					InternalClipper.GetIntersectPt(p, p2, rectPath.get(0), rectPath.get(3), ip);
 				} else if (p.y < rectPath.get(0).y
-						&& InternalClipper.SegmentsIntersect(p, p2, rectPath.get(0), rectPath.get(1), true)) {
-					InternalClipper.GetIntersectPoint64(p, p2, rectPath.get(0), rectPath.get(1), ip);
+						&& InternalClipper.SegsIntersect(p, p2, rectPath.get(0), rectPath.get(1), true)) {
+					InternalClipper.GetIntersectPt(p, p2, rectPath.get(0), rectPath.get(1), ip);
 					loc.argValue = Location.TOP;
-				} else if (InternalClipper.SegmentsIntersect(p, p2, rectPath.get(2), rectPath.get(3), true)) {
-					InternalClipper.GetIntersectPoint64(p, p2, rectPath.get(2), rectPath.get(3), ip);
+				} else if (InternalClipper.SegsIntersect(p, p2, rectPath.get(2), rectPath.get(3), true)) {
+					InternalClipper.GetIntersectPt(p, p2, rectPath.get(2), rectPath.get(3), ip);
 					loc.argValue = Location.BOTTOM;
 				} else {
 					return false;
@@ -150,14 +150,14 @@ public class RectClip {
 				break;
 
 			case RIGHT:
-				if (InternalClipper.SegmentsIntersect(p, p2, rectPath.get(1), rectPath.get(2), true)) {
-					InternalClipper.GetIntersectPoint64(p, p2, rectPath.get(1), rectPath.get(2), ip);
+				if (InternalClipper.SegsIntersect(p, p2, rectPath.get(1), rectPath.get(2), true)) {
+					InternalClipper.GetIntersectPt(p, p2, rectPath.get(1), rectPath.get(2), ip);
 				} else if (p.y < rectPath.get(0).y
-						&& InternalClipper.SegmentsIntersect(p, p2, rectPath.get(0), rectPath.get(1), true)) {
-					InternalClipper.GetIntersectPoint64(p, p2, rectPath.get(0), rectPath.get(1), ip);
+						&& InternalClipper.SegsIntersect(p, p2, rectPath.get(0), rectPath.get(1), true)) {
+					InternalClipper.GetIntersectPt(p, p2, rectPath.get(0), rectPath.get(1), ip);
 					loc.argValue = Location.TOP;
-				} else if (InternalClipper.SegmentsIntersect(p, p2, rectPath.get(2), rectPath.get(3), true)) {
-					InternalClipper.GetIntersectPoint64(p, p2, rectPath.get(2), rectPath.get(3), ip);
+				} else if (InternalClipper.SegsIntersect(p, p2, rectPath.get(2), rectPath.get(3), true)) {
+					InternalClipper.GetIntersectPt(p, p2, rectPath.get(2), rectPath.get(3), ip);
 					loc.argValue = Location.BOTTOM;
 				} else {
 					return false;
@@ -165,15 +165,15 @@ public class RectClip {
 				break;
 
 			case TOP:
-				if (InternalClipper.SegmentsIntersect(p, p2, rectPath.get(0), rectPath.get(1), true)) {
-					InternalClipper.GetIntersectPoint64(p, p2, rectPath.get(0), rectPath.get(1), ip);
+				if (InternalClipper.SegsIntersect(p, p2, rectPath.get(0), rectPath.get(1), true)) {
+					InternalClipper.GetIntersectPt(p, p2, rectPath.get(0), rectPath.get(1), ip);
 				} else if (p.x < rectPath.get(0).x
-						&& InternalClipper.SegmentsIntersect(p, p2, rectPath.get(0), rectPath.get(3), true)) {
-					InternalClipper.GetIntersectPoint64(p, p2, rectPath.get(0), rectPath.get(3), ip);
+						&& InternalClipper.SegsIntersect(p, p2, rectPath.get(0), rectPath.get(3), true)) {
+					InternalClipper.GetIntersectPt(p, p2, rectPath.get(0), rectPath.get(3), ip);
 					loc.argValue = Location.LEFT;
 				} else if (p.x > rectPath.get(1).x
-						&& InternalClipper.SegmentsIntersect(p, p2, rectPath.get(1), rectPath.get(2), true)) {
-					InternalClipper.GetIntersectPoint64(p, p2, rectPath.get(1), rectPath.get(2), ip);
+						&& InternalClipper.SegsIntersect(p, p2, rectPath.get(1), rectPath.get(2), true)) {
+					InternalClipper.GetIntersectPt(p, p2, rectPath.get(1), rectPath.get(2), ip);
 					loc.argValue = Location.RIGHT;
 				} else {
 					return false;
@@ -181,15 +181,15 @@ public class RectClip {
 				break;
 
 			case BOTTOM:
-				if (InternalClipper.SegmentsIntersect(p, p2, rectPath.get(2), rectPath.get(3), true)) {
-					InternalClipper.GetIntersectPoint64(p, p2, rectPath.get(2), rectPath.get(3), ip);
+				if (InternalClipper.SegsIntersect(p, p2, rectPath.get(2), rectPath.get(3), true)) {
+					InternalClipper.GetIntersectPt(p, p2, rectPath.get(2), rectPath.get(3), ip);
 				} else if (p.x < rectPath.get(3).x
-						&& InternalClipper.SegmentsIntersect(p, p2, rectPath.get(0), rectPath.get(3), true)) {
-					InternalClipper.GetIntersectPoint64(p, p2, rectPath.get(0), rectPath.get(3), ip);
+						&& InternalClipper.SegsIntersect(p, p2, rectPath.get(0), rectPath.get(3), true)) {
+					InternalClipper.GetIntersectPt(p, p2, rectPath.get(0), rectPath.get(3), ip);
 					loc.argValue = Location.LEFT;
 				} else if (p.x > rectPath.get(2).x
-						&& InternalClipper.SegmentsIntersect(p, p2, rectPath.get(1), rectPath.get(2), true)) {
-					InternalClipper.GetIntersectPoint64(p, p2, rectPath.get(1), rectPath.get(2), ip);
+						&& InternalClipper.SegsIntersect(p, p2, rectPath.get(1), rectPath.get(2), true)) {
+					InternalClipper.GetIntersectPt(p, p2, rectPath.get(1), rectPath.get(2), ip);
 					loc.argValue = Location.RIGHT;
 				} else {
 					return false;
@@ -197,17 +197,17 @@ public class RectClip {
 				break;
 
 			case INSIDE:
-				if (InternalClipper.SegmentsIntersect(p, p2, rectPath.get(0), rectPath.get(3), true)) {
-					InternalClipper.GetIntersectPoint64(p, p2, rectPath.get(0), rectPath.get(3), ip);
+				if (InternalClipper.SegsIntersect(p, p2, rectPath.get(0), rectPath.get(3), true)) {
+					InternalClipper.GetIntersectPt(p, p2, rectPath.get(0), rectPath.get(3), ip);
 					loc.argValue = Location.LEFT;
-				} else if (InternalClipper.SegmentsIntersect(p, p2, rectPath.get(0), rectPath.get(1), true)) {
-					InternalClipper.GetIntersectPoint64(p, p2, rectPath.get(0), rectPath.get(1), ip);
+				} else if (InternalClipper.SegsIntersect(p, p2, rectPath.get(0), rectPath.get(1), true)) {
+					InternalClipper.GetIntersectPt(p, p2, rectPath.get(0), rectPath.get(1), ip);
 					loc.argValue = Location.TOP;
-				} else if (InternalClipper.SegmentsIntersect(p, p2, rectPath.get(1), rectPath.get(2), true)) {
-					InternalClipper.GetIntersectPoint64(p, p2, rectPath.get(1), rectPath.get(2), ip);
+				} else if (InternalClipper.SegsIntersect(p, p2, rectPath.get(1), rectPath.get(2), true)) {
+					InternalClipper.GetIntersectPt(p, p2, rectPath.get(1), rectPath.get(2), ip);
 					loc.argValue = Location.RIGHT;
-				} else if (InternalClipper.SegmentsIntersect(p, p2, rectPath.get(2), rectPath.get(3), true)) {
-					InternalClipper.GetIntersectPoint64(p, p2, rectPath.get(2), rectPath.get(3), ip);
+				} else if (InternalClipper.SegsIntersect(p, p2, rectPath.get(2), rectPath.get(3), true)) {
+					InternalClipper.GetIntersectPt(p, p2, rectPath.get(2), rectPath.get(3), ip);
 					loc.argValue = Location.BOTTOM;
 				} else {
 					return false;

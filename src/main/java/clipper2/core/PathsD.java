@@ -23,4 +23,12 @@ public class PathsD extends ArrayList<PathD> {
 		super(paths);
 	}
 
+	@Override
+	public String toString() {
+		String s = "";
+		for (PathD p : this)
+			s = s + p.toString() + "\n";
+		return s;
+	}
+
 }
