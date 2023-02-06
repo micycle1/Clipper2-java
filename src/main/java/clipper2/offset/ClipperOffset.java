@@ -15,6 +15,7 @@ import clipper2.core.Point64;
 import clipper2.core.PointD;
 import clipper2.core.Rect64;
 import clipper2.engine.Clipper64;
+import tangible.RefObject;
 
 /**
  * Geometric offsetting refers to the process of creating parallel curves that
@@ -393,14 +394,14 @@ public class ClipperOffset {
 		normals.add(GetUnitNormal(path.get(cnt - 1), path.get(0)));
 	}
 
-	private void OffsetPoint(Group group, Path64 path, int j, int k) {
+	private void OffsetPoint(Group group, Path64 path, int j, RefObject<Integer> k) {
 		// Let A = change in angle where edges join
 		// A == 0: ie no change in angle (flat join)
 		// A == PI: edges 'spike'
 		// sin(A) < 0: right turning
 		// cos(A) < 0: change in angle is more than 90 degree
-		double sinA = InternalClipper.CrossProduct(normals.get(j), normals.get(k));
-		double cosA = InternalClipper.DotProduct(normals.get(j), normals.get(k));
+		double sinA = InternalClipper.CrossProduct(normals.get(j), normals.get(k.argValue));
+		double cosA = InternalClipper.DotProduct(normals.get(j), normals.get(k.argValue));
 		if (sinA > 1.0) {
 			sinA = 1.0;
 		} else if (sinA < -1.0) {
@@ -408,35 +409,36 @@ public class ClipperOffset {
 		}
 		boolean almostNoAngle = (AlmostZero(sinA) && cosA > 0);
 		if (almostNoAngle || (sinA * group_delta < 0)) {
-			group.outPath.add(GetPerpendic(path.get(j), normals.get(k)));
+			group.outPath.add(GetPerpendic(path.get(j), normals.get(k.argValue)));
 			if (!almostNoAngle) {
 				group.outPath.add(path.get(j));
 			}
 			group.outPath.add(GetPerpendic(path.get(j), normals.get(j)));
 		} else if (joinType == JoinType.Round) {
-			DoRound(group, path, j, k, Math.atan2(sinA, cosA));
+			DoRound(group, path, j, k.argValue, Math.atan2(sinA, cosA));
 		} else if (joinType == JoinType.Miter) {
 			// miter unless the angle is so acute the miter would exceeds ML
 			if (cosA > tmpLimit - 1)
-				DoMiter(group, path, j, k, cosA);
+					DoMiter(group, path, j, k.argValue, cosA);
 			else
-				DoSquare(group, path, j, k);
+					DoSquare(group, path, j, k.argValue);
 		}
 		// don't bother squaring angles that deviate < ~20 degrees because
 		// squaring will be indistinguishable from mitering and just be a lot slower
 		else if (Math.abs(sinA) < 0.25)
-			DoMiter(group, path, j, k, cosA);
+			DoMiter(group, path, j, k.argValue, cosA);
 		else
-			DoSquare(group, path, j, k);
+			DoSquare(group, path, j, k.argValue);
 
+		k.argValue = j;
 	}
 
 	private void OffsetPolygon(Group group, Path64 path) {
 		group.outPath = new Path64();
-		int cnt = path.size(), prev = cnt - 1;
+		int cnt = path.size();
+		RefObject<Integer> prev = new RefObject<>(cnt - 1);
 		for (int i = 0; i < cnt; i++) {
 			OffsetPoint(group, path, i, prev);
-			prev = i;
 		}
 		group.outPaths.add(group.outPath);
 	}
@@ -467,6 +469,12 @@ public class ClipperOffset {
 				break;
 		}
 
+		// offset the left side going forward
+		RefObject<Integer> k = new RefObject<>(0);
+		for (int i = 1; i < highI; i++) {
+			OffsetPoint(group, path, i, k);
+		}
+
 		// reverse normals ...
 		for (int i = highI; i > 0; i--) {
 			normals.set(i, new PointD(-normals.get(i - 1).x, -normals.get(i - 1).y));
@@ -489,9 +497,9 @@ public class ClipperOffset {
 		}
 
 		// offset the left side going back
-		for (int i = highI, k = 0; i > 0; i--) {
-			OffsetPoint(group, path, i, k); // NOTE K
-//			k = i;
+		k = new RefObject<>(0);
+		for (int i = highI; i > 0; i--) {
+			OffsetPoint(group, path, i, k);
 		}
 
 		group.outPaths.add(group.outPath);
