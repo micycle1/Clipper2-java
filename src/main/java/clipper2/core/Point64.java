@@ -80,7 +80,8 @@ public final class Point64 {
 
 	@Override
 	public boolean equals(Object obj) {
-		if (obj instanceof Point64 p) {
+		if (obj instanceof Point64) {
+			Point64 p = (Point64) obj;
 			return opEquals(this, p);
 		}
 		return false;

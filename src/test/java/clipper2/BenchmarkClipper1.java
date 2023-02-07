@@ -67,8 +67,8 @@ public class BenchmarkClipper1 {
 	}
 
 	private static LongPoint MakeRandomPt(int maxWidth, int maxHeight, Random rand) {
-		long x = rand.nextLong(maxWidth);
-		long y = rand.nextLong(maxHeight);
+		long x = rand.nextInt(maxWidth);
+		long y = rand.nextInt(maxHeight);
 		return new LongPoint(x, y);
 	}
 

@@ -33,7 +33,8 @@ final class LocalMinima {
 	@Override
 	public
 	boolean equals(Object obj) {
-		if (obj instanceof LocalMinima minima) {
+		if (obj instanceof LocalMinima) {
+			LocalMinima minima = (LocalMinima) obj;
 			return this == minima;
 		}
 		return false;

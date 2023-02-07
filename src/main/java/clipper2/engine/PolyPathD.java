@@ -36,7 +36,7 @@ public class PolyPathD extends PolyPathBase {
 
 	public final double Area() {
 		double result = getPolygon() == null ? 0 : Clipper.Area(getPolygon());
-		for (var polyPathBase : children) {
+		for (PolyPathBase polyPathBase : children) {
 			PolyPathD child = (PolyPathD) polyPathBase;
 			result += child.Area();
 		}

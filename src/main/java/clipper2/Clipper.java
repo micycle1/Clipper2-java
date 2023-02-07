@@ -21,6 +21,7 @@ import clipper2.engine.Clipper64;
 import clipper2.engine.ClipperD;
 import clipper2.engine.PointInPolygonResult;
 import clipper2.engine.PolyPath64;
+import clipper2.engine.PolyPathBase;
 import clipper2.engine.PolyPathD;
 import clipper2.engine.PolyTree64;
 import clipper2.engine.PolyTreeD;
@@ -668,7 +669,7 @@ public final class Clipper {
 
 	public static PathsD PolyTreeToPathsD(PolyTreeD polyTree) {
 		PathsD result = new PathsD();
-		for (var polyPathBase : polyTree) {
+		for (PolyPathBase polyPathBase : polyTree) {
 			PolyPathD p = (PolyPathD) polyPathBase;
 			AddPolyNodeToPathsD(p, result);
 		}

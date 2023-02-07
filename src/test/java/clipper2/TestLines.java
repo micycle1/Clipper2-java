@@ -24,8 +24,8 @@ class TestLines {
 	@ParameterizedTest(name = "{0} {2} {3}")
 	final void RunLinesTestCase(TestCase test, String caption, Object o, Object o1) {
 		Clipper64 c64 = new Clipper64();
-		var solution = new Paths64();
-		var solution_open = new Paths64();
+		Paths64 solution = new Paths64();
+		Paths64 solution_open = new Paths64();
 
 		c64.AddSubject(test.subj());
 		c64.AddOpenSubject(test.subj_open());

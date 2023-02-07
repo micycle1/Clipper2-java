@@ -14,12 +14,75 @@ import clipper2.core.Point64;
 
 class ClipperFileIO {
 
-	record TestCase(String caption, ClipType clipType, FillRule fillRule, long area, int count, int GetIdx, Paths64 subj, Paths64 subj_open,
-			Paths64 clip, int testNum) {
+	static class TestCase{
+		private final String caption;
+		private final ClipType clipType;
+		private final FillRule fillRule;
+		private final long area;
+		private final int count;
+		private final int GetIdx;
+		private final Paths64 subj;
+		private final Paths64 subj_open;
+		private final Paths64 clip;
+		private final int testNum;
+
+		TestCase(
+	String caption, ClipType clipType, FillRule fillRule, long area, int count, int GetIdx, Paths64 subj, Paths64 subj_open, Paths64 clip, int testNum) {
+			this.caption = caption;
+			this.clipType = clipType;
+			this.fillRule = fillRule;
+			this.area = area;
+			this.count = count;
+			this.GetIdx = GetIdx;
+			this.subj = subj;
+			this.subj_open = subj_open;
+			this.clip = clip;
+			this.testNum = testNum;
+		}
+
+		public String caption() {
+			return caption;
+		}
+
+		public ClipType clipType() {
+			return clipType;
+		}
+
+		public FillRule fillRule() {
+			return fillRule;
+		}
+
+		public long area() {
+			return area;
+		}
+
+		public int count() {
+			return count;
+		}
+
+		public int GetIdx() {
+			return GetIdx;
+		}
+
+		public Paths64 subj() {
+			return subj;
+		}
+
+		public Paths64 subj_open() {
+			return subj_open;
+		}
+
+		public Paths64 clip() {
+			return clip;
+		}
+
+		public int testNum() {
+			return testNum;
+		}
 	}
 
 	static List<TestCase> loadTestCases(String testFileName) throws IOException {
-		List<String> lines = Files.readAllLines(Paths.get("src/test/resources/%s".formatted(testFileName)));
+		List<String> lines = Files.readAllLines(Paths.get(String.format("src/test/resources/%s", testFileName)));
 
 		String caption = "";
 		ClipType ct = ClipType.None;
@@ -27,14 +90,14 @@ class ClipperFileIO {
 		long area = 0;
 		int count = 0;
 		int GetIdx = 0;
-		var subj = new Paths64();
-		var subj_open = new Paths64();
-		var clip = new Paths64();
+		Paths64 subj = new Paths64();
+		Paths64 subj_open = new Paths64();
+		Paths64 clip = new Paths64();
 
 		List<TestCase> cases = new ArrayList<>();
 
 		for (String s : lines) {
-			if (s.isBlank() || s.length() == 0) {
+			if (s.matches("\\s*") || s.length() == 0) {
 				cases.add(new TestCase(caption, ct, fillRule, area, count, GetIdx, new Paths64(subj), new Paths64(subj_open),
 						new Paths64(clip), cases.size()+1));
 				subj.clear();
@@ -136,8 +199,8 @@ class ClipperFileIO {
 		Path64 p = new Path64();
 		Paths64 pp = new Paths64();
 
-		for (var pair : s.split(" ")) {
-			var xy = pair.split(",");
+		for (String pair : s.split(" ")) {
+			String[] xy = pair.split(",");
 			long x = Long.parseLong(xy[0]);
 			long y = Long.parseLong(xy[1]);
 			p.add(new Point64(x, y));

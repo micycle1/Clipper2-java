@@ -3,9 +3,12 @@ package clipper2;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
 
+import clipper2.core.Path64;
+import clipper2.engine.PolyPathBase;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -33,26 +36,26 @@ class TestPolytree {
 		Paths64 solution_open = new Paths64();
 		Clipper64 clipper = new Clipper64();
 
-		var subject = test.subj();
-		var subjectOpen = test.subj_open();
-		var clip = test.clip();
+		Paths64 subject = test.subj();
+		Paths64 subjectOpen = test.subj_open();
+		Paths64 clip = test.clip();
 
-		var pointsOfInterestOutside = List.of(new Point64(21887, 10420), new Point64(21726, 10825), new Point64(21662, 10845),
+		List<Point64> pointsOfInterestOutside = Arrays.asList(new Point64(21887, 10420), new Point64(21726, 10825), new Point64(21662, 10845),
 				new Point64(21617, 10890));
 
 		for (Point64 pt : pointsOfInterestOutside) {
-			for (var path : subject) {
+			for (Path64 path : subject) {
 				assertEquals(PointInPolygonResult.IsOutside, Clipper.PointInPolygon(pt, path),
 						"outside point of interest found inside subject");
 			}
 		}
 
-		var pointsOfInterestInside = List.of(new Point64(21887, 10430), new Point64(21843, 10520), new Point64(21810, 10686),
+		List<Point64> pointsOfInterestInside = Arrays.asList(new Point64(21887, 10430), new Point64(21843, 10520), new Point64(21810, 10686),
 				new Point64(21900, 10461));
 
 		for (Point64 pt : pointsOfInterestInside) {
 			int poi_inside_counter = 0;
-			for (var path : subject) {
+			for (Path64 path : subject) {
 				if (Clipper.PointInPolygon(pt, path) == PointInPolygonResult.IsInside) {
 					poi_inside_counter++;
 				}
@@ -65,7 +68,7 @@ class TestPolytree {
 		clipper.AddClip(clip);
 		clipper.Execute(test.clipType(), test.fillRule(), solutionTree, solution_open);
 
-		var solutionPaths = Clipper.PolyTreeToPaths64(solutionTree);
+		Paths64 solutionPaths = Clipper.PolyTreeToPaths64(solutionTree);
 		double a1 = Clipper.Area(solutionPaths), a2 = solutionTree.Area();
 
 		assertTrue(a1 > 330000, String.format("solution has wrong area - value expected: 331,052; value returned; %1$s ", a1));
@@ -86,7 +89,7 @@ class TestPolytree {
 	}
 
 	private static boolean CheckPolytreeFullyContainsChildren(PolyTree64 polytree) {
-		for (var p : polytree) {
+		for (PolyPathBase p : polytree) {
 			PolyPath64 child = (PolyPath64) p;
 			if (child.getCount() > 0 && !PolyPathFullyContainsChildren(child)) {
 				return false;
@@ -96,8 +99,8 @@ class TestPolytree {
 	}
 
 	private static boolean PolyPathFullyContainsChildren(PolyPath64 pp) {
-		for (var c : pp) {
-			var child = (PolyPath64) c;
+		for (PolyPathBase c : pp) {
+			PolyPath64 child = (PolyPath64) c;
 			for (Point64 pt : child.getPolygon()) {
 				if (Clipper.PointInPolygon(pt, pp.getPolygon()) == PointInPolygonResult.IsOutside) {
 					return false;
