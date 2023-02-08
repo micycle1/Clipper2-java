@@ -414,21 +414,24 @@ public class ClipperOffset {
 				group.outPath.add(path.get(j));
 			}
 			group.outPath.add(GetPerpendic(path.get(j), normals.get(j)));
-		} else if (joinType == JoinType.Round) {
-			DoRound(group, path, j, k.argValue, Math.atan2(sinA, cosA));
-		} else if (joinType == JoinType.Miter) {
-			// miter unless the angle is so acute the miter would exceeds ML
-			if (cosA > tmpLimit - 1)
+		}  else {
+			//convex
+			if (joinType == JoinType.Round)
+				DoRound(group, path, j, k.argValue, Math.atan2(sinA, cosA));
+			else if (joinType == JoinType.Miter) {
+				// miter unless the angle is so acute the miter would exceeds ML
+				if (cosA > tmpLimit - 1)
 					DoMiter(group, path, j, k.argValue, cosA);
-			else
+				else
 					DoSquare(group, path, j, k.argValue);
+			}
+			// don't bother squaring angles that deviate < ~20 degrees because
+			// squaring will be indistinguishable from mitering and just be a lot slower
+			else if (cosA > 0.9)
+				DoMiter(group, path, j, k.argValue, cosA);
+			else
+				DoSquare(group, path, j, k.argValue);
 		}
-		// don't bother squaring angles that deviate < ~20 degrees because
-		// squaring will be indistinguishable from mitering and just be a lot slower
-		else if (Math.abs(sinA) < 0.25)
-			DoMiter(group, path, j, k.argValue, cosA);
-		else
-			DoSquare(group, path, j, k.argValue);
 
 		k.argValue = j;
 	}

@@ -61,6 +61,12 @@ public final class Rect64 {
 		return pt.x > left && pt.x < right && pt.y > top && pt.y < bottom;
 	}
 
+	public boolean Intersects(Rect64 rec)
+	{
+		return (Math.max(left, rec.left) < Math.min(right, rec.right)) &&
+				(Math.max(top, rec.top) < Math.min(bottom, rec.bottom));
+	}
+
 	public boolean Contains(Rect64 rec) {
 		return rec.left >= left && rec.right <= right && rec.top >= top && rec.bottom <= bottom;
 	}
