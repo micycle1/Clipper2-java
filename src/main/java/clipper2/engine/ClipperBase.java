@@ -1,26 +1,24 @@
 package clipper2.engine;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.NavigableSet;
+import java.util.TreeSet;
+
 import clipper2.Clipper;
 import clipper2.Nullable;
 import clipper2.core.ClipType;
 import clipper2.core.FillRule;
 import clipper2.core.InternalClipper;
 import clipper2.core.Path64;
-import clipper2.core.PathD;
 import clipper2.core.PathType;
 import clipper2.core.Paths64;
 import clipper2.core.Point64;
 import clipper2.core.PointD;
 import clipper2.core.Rect64;
-import clipper2.core.RectD;
 import tangible.OutObject;
 import tangible.RefObject;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.NavigableSet;
-import java.util.TreeSet;
 
 /**
  * Subject and Clip paths are passed to a Clipper object via AddSubject,
@@ -569,6 +567,7 @@ abstract class ClipperBase {
 	/**
 	 * @deprecated Has been inlined in Java version since function is much simpler
 	 */
+	@Deprecated
 	private void InsertScanline(long y) {
 		scanlineSet.add(y);
 	}
@@ -576,6 +575,7 @@ abstract class ClipperBase {
 	/**
 	 * @deprecated Has been inlined in Java version since function is much simpler
 	 */
+	@Deprecated
 	private long PopScanline() {
 		if (scanlineSet.isEmpty()) {
 			return Long.MAX_VALUE;
@@ -692,7 +692,7 @@ abstract class ClipperBase {
 
 	/**
 	 * Adds one or more closed subject paths (polygons) to the Clipper object.
-	 * 
+	 *
 	 * @param paths
 	 */
 	public final void AddSubject(Paths64 paths) {
@@ -701,7 +701,7 @@ abstract class ClipperBase {
 
 	/**
 	 * Adds one or more open subject paths (polylines) to the Clipper object.
-	 * 
+	 *
 	 * @param path
 	 */
 	public final void AddOpenSubject(Path64 path) {
@@ -714,7 +714,7 @@ abstract class ClipperBase {
 
 	/**
 	 * Adds one or more clip polygons to the Clipper object.
-	 * 
+	 *
 	 * @param path
 	 */
 	public final void AddClip(Path64 path) {
@@ -749,27 +749,27 @@ abstract class ClipperBase {
 
 	private boolean IsContributingClosed(Active ae) {
 		switch (fillrule) {
-			case Positive :
+			case Positive:
 				if (ae.windCount != 1) {
 					return false;
 				}
 				break;
-			case Negative :
+			case Negative:
 				if (ae.windCount != -1) {
 					return false;
 				}
 				break;
-			case NonZero :
+			case NonZero:
 				if (Math.abs(ae.windCount) != 1) {
 					return false;
 				}
 				break;
-			case EvenOdd :
+			case EvenOdd:
 				break;
 		}
 
 		switch (cliptype) {
-			case Intersection :
+			case Intersection:
 				switch (fillrule) {
 					case Positive:
 						return ae.windCount2 > 0;
@@ -778,7 +778,7 @@ abstract class ClipperBase {
 					default:
 						return ae.windCount2 != 0;
 				}
-			case Union :
+			case Union:
 				switch (fillrule) {
 					case Positive:
 						return ae.windCount2 <= 0;
@@ -788,7 +788,7 @@ abstract class ClipperBase {
 						return ae.windCount2 == 0;
 				}
 
-			case Difference :
+			case Difference:
 				boolean result;
 				switch (fillrule) {
 					case Positive:
@@ -802,9 +802,9 @@ abstract class ClipperBase {
 						break;
 				}
 				return (GetPolyType(ae) == PathType.Subject) ? result : !result;
-			case Xor :
+			case Xor:
 				return true; // XOr is always contributing unless open
-			default :
+			default:
 				return false;
 		}
 	}
@@ -812,15 +812,15 @@ abstract class ClipperBase {
 	private boolean IsContributingOpen(Active ae) {
 		boolean isInClip, isInSubj;
 		switch (fillrule) {
-			case Positive :
+			case Positive:
 				isInSubj = ae.windCount > 0;
 				isInClip = ae.windCount2 > 0;
 				break;
-			case Negative :
+			case Negative:
 				isInSubj = ae.windCount < 0;
 				isInClip = ae.windCount2 < 0;
 				break;
-			default :
+			default:
 				isInSubj = ae.windCount != 0;
 				isInClip = ae.windCount2 != 0;
 				break;
@@ -973,7 +973,8 @@ abstract class ClipperBase {
 			return true;
 		}
 		// compare turning direction of the alternate bound
-		return (InternalClipper.CrossProduct(PrevPrevVertex(resident).pt, newcomer.bot, PrevPrevVertex(newcomer).pt) > 0) == newcomerIsLeft;
+		return (InternalClipper.CrossProduct(PrevPrevVertex(resident).pt, newcomer.bot,
+				PrevPrevVertex(newcomer).pt) > 0) == newcomerIsLeft;
 	}
 
 	private void InsertLeftEdge(Active ae) {
@@ -1439,17 +1440,17 @@ abstract class ClipperBase {
 			}
 
 			switch (fillrule) {
-				case Positive :
+				case Positive:
 					if (ae2.windCount != 1) {
 						return null;
 					}
 					break;
-				case Negative :
+				case Negative:
 					if (ae2.windCount != -1) {
 						return null;
 					}
 					break;
-				default :
+				default:
 					if (Math.abs(ae2.windCount) != 1) {
 						return null;
 					}
@@ -1526,15 +1527,15 @@ abstract class ClipperBase {
 		}
 
 		switch (fillrule) {
-			case Positive :
+			case Positive:
 				oldE1WindCount = ae1.windCount;
 				oldE2WindCount = ae2.windCount;
 				break;
-			case Negative :
+			case Negative:
 				oldE1WindCount = -ae1.windCount;
 				oldE2WindCount = -ae2.windCount;
 				break;
-			default :
+			default:
 				oldE1WindCount = Math.abs(ae1.windCount);
 				oldE2WindCount = Math.abs(ae2.windCount);
 				break;
@@ -1585,15 +1586,15 @@ abstract class ClipperBase {
 		else {
 			long e1Wc2, e2Wc2;
 			switch (fillrule) {
-				case Positive :
+				case Positive:
 					e1Wc2 = ae1.windCount2;
 					e2Wc2 = ae2.windCount2;
 					break;
-				case Negative :
+				case Negative:
 					e1Wc2 = -ae1.windCount2;
 					e2Wc2 = -ae2.windCount2;
 					break;
-				default :
+				default:
 					e1Wc2 = Math.abs(ae1.windCount2);
 					e2Wc2 = Math.abs(ae2.windCount2);
 					break;
@@ -1604,14 +1605,14 @@ abstract class ClipperBase {
 			} else if (oldE1WindCount == 1 && oldE2WindCount == 1) {
 				resultOp = null;
 				switch (cliptype) {
-					case Union :
+					case Union:
 						if (e1Wc2 > 0 && e2Wc2 > 0) {
 							return null;
 						}
 						resultOp = AddLocalMinPoly(ae1, ae2, pt);
 						break;
 
-					case Difference :
+					case Difference:
 						if (((GetPolyType(ae1) == PathType.Clip) && (e1Wc2 > 0) && (e2Wc2 > 0))
 								|| ((GetPolyType(ae1) == PathType.Subject) && (e1Wc2 <= 0) && (e2Wc2 <= 0))) {
 							resultOp = AddLocalMinPoly(ae1, ae2, pt);
@@ -1619,11 +1620,11 @@ abstract class ClipperBase {
 
 						break;
 
-					case Xor :
+					case Xor:
 						resultOp = AddLocalMinPoly(ae1, ae2, pt);
 						break;
 
-					default : // ClipType.Intersection:
+					default: // ClipType.Intersection:
 						if (e1Wc2 <= 0 || e2Wc2 <= 0) {
 							return null;
 						}

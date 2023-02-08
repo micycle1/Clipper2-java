@@ -73,7 +73,7 @@ public class ClipperOffset {
 
 	/**
 	 * Creates a ClipperOffset object, using default parameters.
-	 * 
+	 *
 	 * @see #ClipperOffset(double, double, boolean, boolean)
 	 */
 	public ClipperOffset() {
@@ -82,7 +82,7 @@ public class ClipperOffset {
 
 	/**
 	 * Creates a ClipperOffset object, using the supplied parameters.
-	 * 
+	 *
 	 * @param miterLimit        This property sets the maximum distance in multiples
 	 *                          of group_delta that vertices can be offset from
 	 *                          their original positions before squaring is applied.
@@ -330,7 +330,8 @@ public class ClipperOffset {
 		if (j == k) {
 			vec = new PointD(normals.get(0).y, -normals.get(0).x);
 		} else {
-			vec = GetAvgUnitVector(new PointD(-normals.get(k).y, normals.get(k).x), new PointD(normals.get(j).y, -normals.get(j).x));
+			vec = GetAvgUnitVector(new PointD(-normals.get(k).y, normals.get(k).x),
+					new PointD(normals.get(j).y, -normals.get(j).x));
 		}
 
 		// now offset the original vertex delta units along unit vector
@@ -414,23 +415,25 @@ public class ClipperOffset {
 				group.outPath.add(path.get(j));
 			}
 			group.outPath.add(GetPerpendic(path.get(j), normals.get(j)));
-		}  else {
-			//convex
-			if (joinType == JoinType.Round)
+		} else {
+			// convex
+			if (joinType == JoinType.Round) {
 				DoRound(group, path, j, k.argValue, Math.atan2(sinA, cosA));
-			else if (joinType == JoinType.Miter) {
+			} else if (joinType == JoinType.Miter) {
 				// miter unless the angle is so acute the miter would exceeds ML
-				if (cosA > tmpLimit - 1)
+				if (cosA > tmpLimit - 1) {
 					DoMiter(group, path, j, k.argValue, cosA);
-				else
+				} else {
 					DoSquare(group, path, j, k.argValue);
+				}
 			}
 			// don't bother squaring angles that deviate < ~20 degrees because
 			// squaring will be indistinguishable from mitering and just be a lot slower
-			else if (cosA > 0.9)
+			else if (cosA > 0.9) {
 				DoMiter(group, path, j, k.argValue, cosA);
-			else
+			} else {
 				DoSquare(group, path, j, k.argValue);
+			}
 		}
 
 		k.argValue = j;
@@ -459,15 +462,15 @@ public class ClipperOffset {
 
 		// do the line start cap
 		switch (endType) {
-			case Butt :
-				group.outPath
-						.add(new Point64(path.get(0).x - normals.get(0).x * group_delta, path.get(0).y - normals.get(0).y * group_delta));
+			case Butt:
+				group.outPath.add(new Point64(path.get(0).x - normals.get(0).x * group_delta,
+						path.get(0).y - normals.get(0).y * group_delta));
 				group.outPath.add(GetPerpendic(path.get(0), normals.get(0)));
 				break;
-			case Round :
+			case Round:
 				DoRound(group, path, 0, 0, Math.PI);
 				break;
-			default :
+			default:
 				DoSquare(group, path, 0, 0);
 				break;
 		}
@@ -486,15 +489,15 @@ public class ClipperOffset {
 
 		// do the line end cap
 		switch (endType) {
-			case Butt :
+			case Butt:
 				group.outPath.add(new Point64(path.get(highI).x - normals.get(highI).x * group_delta,
 						path.get(highI).y - normals.get(highI).y * group_delta));
 				group.outPath.add(GetPerpendic(path.get(highI), normals.get(highI)));
 				break;
-			case Round :
+			case Round:
 				DoRound(group, path, highI, highI, Math.PI);
 				break;
-			default :
+			default:
 				DoSquare(group, path, highI, highI);
 				break;
 		}
@@ -544,7 +547,8 @@ public class ClipperOffset {
 
 		// calculate a sensible number of steps (for 360 deg for the given offset
 		if (group.joinType == JoinType.Round || group.endType == EndType.Round) {
-			double arcTol = getArcTolerance() > 0.01 ? getArcTolerance() : Math.log10(2 + abs_group_delta) * 0.25; // empirically derived
+			double arcTol = getArcTolerance() > 0.01 ? getArcTolerance() : Math.log10(2 + abs_group_delta) * 0.25; // empirically
+																													// derived
 			// get steps per 180 degrees (see offset_triginometry2.svg)
 			stepsPerRad = Math.PI / Math.acos(1 - arcTol / abs_group_delta) / TWO_PI;
 		}
@@ -561,8 +565,9 @@ public class ClipperOffset {
 				// single vertex so build a circle or square ...
 				if (group.endType == EndType.Round) {
 					double r = abs_group_delta;
-					if (group.endType == EndType.Polygon)
+					if (group.endType == EndType.Polygon) {
 						r *= 0.5;
+					}
 					group.outPath = Clipper.Ellipse(path.get(0), r, r);
 				} else {
 					int d = (int) Math.ceil(group_delta);

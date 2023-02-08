@@ -6,7 +6,7 @@ package clipper2.offset;
  * <p>
  * When adding paths to a ClipperOffset object via the AddPaths method, the
  * joinType parameter may be any one of these types - Square, Round or Miter.
- * 
+ *
  */
 public enum JoinType {
 	/**

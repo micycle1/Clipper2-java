@@ -54,26 +54,17 @@ public final class RectD {
 		return pt.x > left && pt.x < right && pt.y > top && pt.y < bottom;
 	}
 
-	public boolean Contains(RectD rec)
-	{
-		return rec.left >= left && rec.right <= right &&
-				rec.top >= top && rec.bottom <= bottom;
+	public boolean Contains(RectD rec) {
+		return rec.left >= left && rec.right <= right && rec.top >= top && rec.bottom <= bottom;
 	}
 
-	public boolean Intersects(RectD rec)
-	{
-		return (Math.max(left, rec.left) < Math.min(right, rec.right)) &&
-				(Math.max(top, rec.top) < Math.min(bottom, rec.bottom));
+	public boolean Intersects(RectD rec) {
+		return (Math.max(left, rec.left) < Math.min(right, rec.right)) && (Math.max(top, rec.top) < Math.min(bottom, rec.bottom));
 	}
 
-	public PathD AsPath()
-	{
-		PathD result = new PathD(Arrays.asList(
-				new PointD(left, top),
-				new PointD(right, top),
-				new PointD(right, bottom),
-				new PointD(left, bottom)
-		));
+	public PathD AsPath() {
+		PathD result = new PathD(Arrays.asList(new PointD(left, top), new PointD(right, top), new PointD(right, bottom),
+				new PointD(left, bottom)));
 		return result;
 	}
 

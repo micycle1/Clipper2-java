@@ -31,8 +31,7 @@ final class LocalMinima {
 	}
 
 	@Override
-	public
-	boolean equals(Object obj) {
+	public boolean equals(Object obj) {
 		if (obj instanceof LocalMinima) {
 			LocalMinima minima = (LocalMinima) obj;
 			return this == minima;
@@ -41,14 +40,12 @@ final class LocalMinima {
 	}
 
 	@Override
-	public
-	int hashCode() {
+	public int hashCode() {
 		return vertex.hashCode();
 	}
 
 	@Override
-	protected
-	LocalMinima clone() {
+	protected LocalMinima clone() {
 		LocalMinima varCopy = new LocalMinima();
 
 		varCopy.vertex = this.vertex;

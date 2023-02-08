@@ -24,7 +24,7 @@ public class ClipperD extends ClipperBase {
 	}
 
 	/**
-	 * 
+	 *
 	 * @param roundingDecimalPrecision default = 2
 	 */
 	public ClipperD(int roundingDecimalPrecision) {

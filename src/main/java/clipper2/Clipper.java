@@ -1,5 +1,10 @@
 package clipper2;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
 import clipper2.core.ClipType;
 import clipper2.core.FillRule;
 import clipper2.core.InternalClipper;
@@ -26,16 +31,12 @@ import clipper2.offset.JoinType;
 import clipper2.rectclip.RectClip;
 import clipper2.rectclip.RectClipLines;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
 public final class Clipper {
 
 	public static final Rect64 MaxInvalidRect64 = new Rect64(Long.MAX_VALUE, Long.MAX_VALUE, Long.MIN_VALUE, Long.MIN_VALUE);
 
-	public static final RectD MaxInvalidRectD = new RectD(Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE);
+	public static final RectD MaxInvalidRectD = new RectD(Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE,
+			-Double.MAX_VALUE);
 	private static final String PRECISION_RANGE_ERROR = "Error: Precision is out of range.";
 
 	public static Paths64 Intersect(Paths64 subject, Paths64 clip, FillRule fillRule) {
@@ -145,7 +146,7 @@ public final class Clipper {
 	 * <p>
 	 * Caution: Offsetting self-intersecting polygons may produce unexpected
 	 * results.
-	 * 
+	 *
 	 * @param paths
 	 * @param delta      With closed paths (polygons), a positive <code>delta</code>
 	 *                   specifies how much outer polygon contours will expand and
@@ -184,7 +185,8 @@ public final class Clipper {
 		return InflatePaths(paths, delta, joinType, endType, 2.0, 2);
 	}
 
-	public static PathsD InflatePaths(PathsD paths, double delta, JoinType joinType, EndType endType, double miterLimit, int precision) {
+	public static PathsD InflatePaths(PathsD paths, double delta, JoinType joinType, EndType endType, double miterLimit,
+			int precision) {
 		if (precision < -8 || precision > 8) {
 			throw new IllegalArgumentException(PRECISION_RANGE_ERROR);
 		}
@@ -196,43 +198,48 @@ public final class Clipper {
 		return ScalePathsD(tmp, 1 / scale);
 	}
 
-	public static Path64 RectClip(Rect64 rect, Path64 path)
-	{
-		if (rect.IsEmpty() || path.isEmpty()) return new Path64();
+	public static Path64 RectClip(Rect64 rect, Path64 path) {
+		if (rect.IsEmpty() || path.isEmpty()) {
+			return new Path64();
+		}
 		RectClip rc = new RectClip(rect);
 		return rc.ExecuteInternal(path);
 	}
 
-	public static Paths64 RectClip(Rect64 rect, Paths64 paths)
-	{
-		if (rect.IsEmpty() || paths.isEmpty()) return new Paths64();
+	public static Paths64 RectClip(Rect64 rect, Paths64 paths) {
+		if (rect.IsEmpty() || paths.isEmpty()) {
+			return new Paths64();
+		}
 
 		Paths64 result = new Paths64(paths.size());
 		RectClip rc = new RectClip(rect);
 		for (Path64 path : paths) {
 			Rect64 pathRec = GetBounds(path);
-			if (!rect.Intersects(pathRec))
+			if (!rect.Intersects(pathRec)) {
 				continue;
-			else if (rect.Contains(pathRec))
+			} else if (rect.Contains(pathRec)) {
 				result.add(path);
-			else
-			{
+			} else {
 				Path64 p = rc.ExecuteInternal(path);
-				if (p.size() > 0) result.add(p);
+				if (p.size() > 0) {
+					result.add(p);
+				}
 			}
 		}
 		return result;
 	}
 
-	public static PathD RectClip(RectD rect, PathD path){
+	public static PathD RectClip(RectD rect, PathD path) {
 		return RectClip(rect, path, 2);
 	}
 
-	public static PathD RectClip(RectD rect, PathD path, int precision)
-	{
-		if (precision < -8 || precision > 8)
+	public static PathD RectClip(RectD rect, PathD path, int precision) {
+		if (precision < -8 || precision > 8) {
 			throw new IllegalArgumentException(PRECISION_RANGE_ERROR);
-		if (rect.IsEmpty() || path.size() == 0) return new PathD();
+		}
+		if (rect.IsEmpty() || path.size() == 0) {
+			return new PathD();
+		}
 		double scale = Math.pow(10, precision);
 		Rect64 r = ScaleRect(rect, scale);
 		Path64 tmpPath = ScalePath64(path, scale);
@@ -241,73 +248,79 @@ public final class Clipper {
 		return ScalePathD(tmpPath, 1 / scale);
 	}
 
-	public static PathsD RectClip(RectD rect, PathsD paths)
-	{
+	public static PathsD RectClip(RectD rect, PathsD paths) {
 		return RectClip(rect, paths, 2);
 	}
 
-	public static PathsD RectClip(RectD rect, PathsD paths, int precision)
-	{
-		if (precision < -8 || precision > 8)
+	public static PathsD RectClip(RectD rect, PathsD paths, int precision) {
+		if (precision < -8 || precision > 8) {
 			throw new IllegalArgumentException(PRECISION_RANGE_ERROR);
-		if (rect.IsEmpty() || paths.size() == 0) return new PathsD();
+		}
+		if (rect.IsEmpty() || paths.size() == 0) {
+			return new PathsD();
+		}
 		double scale = Math.pow(10, precision);
 		Rect64 r = ScaleRect(rect, scale);
 		RectClip rc = new RectClip(r);
 		PathsD result = new PathsD(paths.size());
 		for (PathD p : paths) {
 			RectD pathRec = GetBounds(p);
-			if (!rect.Intersects(pathRec))
+			if (!rect.Intersects(pathRec)) {
 				continue;
-			else if (rect.Contains(pathRec))
+			} else if (rect.Contains(pathRec)) {
 				result.add(p);
-			else
-			{
+			} else {
 				Path64 p64 = ScalePath64(p, scale);
 				p64 = rc.ExecuteInternal(p64);
-				if (p64.size() > 0)
+				if (p64.size() > 0) {
 					result.add(ScalePathD(p64, 1 / scale));
+				}
 			}
 		}
 		return result;
 	}
-	public static Paths64 RectClipLines(Rect64 rect, Path64 path)
-	{
-		if (rect.IsEmpty() || path.size() == 0) return new Paths64();
+
+	public static Paths64 RectClipLines(Rect64 rect, Path64 path) {
+		if (rect.IsEmpty() || path.size() == 0) {
+			return new Paths64();
+		}
 		RectClipLines rco = new RectClipLines(rect);
 		return rco.NewExecuteInternal(path);
 	}
 
-	public static Paths64 RectClipLines(Rect64 rect, Paths64 paths)
-	{
+	public static Paths64 RectClipLines(Rect64 rect, Paths64 paths) {
 		Paths64 result = new Paths64(paths.size());
-		if (rect.IsEmpty() || paths.size() == 0) return result;
+		if (rect.IsEmpty() || paths.size() == 0) {
+			return result;
+		}
 		RectClipLines rco = new RectClipLines(rect);
 		for (Path64 path : paths) {
 			Rect64 pathRec = GetBounds(path);
-			if (!rect.Intersects(pathRec))
+			if (!rect.Intersects(pathRec)) {
 				continue;
-			else if (rect.Contains(pathRec))
+			} else if (rect.Contains(pathRec)) {
 				result.add(path);
-			else
-			{
+			} else {
 				Paths64 pp = rco.NewExecuteInternal(path);
-				if (pp.size() > 0) result.addAll(pp);
+				if (pp.size() > 0) {
+					result.addAll(pp);
+				}
 			}
 		}
 		return result;
 	}
 
-	public static PathsD RectClipLines(RectD rect, PathD path)
-	{
+	public static PathsD RectClipLines(RectD rect, PathD path) {
 		return RectClipLines(rect, path, 2);
 	}
 
-	public static PathsD RectClipLines(RectD rect, PathD path, int precision)
-	{
-		if (precision < -8 || precision > 8)
+	public static PathsD RectClipLines(RectD rect, PathD path, int precision) {
+		if (precision < -8 || precision > 8) {
 			throw new IllegalArgumentException(PRECISION_RANGE_ERROR);
-		if (rect.IsEmpty() || path.size() == 0) return new PathsD();
+		}
+		if (rect.IsEmpty() || path.size() == 0) {
+			return new PathsD();
+		}
 		double scale = Math.pow(10, precision);
 		Rect64 r = ScaleRect(rect, scale);
 		Path64 tmpPath = ScalePath64(path, scale);
@@ -315,31 +328,34 @@ public final class Clipper {
 		Paths64 tmpPaths = rco.NewExecuteInternal(tmpPath);
 		return ScalePathsD(tmpPaths, 1 / scale);
 	}
-	public static PathsD RectClipLines(RectD rect, PathsD paths)
-	{
+
+	public static PathsD RectClipLines(RectD rect, PathsD paths) {
 		return RectClipLines(rect, paths, 2);
 	}
 
-	public static PathsD RectClipLines(RectD rect, PathsD paths, int precision)
-	{
-		if (precision < -8 || precision > 8)
+	public static PathsD RectClipLines(RectD rect, PathsD paths, int precision) {
+		if (precision < -8 || precision > 8) {
 			throw new IllegalArgumentException(PRECISION_RANGE_ERROR);
+		}
 		PathsD result = new PathsD(paths.size());
-		if (rect.IsEmpty() || paths.size() == 0) return result;
+		if (rect.IsEmpty() || paths.size() == 0) {
+			return result;
+		}
 		double scale = Math.pow(10, precision);
 		Rect64 r = ScaleRect(rect, scale);
 		RectClipLines rco = new RectClipLines(r);
 		for (PathD p : paths) {
 			RectD pathRec = GetBounds(p);
-			if (!rect.Intersects(pathRec))
+			if (!rect.Intersects(pathRec)) {
 				continue;
-			else if (rect.Contains(pathRec))
+			} else if (rect.Contains(pathRec)) {
 				result.add(p);
-			else
-			{
+			} else {
 				Path64 p64 = ScalePath64(p, scale);
 				Paths64 pp64 = rco.NewExecuteInternal(p64);
-				if (pp64.size() == 0) continue;
+				if (pp64.size() == 0) {
+					continue;
+				}
 				PathsD ppd = ScalePathsD(pp64, 1 / scale);
 				result.addAll(ppd);
 			}
@@ -361,7 +377,7 @@ public final class Clipper {
 	 * orientation, this value may be positive or negative. If the winding is
 	 * clockwise, then the area will be positive and conversely, if winding is
 	 * counter-clockwise, then the area will be negative.
-	 * 
+	 *
 	 * @param path
 	 * @return
 	 */
@@ -386,7 +402,7 @@ public final class Clipper {
 	 * orientation, this value may be positive or negative. If the winding is
 	 * clockwise, then the area will be positive and conversely, if winding is
 	 * counter-clockwise, then the area will be negative.
-	 * 
+	 *
 	 * @param paths
 	 * @return
 	 */
@@ -506,14 +522,9 @@ public final class Clipper {
 		return result;
 	}
 
-	public static Rect64 ScaleRect(RectD rec, double scale)
-	{
-		Rect64 result = new Rect64(
-			(long) (rec.left * scale),
-			(long) (rec.top * scale),
-			(long) (rec.right * scale),
-			(long) (rec.bottom * scale)
-		);
+	public static Rect64 ScaleRect(RectD rec, double scale) {
+		Rect64 result = new Rect64((long) (rec.left * scale), (long) (rec.top * scale), (long) (rec.right * scale),
+				(long) (rec.bottom * scale));
 		return result;
 	}
 
@@ -692,26 +703,40 @@ public final class Clipper {
 		return result;
 	}
 
-	public static Rect64 GetBounds(Path64 path)
-	{
+	public static Rect64 GetBounds(Path64 path) {
 		Rect64 result = MaxInvalidRect64;
 		for (Point64 pt : path) {
-			if (pt.x < result.left) result.left = pt.x;
-			if (pt.x > result.right) result.right = pt.x;
-			if (pt.y < result.top) result.top = pt.y;
-			if (pt.y > result.bottom) result.bottom = pt.y;
+			if (pt.x < result.left) {
+				result.left = pt.x;
+			}
+			if (pt.x > result.right) {
+				result.right = pt.x;
+			}
+			if (pt.y < result.top) {
+				result.top = pt.y;
+			}
+			if (pt.y > result.bottom) {
+				result.bottom = pt.y;
+			}
 		}
 		return result.IsEmpty() ? new Rect64() : result;
 	}
 
-	public static RectD GetBounds(PathD path)
-	{
+	public static RectD GetBounds(PathD path) {
 		RectD result = MaxInvalidRectD;
 		for (PointD pt : path) {
-			if (pt.x < result.left) result.left = pt.x;
-			if (pt.x > result.right) result.right = pt.x;
-			if (pt.y < result.top) result.top = pt.y;
-			if (pt.y > result.bottom) result.bottom = pt.y;
+			if (pt.x < result.left) {
+				result.left = pt.x;
+			}
+			if (pt.x > result.right) {
+				result.right = pt.x;
+			}
+			if (pt.y < result.top) {
+				result.top = pt.y;
+			}
+			if (pt.y > result.bottom) {
+				result.bottom = pt.y;
+			}
 		}
 		return result.IsEmpty() ? new RectD() : result;
 	}
@@ -927,7 +952,7 @@ public final class Clipper {
 	 * segments. These segments don't enhance curve quality, but they will slow path
 	 * processing (whether during file storage, or when rendering, or in subsequent
 	 * offsetting procedures).
-	 * 
+	 *
 	 * @param path
 	 * @param epsilon
 	 * @return
@@ -963,7 +988,7 @@ public final class Clipper {
 	 * segments. These segments don't enhance curve quality, but they will slow path
 	 * processing (whether during file storage, or when rendering, or in subsequent
 	 * offsetting procedures).
-	 * 
+	 *
 	 * @param paths
 	 * @param epsilon
 	 * @return
@@ -1086,8 +1111,8 @@ public final class Clipper {
 		} else if (InternalClipper.CrossProduct(last, path.get(len - 1), result.get(0)) != 0) {
 			result.add(path.get(len - 1));
 		} else {
-			while (result.size() > 2
-					&& InternalClipper.CrossProduct(result.get(result.size() - 1), result.get(result.size() - 2), result.get(0)) == 0) {
+			while (result.size() > 2 && InternalClipper.CrossProduct(result.get(result.size() - 1), result.get(result.size() - 2),
+					result.get(0)) == 0) {
 				result.remove(result.size() - 1);
 			}
 			if (result.size() < 3) {

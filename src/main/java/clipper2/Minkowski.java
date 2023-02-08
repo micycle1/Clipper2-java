@@ -20,7 +20,8 @@ public class Minkowski {
 	public static PathsD Sum(PathD pattern, PathD path, boolean isClosed, int decimalPlaces) {
 		double scale = Math.pow(10, decimalPlaces);
 		Paths64 tmp = Clipper.Union(
-				MinkowskiInternal(Clipper.ScalePath64(pattern, scale), Clipper.ScalePath64(path, scale), true, isClosed), FillRule.NonZero);
+				MinkowskiInternal(Clipper.ScalePath64(pattern, scale), Clipper.ScalePath64(path, scale), true, isClosed),
+				FillRule.NonZero);
 		return Clipper.ScalePathsD(tmp, 1 / scale);
 	}
 

@@ -16,7 +16,7 @@ package clipper2.core;
  * by 'clip' polygons, and there will be not interaction between polylines and
  * any subject polygons.</li>
  * </ul>
- * 
+ *
  * There are four boolean operations:
  * <ul>
  * <li>AND (intersection) - regions covered by both subject and clip

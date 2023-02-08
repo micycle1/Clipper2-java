@@ -14,33 +14,38 @@ public class RectClipLines extends RectClip {
 	public Paths64 NewExecuteInternal(Path64 path) {
 		result_.clear();
 		Paths64 result = new Paths64();
-		if (path.size() < 2 || rect_.IsEmpty())
+		if (path.size() < 2 || rect_.IsEmpty()) {
 			return result;
+		}
 
 		RefObject<Location> prev = new RefObject<>(Location.inside);
 		RefObject<Integer> i = new RefObject<>(1);
 		int highI = path.size() - 1;
 		RefObject<Location> loc = new RefObject<>(null);
 		if (!GetLocation(rect_, path.get(0), loc)) {
-			while (i.argValue <= highI && !GetLocation(rect_, path.get(i.argValue), prev))
+			while (i.argValue <= highI && !GetLocation(rect_, path.get(i.argValue), prev)) {
 				i.argValue++;
+			}
 			if (i.argValue > highI) {
 				result.add(path);
 				return result;
 			}
-			if (prev.argValue == Location.inside)
+			if (prev.argValue == Location.inside) {
 				loc.argValue = Location.inside;
+			}
 			i.argValue = 1;
 		}
-		if (loc.argValue == Location.inside)
+		if (loc.argValue == Location.inside) {
 			result_.add(path.get(0));
+		}
 
 		///////////////////////////////////////////////////
 		while (i.argValue <= highI) {
 			prev.argValue = loc.argValue;
 			GetNextLocation(path, loc, i, highI);
-			if (i.argValue > highI)
+			if (i.argValue > highI) {
 				break;
+			}
 			Point64 prevPt = path.get(i.argValue - 1);
 
 			RefObject<Location> crossingLoc = new RefObject<>(loc.argValue);
@@ -74,8 +79,8 @@ public class RectClipLines extends RectClip {
 				result.add(result_);
 				result_ = new Path64();
 			}
-		} //while i <= highI
-		///////////////////////////////////////////////////
+		} // while i <= highI
+			///////////////////////////////////////////////////
 
 		if (result_.size() > 1) {
 			result.add(result_);

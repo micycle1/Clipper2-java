@@ -1,10 +1,10 @@
 package clipper2.engine;
 
-import clipper2.Nullable;
-import clipper2.core.Path64;
-
 import java.util.ArrayList;
 import java.util.List;
+
+import clipper2.Nullable;
+import clipper2.core.Path64;
 
 public abstract class PolyPathNode implements Iterable<PolyPathNode> {
 
