@@ -1,7 +1,5 @@
 package clipper2.engine;
 
-import java.util.List;
-
 import clipper2.core.ClipType;
 import clipper2.core.FillRule;
 import clipper2.core.Path64;
@@ -44,10 +42,11 @@ public class Clipper64 extends ClipperBase {
 	}
 
 	/**
-	 * Once subject and clip paths have been assigned (via {@link #addSubject(List)
-	 * addSubject}, AddOpenSubject and AddClip methods), <code>Execute()</code> can
-	 * then perform the specified clipping operation (intersection, union,
-	 * difference or XOR).
+	 * Once subject and clip paths have been assigned (via
+	 * {@link #addSubject(Paths64) addSubject()}, {@link #addOpenSubject(Paths64)
+	 * addOpenSubject()} and {@link #addClip(Paths64) addClip()} methods),
+	 * <code>Execute()</code> can then perform the specified clipping operation
+	 * (intersection, union, difference or XOR).
 	 * <p>
 	 * The solution parameter can be either a Paths64 or a PolyTree64, though since
 	 * the Paths64 structure is simpler and more easily populated (with clipping

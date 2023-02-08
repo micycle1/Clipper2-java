@@ -25,8 +25,8 @@ import tangible.RefObject;
  * (inflating/deflating) both open and closed paths using a number of different
  * join types and end types. The library user will rarely need to access this
  * unit directly since it will generally be easier to use the
- * {@link Clipper#InflatePaths(List, double, JoinType, EndType) InflatePaths()}
- * function when doing polygon offsetting.
+ * {@link Clipper#InflatePaths(Paths64, double, JoinType, EndType)
+ * InflatePaths()} function when doing polygon offsetting.
  * <p>
  * Caution: Offsetting self-intersecting polygons may produce unexpected
  * results.
@@ -188,20 +188,6 @@ public class ClipperOffset {
 		return solution;
 	}
 
-	public static PointD GetUnitNormal(Point64 pt1, Point64 pt2) {
-		double dx = (pt2.x - pt1.x);
-		double dy = (pt2.y - pt1.y);
-		if ((dx == 0) && (dy == 0)) {
-			return new PointD();
-		}
-
-		double f = 1.0 / Math.sqrt(dx * dx + dy * dy);
-		dx *= f;
-		dy *= f;
-
-		return new PointD(dy, -dx);
-	}
-
 	public final double getArcTolerance() {
 		return arcTolerance;
 	}
@@ -242,7 +228,21 @@ public class ClipperOffset {
 		reverseSolution = value;
 	}
 
-	private int GetLowestPolygonIdx(Paths64 paths) {
+	private static PointD GetUnitNormal(Point64 pt1, Point64 pt2) {
+		double dx = (pt2.x - pt1.x);
+		double dy = (pt2.y - pt1.y);
+		if ((dx == 0) && (dy == 0)) {
+			return new PointD();
+		}
+
+		double f = 1.0 / Math.sqrt(dx * dx + dy * dy);
+		dx *= f;
+		dy *= f;
+
+		return new PointD(dy, -dx);
+	}
+
+	private static int GetLowestPolygonIdx(Paths64 paths) {
 		Point64 lp = new Point64(0, Long.MIN_VALUE);
 		int result = -1;
 		for (int i = 0; i < paths.size(); i++) {
