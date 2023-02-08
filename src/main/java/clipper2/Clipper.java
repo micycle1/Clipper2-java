@@ -13,7 +13,6 @@ import clipper2.core.PointD;
 import clipper2.core.Rect64;
 import clipper2.core.RectD;
 import clipper2.engine.Clipper64;
-import clipper2.engine.ClipperBase;
 import clipper2.engine.ClipperD;
 import clipper2.engine.PointInPolygonResult;
 import clipper2.engine.PolyPath64;
@@ -37,7 +36,7 @@ public final class Clipper {
 	public static final Rect64 MaxInvalidRect64 = new Rect64(Long.MAX_VALUE, Long.MAX_VALUE, Long.MIN_VALUE, Long.MIN_VALUE);
 
 	public static final RectD MaxInvalidRectD = new RectD(Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE);
-	public static final String PRECISION_RANGE_ERROR = "Error: Precision is out of range.";
+	private static final String PRECISION_RANGE_ERROR = "Error: Precision is out of range.";
 
 	public static Paths64 Intersect(Paths64 subject, Paths64 clip, FillRule fillRule) {
 		return BooleanOp(ClipType.Intersection, subject, clip, fillRule);
@@ -211,7 +210,7 @@ public final class Clipper {
 		Paths64 result = new Paths64(paths.size());
 		RectClip rc = new RectClip(rect);
 		for (Path64 path : paths) {
-			Rect64 pathRec = ClipperBase.GetBounds(path);
+			Rect64 pathRec = GetBounds(path);
 			if (!rect.Intersects(pathRec))
 				continue;
 			else if (rect.Contains(pathRec))
@@ -257,7 +256,7 @@ public final class Clipper {
 		RectClip rc = new RectClip(r);
 		PathsD result = new PathsD(paths.size());
 		for (PathD p : paths) {
-			RectD pathRec = ClipperBase.GetBounds(p);
+			RectD pathRec = GetBounds(p);
 			if (!rect.Intersects(pathRec))
 				continue;
 			else if (rect.Contains(pathRec))
@@ -285,7 +284,7 @@ public final class Clipper {
 		if (rect.IsEmpty() || paths.size() == 0) return result;
 		RectClipLines rco = new RectClipLines(rect);
 		for (Path64 path : paths) {
-			Rect64 pathRec = ClipperBase.GetBounds(path);
+			Rect64 pathRec = GetBounds(path);
 			if (!rect.Intersects(pathRec))
 				continue;
 			else if (rect.Contains(pathRec))
@@ -331,7 +330,7 @@ public final class Clipper {
 		Rect64 r = ScaleRect(rect, scale);
 		RectClipLines rco = new RectClipLines(r);
 		for (PathD p : paths) {
-			RectD pathRec = ClipperBase.GetBounds(p);
+			RectD pathRec = GetBounds(p);
 			if (!rect.Intersects(pathRec))
 				continue;
 			else if (rect.Contains(pathRec))
@@ -703,6 +702,18 @@ public final class Clipper {
 			if (pt.y > result.bottom) result.bottom = pt.y;
 		}
 		return result.IsEmpty() ? new Rect64() : result;
+	}
+
+	public static RectD GetBounds(PathD path)
+	{
+		RectD result = MaxInvalidRectD;
+		for (PointD pt : path) {
+			if (pt.x < result.left) result.left = pt.x;
+			if (pt.x > result.right) result.right = pt.x;
+			if (pt.y < result.top) result.top = pt.y;
+			if (pt.y > result.bottom) result.bottom = pt.y;
+		}
+		return result.IsEmpty() ? new RectD() : result;
 	}
 
 	public static Rect64 GetBounds(Paths64 paths) {

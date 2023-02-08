@@ -1,12 +1,13 @@
 package clipper2.rectclip;
 
+import static clipper2.Clipper.GetBounds;
+
 import clipper2.Clipper;
 import clipper2.core.InternalClipper;
 import clipper2.core.Path64;
 import clipper2.core.Paths64;
 import clipper2.core.Point64;
 import clipper2.core.Rect64;
-import clipper2.engine.ClipperBase;
 import clipper2.engine.PointInPolygonResult;
 import tangible.OutObject;
 import tangible.RefObject;
@@ -18,8 +19,6 @@ public class RectClip {
 	protected enum Location {
 		left, top, right, bottom, inside
 	}
-
-	;
 
 	final protected Rect64 rect_;
 	final protected Point64 mp_;
@@ -393,7 +392,7 @@ public class RectClip {
 		if (firstCross_ == Location.inside) {
 			if (startingLoc == Location.inside)
 				return path;
-			Rect64 tmp_rect = ClipperBase.GetBounds(path);
+			Rect64 tmp_rect = GetBounds(path);
 			if (tmp_rect.Contains(rect_) &&
 					Path1ContainsPath2(path, rectPath_)
 							!= PointInPolygonResult.IsOutside)
@@ -444,7 +443,7 @@ public class RectClip {
 	private Paths64 ExecuteInternal(Paths64 paths) {
 		Paths64 result = new Paths64(paths.size());
 		for (Path64 path : paths) {
-			if (rect_.Intersects(ClipperBase.GetBounds(path)))
+			if (rect_.Intersects(GetBounds(path)))
 				result.add(ExecuteInternal(path));
 		}
 		return result;

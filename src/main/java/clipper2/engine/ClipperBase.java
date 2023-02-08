@@ -1,7 +1,5 @@
 package clipper2.engine;
 
-import static clipper2.Clipper.MaxInvalidRectD;
-
 import clipper2.Clipper;
 import clipper2.Nullable;
 import clipper2.core.ClipType;
@@ -30,7 +28,7 @@ import java.util.TreeSet;
  * calling Execute. And Execute can be called multiple times (ie with different
  * ClipTypes & FillRules) without having to reload these paths.
  */
-public abstract class ClipperBase {
+abstract class ClipperBase {
 
 	private ClipType cliptype;
 	private FillRule fillrule = FillRule.EvenOdd;
@@ -3160,18 +3158,6 @@ public abstract class ClipperBase {
 			return Area(op) < Area(or2.pts);
 		}
 		return result == PointInPolygonResult.IsInside;
-	}
-
-	public static RectD GetBounds(PathD path)
-	{
-		RectD result = MaxInvalidRectD;
-		for (PointD pt : path) {
-			if (pt.x < result.left) result.left = pt.x;
-			if (pt.x > result.right) result.right = pt.x;
-			if (pt.y < result.top) result.top = pt.y;
-			if (pt.y > result.bottom) result.bottom = pt.y;
-		}
-		return result.IsEmpty() ? new RectD() : result;
 	}
 
 	public static Rect64 GetBounds(Path64 path) {
