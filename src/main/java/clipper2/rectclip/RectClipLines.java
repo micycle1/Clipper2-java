@@ -22,7 +22,7 @@ public class RectClipLines extends RectClip {
 		super(rect);
 	}
 
-	public Paths64 NewInternal(Path64 path) {
+	public Paths64 NewExecuteInternal(Path64 path) {
 		result_.clear();
 		Paths64 result = new Paths64();
 		if (path.size() < 2 || rect.IsEmpty()) {
