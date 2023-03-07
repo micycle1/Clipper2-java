@@ -39,12 +39,12 @@ public final class InternalClipper {
 			m2 = (double) (ln2b.y - ln2a.y) / (ln2b.x - ln2a.x);
 			b2 = ln2a.y - m2 * ln2a.x;
 			ip.x = ln1a.x;
-			ip.y = Math.round(m2 * ln1a.x + b2);
+			ip.y = (long) Math.rint(m2 * ln1a.x + b2);
 		} else if (ln2b.x == ln2a.x) {
 			m1 = (double) (ln1b.y - ln1a.y) / (ln1b.x - ln1a.x);
 			b1 = ln1a.y - m1 * ln1a.x;
 			ip.x = ln2a.x;
-			ip.y = Math.round(m1 * ln2a.x + b1);
+			ip.y = (long) Math.rint(m1 * ln2a.x + b1);
 		} else {
 			m1 = (double) (ln1b.y - ln1a.y) / (ln1b.x - ln1a.x);
 			b1 = ln1a.y - m1 * ln1a.x;
@@ -52,11 +52,11 @@ public final class InternalClipper {
 			b2 = ln2a.y - m2 * ln2a.x;
 			if (Math.abs(m1 - m2) > FLOATING_POINT_TOLERANCE) {
 				double x = (b2 - b1) / (m1 - m2);
-				ip.x = Math.round(x);
-				ip.y = Math.round(m1 * x + b1);
+				ip.x = (long) Math.rint(x);
+				ip.y = (long) Math.rint(m1 * x + b1);
 			} else {
-				ip.x = Math.round((ln1a.x + ln1b.x) * 0.5);
-				ip.y = Math.round((ln1a.y + ln1b.y) * 0.5);
+				ip.x = (long) Math.rint((ln1a.x + ln1b.x) * 0.5);
+				ip.y = (long) Math.rint((ln1a.y + ln1b.y) * 0.5);
 			}
 		}
 		return true;
