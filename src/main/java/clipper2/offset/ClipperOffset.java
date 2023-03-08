@@ -43,7 +43,7 @@ public class ClipperOffset {
 	private final PathD normals = new PathD();
 	private final Paths64 solution = new Paths64();
 	private double group_delta, abs_group_delta, tmpLimit, stepsPerRad;
-	private JoinType joinType;
+	private JoinType joinType = JoinType.Square;
 	private double arcTolerance;
 	private boolean mergeGroups;
 	private double miterLimit;

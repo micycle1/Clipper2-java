@@ -6,7 +6,7 @@ import clipper2.engine.ClipperBase.Vertex;
 final class LocalMinima {
 
 	Vertex vertex;
-	PathType polytype;
+	PathType polytype = PathType.Subject;
 	boolean isOpen = false;
 
 	LocalMinima() {

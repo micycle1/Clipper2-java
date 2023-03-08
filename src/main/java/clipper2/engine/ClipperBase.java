@@ -28,7 +28,7 @@ import tangible.RefObject;
  */
 abstract class ClipperBase {
 
-	private ClipType cliptype;
+	private ClipType cliptype = ClipType.None;
 	private FillRule fillrule = FillRule.EvenOdd;
 	private Active actives = null;
 	private Active sel = null;
