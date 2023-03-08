@@ -8,11 +8,14 @@ public final class RectD {
 	public double top;
 	public double right;
 	public double bottom;
+	private static final String InvalidRect = "Invalid RectD assignment";
 
 	public RectD() {
 	}
 
 	public RectD(double l, double t, double r, double b) {
+		if (r < l || b < t)
+			throw new IllegalArgumentException(InvalidRect);
 		left = l;
 		top = t;
 		right = r;
@@ -24,6 +27,21 @@ public final class RectD {
 		top = rec.top;
 		right = rec.right;
 		bottom = rec.bottom;
+	}
+
+
+	public RectD(boolean isValid) {
+		if (isValid) {
+			left = 0;
+			top = 0;
+			right = 0;
+			bottom = 0;
+		} else {
+			left = Double.MAX_VALUE;
+			top = Double.MAX_VALUE;
+			right = -Double.MAX_VALUE;
+			bottom = -Double.MAX_VALUE;
+		}
 	}
 
 	public double getWidth() {

@@ -33,9 +33,9 @@ import clipper2.rectclip.RectClipLines;
 
 public final class Clipper {
 
-	public static final Rect64 MaxInvalidRect64 = new Rect64(Long.MAX_VALUE, Long.MAX_VALUE, Long.MIN_VALUE, Long.MIN_VALUE);
+	public static final Rect64 InvalidRect64 = new Rect64(false);
 
-	public static final RectD MaxInvalidRectD = new RectD(Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE);
+	public static final RectD InvalidRectD = new RectD(false);
 
 	public static Paths64 Intersect(Paths64 subject, Paths64 clip, FillRule fillRule) {
 		return BooleanOp(ClipType.Intersection, subject, clip, fillRule);
@@ -215,129 +215,75 @@ public final class Clipper {
 		return ScalePathsD(tmp, 1 / scale);
 	}
 
-	public static Path64 RectClip(Rect64 rect, Path64 path) {
-		if (rect.IsEmpty() || path.isEmpty()) {
-			return new Path64();
-		}
-		RectClip rc = new RectClip(rect);
-		return rc.ExecuteInternal(path);
+	public static Paths64 RectClip(Rect64 rect, Paths64 paths) {
+		return RectClip(rect, paths, false);
 	}
 
-	public static Paths64 RectClip(Rect64 rect, Paths64 paths) {
-		if (rect.IsEmpty() || paths.isEmpty()) {
+	public static Paths64 RectClip(Rect64 rect, Paths64 paths, boolean convexOnly) {
+		if (rect.IsEmpty() || paths.size() == 0) {
 			return new Paths64();
 		}
-
-		Paths64 result = new Paths64(paths.size());
 		RectClip rc = new RectClip(rect);
-		for (Path64 path : paths) {
-			Rect64 pathRec = GetBounds(path);
-			if (!rect.Intersects(pathRec)) {
-				continue;
-			} else if (rect.Contains(pathRec)) {
-				result.add(path);
-			} else {
-				Path64 p = rc.ExecuteInternal(path);
-				if (p.size() > 0) {
-					result.add(p);
-				}
-			}
-		}
-		return result;
+		return rc.Execute(paths, convexOnly);
 	}
 
-	public static PathD RectClip(RectD rect, PathD path) {
-		return RectClip(rect, path, 2);
+	public static Paths64 RectClip(Rect64 rect, Path64 path) {
+		return RectClip(rect, path, false);
 	}
 
-	public static PathD RectClip(RectD rect, PathD path, int precision) {
-		InternalClipper.CheckPrecision(precision);
+	public static Paths64 RectClip(Rect64 rect, Path64 path, boolean convexOnly) {
 		if (rect.IsEmpty() || path.size() == 0) {
-			return new PathD();
+			return new Paths64();
 		}
-		double scale = Math.pow(10, precision);
-		Rect64 r = ScaleRect(rect, scale);
-		Path64 tmpPath = ScalePath64(path, scale);
-		RectClip rc = new RectClip(r);
-		tmpPath = rc.ExecuteInternal(tmpPath);
-		return ScalePathD(tmpPath, 1 / scale);
+		Paths64 tmp = new Paths64();
+		tmp.add(path);
+		return RectClip(rect, tmp, convexOnly);
 	}
 
 	public static PathsD RectClip(RectD rect, PathsD paths) {
-		return RectClip(rect, paths, 2);
+		return RectClip(rect, paths, 2, false);
 	}
 
-	public static PathsD RectClip(RectD rect, PathsD paths, int precision) {
+	public static PathsD RectClip(RectD rect, PathsD paths, int precision, boolean convexOnly) {
 		InternalClipper.CheckPrecision(precision);
 		if (rect.IsEmpty() || paths.size() == 0) {
 			return new PathsD();
 		}
 		double scale = Math.pow(10, precision);
 		Rect64 r = ScaleRect(rect, scale);
+		Paths64 tmpPath = ScalePaths64(paths, scale);
 		RectClip rc = new RectClip(r);
-		PathsD result = new PathsD(paths.size());
-		for (PathD p : paths) {
-			RectD pathRec = GetBounds(p);
-			if (!rect.Intersects(pathRec)) {
-				continue;
-			} else if (rect.Contains(pathRec)) {
-				result.add(p);
-			} else {
-				Path64 p64 = ScalePath64(p, scale);
-				p64 = rc.ExecuteInternal(p64);
-				if (p64.size() > 0) {
-					result.add(ScalePathD(p64, 1 / scale));
-				}
-			}
+		tmpPath = rc.Execute(tmpPath, convexOnly);
+		return ScalePathsD(tmpPath, 1 / scale);
+	}
+
+	public static PathsD RectClip(RectD rect, PathD path) {
+		return RectClip(rect, path, 2, false);
+	}
+
+	public static PathsD RectClip(RectD rect, PathD path, int precision, boolean convexOnly) {
+		if (rect.IsEmpty() || path.size() == 0) {
+			return new PathsD();
 		}
-		return result;
+		PathsD tmp = new PathsD();
+		tmp.add(path);
+		return RectClip(rect, tmp, precision, convexOnly);
+	}
+	public static Paths64 RectClipLines(Rect64 rect, Paths64 paths) {
+		if (rect.IsEmpty() || paths.size() == 0) {
+			return new Paths64();
+		}
+		RectClipLines rc = new RectClipLines(rect);
+		return rc.Execute(paths);
 	}
 
 	public static Paths64 RectClipLines(Rect64 rect, Path64 path) {
 		if (rect.IsEmpty() || path.size() == 0) {
 			return new Paths64();
 		}
-		RectClipLines rco = new RectClipLines(rect);
-		return rco.NewExecuteInternal(path);
-	}
-
-	public static Paths64 RectClipLines(Rect64 rect, Paths64 paths) {
-		Paths64 result = new Paths64(paths.size());
-		if (rect.IsEmpty() || paths.size() == 0) {
-			return result;
-		}
-		RectClipLines rco = new RectClipLines(rect);
-		for (Path64 path : paths) {
-			Rect64 pathRec = GetBounds(path);
-			if (!rect.Intersects(pathRec)) {
-				continue;
-			} else if (rect.Contains(pathRec)) {
-				result.add(path);
-			} else {
-				Paths64 pp = rco.NewExecuteInternal(path);
-				if (pp.size() > 0) {
-					result.addAll(pp);
-				}
-			}
-		}
-		return result;
-	}
-
-	public static PathsD RectClipLines(RectD rect, PathD path) {
-		return RectClipLines(rect, path, 2);
-	}
-
-	public static PathsD RectClipLines(RectD rect, PathD path, int precision) {
-		InternalClipper.CheckPrecision(precision);
-		if (rect.IsEmpty() || path.size() == 0) {
-			return new PathsD();
-		}
-		double scale = Math.pow(10, precision);
-		Rect64 r = ScaleRect(rect, scale);
-		Path64 tmpPath = ScalePath64(path, scale);
-		RectClipLines rco = new RectClipLines(r);
-		Paths64 tmpPaths = rco.NewExecuteInternal(tmpPath);
-		return ScalePathsD(tmpPaths, 1 / scale);
+		Paths64 tmp = new Paths64();
+		tmp.add(path);
+		return RectClipLines(rect, tmp);
 	}
 
 	public static PathsD RectClipLines(RectD rect, PathsD paths) {
@@ -346,37 +292,43 @@ public final class Clipper {
 
 	public static PathsD RectClipLines(RectD rect, PathsD paths, int precision) {
 		InternalClipper.CheckPrecision(precision);
-		PathsD result = new PathsD(paths.size());
 		if (rect.IsEmpty() || paths.size() == 0) {
-			return result;
+			return new PathsD();
 		}
 		double scale = Math.pow(10, precision);
 		Rect64 r = ScaleRect(rect, scale);
-		RectClipLines rco = new RectClipLines(r);
-		for (PathD p : paths) {
-			RectD pathRec = GetBounds(p);
-			if (!rect.Intersects(pathRec)) {
-				continue;
-			} else if (rect.Contains(pathRec)) {
-				result.add(p);
-			} else {
-				Path64 p64 = ScalePath64(p, scale);
-				Paths64 pp64 = rco.NewExecuteInternal(p64);
-				if (pp64.size() == 0) {
-					continue;
-				}
-				PathsD ppd = ScalePathsD(pp64, 1 / scale);
-				result.addAll(ppd);
-			}
+		Paths64 tmpPath = ScalePaths64(paths, scale);
+		RectClipLines rc = new RectClipLines(r);
+		tmpPath = rc.Execute(tmpPath);
+		return ScalePathsD(tmpPath, 1 / scale);
+	}
+
+	public static PathsD RectClipLines(RectD rect, PathD path) {
+		return RectClipLines(rect, path, 2);
+	}
+
+	public static PathsD RectClipLines(RectD rect, PathD path, int precision) {
+		if (rect.IsEmpty() || path.size() == 0) {
+			return new PathsD();
 		}
-		return result;
+		PathsD tmp = new PathsD();
+		tmp.add(path);
+		return RectClipLines(rect, tmp, precision);
 	}
 
 	public static Paths64 MinkowskiSum(Path64 pattern, Path64 path, boolean isClosed) {
 		return Minkowski.Sum(pattern, path, isClosed);
 	}
 
+	public static PathsD MinkowskiSum(PathD pattern, PathD path, boolean isClosed) {
+		return Minkowski.Sum(pattern, path, isClosed);
+	}
+
 	public static Paths64 MinkowskiDiff(Path64 pattern, Path64 path, boolean isClosed) {
+		return Minkowski.Diff(pattern, path, isClosed);
+	}
+
+	public static PathsD MinkowskiDiff(PathD pattern, PathD path, boolean isClosed) {
 		return Minkowski.Diff(pattern, path, isClosed);
 	}
 
@@ -713,7 +665,7 @@ public final class Clipper {
 	}
 
 	public static Rect64 GetBounds(Path64 path) {
-		Rect64 result = MaxInvalidRect64;
+		Rect64 result = InvalidRect64;
 		for (Point64 pt : path) {
 			if (pt.x < result.left) {
 				result.left = pt.x;
@@ -728,30 +680,11 @@ public final class Clipper {
 				result.bottom = pt.y;
 			}
 		}
-		return result.IsEmpty() ? new Rect64() : result;
-	}
-
-	public static RectD GetBounds(PathD path) {
-		RectD result = MaxInvalidRectD;
-		for (PointD pt : path) {
-			if (pt.x < result.left) {
-				result.left = pt.x;
-			}
-			if (pt.x > result.right) {
-				result.right = pt.x;
-			}
-			if (pt.y < result.top) {
-				result.top = pt.y;
-			}
-			if (pt.y > result.bottom) {
-				result.bottom = pt.y;
-			}
-		}
-		return result.IsEmpty() ? new RectD() : result;
+		return result.left == Long.MAX_VALUE ? new Rect64() : result;
 	}
 
 	public static Rect64 GetBounds(Paths64 paths) {
-		Rect64 result = MaxInvalidRect64;
+		Rect64 result = InvalidRect64;
 		for (Path64 path : paths) {
 			for (Point64 pt : path) {
 				if (pt.x < result.left) {
@@ -768,11 +701,30 @@ public final class Clipper {
 				}
 			}
 		}
-		return result.IsEmpty() ? new Rect64() : result;
+		return result.left == Long.MAX_VALUE ? new Rect64() : result;
+	}
+
+	public static RectD GetBounds(PathD path) {
+		RectD result = InvalidRectD;
+		for (PointD pt : path) {
+			if (pt.x < result.left) {
+				result.left = pt.x;
+			}
+			if (pt.x > result.right) {
+				result.right = pt.x;
+			}
+			if (pt.y < result.top) {
+				result.top = pt.y;
+			}
+			if (pt.y > result.bottom) {
+				result.bottom = pt.y;
+			}
+		}
+		return result.left == Double.MAX_VALUE ? new RectD() : result;
 	}
 
 	public static RectD GetBounds(PathsD paths) {
-		RectD result = MaxInvalidRectD;
+		RectD result = InvalidRectD;
 		for (PathD path : paths) {
 			for (PointD pt : path) {
 				if (pt.x < result.left) {
@@ -789,7 +741,7 @@ public final class Clipper {
 				}
 			}
 		}
-		return result.IsEmpty() ? new RectD() : result;
+		return result.left == Double.MAX_VALUE ? new RectD() : result;
 	}
 
 	public static Path64 MakePath(int[] arr) {

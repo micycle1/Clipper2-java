@@ -74,7 +74,10 @@ abstract class ClipperBase {
 
 	private static class HorzSegSorter implements Comparator<HorzSegment> {
 		@Override
-		public int compare(HorzSegment hs1, HorzSegment hs2) {
+		public int compare(@Nullable HorzSegment hs1, @Nullable HorzSegment hs2) {
+			if (hs1 == null || hs2 == null) {
+				return 0;
+			}
 			if (hs1.rightOp == null)
 			{
 				return hs2.rightOp == null ? 0 : 1;
@@ -1292,10 +1295,6 @@ abstract class ClipperBase {
 		OutRec result = new OutRec();
 		result.idx = outrecList.size();
 		outrecList.add(result);
-		//result.pts = null;
-		//result.owner = null;
-		//result.polypath = null;
-		//result.isOpen = false;
 		return result;
 	}
 
@@ -1813,7 +1812,7 @@ abstract class ClipperBase {
 
 			node.edge1.curX = node.pt.x;
 			node.edge2.curX = node.pt.x;
-			CheckJoinLeft(node.edge2, node.pt);
+			CheckJoinLeft(node.edge2, node.pt, true);
 			CheckJoinRight(node.edge1, node.pt, true);
 		}
 	}
@@ -2171,19 +2170,28 @@ abstract class ClipperBase {
 		}
 	}
 
-	private void CheckJoinLeft(Active e, Point64 currPt)
-	{
+	private void CheckJoinLeft(Active e, Point64 pt) {
+		CheckJoinLeft(e, pt, false);
+	}
+
+	private void CheckJoinLeft(Active e, Point64 pt, boolean checkCurrX) {
 		@Nullable Active prev = e.prevInAEL;
-		if (IsOpen(e) || !IsHotEdge(e) ||
-				prev == null || IsOpen(prev) ||
-				!IsHotEdge(prev) || e.curX != prev.curX ||
-				currPt.y <= e.top.y || currPt.y <= prev.top.y ||
-				IsJoined(e) || IsOpen(e) ||
-				InternalClipper.CrossProduct(e.top, currPt, prev.top) != 0)
+		if (prev == null || IsOpen(e) || IsOpen(prev) ||
+				!IsHotEdge(e) || !IsHotEdge(prev) ||
+				pt.y < e.top.y + 2 || pt.y < prev.top.y + 2) {
+			return;
+		}
+
+		if (checkCurrX) {
+			if (Clipper.PerpendicDistFromLineSqrd(pt, prev.bot, prev.top) > 0.25)
+				return;
+		} else if (e.curX != prev.curX)
+			return;
+		if (InternalClipper.CrossProduct(e.top, pt, prev.top) != 0)
 			return;
 
 		if (e.outrec.idx == prev.outrec.idx)
-			AddLocalMaxPoly(prev, e, currPt);
+			AddLocalMaxPoly(prev, e, pt);
 		else if (e.outrec.idx < prev.outrec.idx)
 			JoinOutrecPaths(e, prev);
 		else
@@ -2192,26 +2200,29 @@ abstract class ClipperBase {
 		e.joinWith = JoinWith.Left;
 	}
 
-	private void CheckJoinRight(Active e, Point64 currPt)
+	private void CheckJoinRight(Active e, Point64 pt)
 	{
-		CheckJoinRight(e,currPt, false);
+		CheckJoinRight(e, pt, false);
 	}
 
-	private void CheckJoinRight(Active e, Point64 currPt, boolean checkNextCurrX)
+	private void CheckJoinRight(Active e, Point64 pt, boolean checkCurrX)
 	{
 		@Nullable Active next = e.nextInAEL;
 		if (IsOpen(e) || !IsHotEdge(e) || IsJoined(e) ||
 				next == null || IsOpen(next) || !IsHotEdge(next) ||
-				currPt.y < e.top.y + 2 || currPt.y < next.top.y + 2) // avoids trivial joins
+				pt.y < e.top.y + 2 || pt.y < next.top.y + 2) // avoids trivial joins
 			return;
 
-		if (checkNextCurrX) next.curX = TopX(next, currPt.y);
-		if (e.curX != next.curX  ||
-				(InternalClipper.CrossProduct(e.top, currPt, next.top) != 0))
+		if (checkCurrX) {
+			if (Clipper.PerpendicDistFromLineSqrd(pt, next.bot, next.top) > 0.25)
+				return;
+		} else if (e.curX != next.curX)
+			return;
+		if (InternalClipper.CrossProduct(e.top, pt, next.top) != 0)
 			return;
 
 		if (e.outrec.idx == next.outrec.idx)
-			AddLocalMaxPoly(e, next, currPt);
+			AddLocalMaxPoly(e, next, pt);
 		else if (e.outrec.idx < next.outrec.idx)
 			JoinOutrecPaths(e, next);
 		else
@@ -2375,10 +2386,11 @@ abstract class ClipperBase {
 			if (op.pt.y != pt.y) break;
 			op = op.next;
 		} while (op != op2);
-		if (op == op2)  return PointInPolygonResult.IsOutside;
+		if (op.pt.y == pt.y) // not a proper polygon
+			return PointInPolygonResult.IsOutside;
 
 		// must be above or below to get here
-		boolean isAbove = op.pt.y < pt.y;
+		boolean isAbove = op.pt.y < pt.y, startingAbove = isAbove;
 		int val = 0;
 
 		op2 = op.next;
@@ -2399,6 +2411,7 @@ abstract class ClipperBase {
 						(pt.x < op2.prev.pt.x) != (pt.x < op2.pt.x)))
 					return PointInPolygonResult.IsOn;
 				op2 = op2.next;
+				if (op2 == op) break;
 				continue;
 			}
 
@@ -2416,6 +2429,14 @@ abstract class ClipperBase {
 			isAbove = !isAbove;
 			op2 = op2.next;
 		}
+
+		if (isAbove != startingAbove)
+		{
+			double d = InternalClipper.CrossProduct(op2.prev.pt, op2.pt, pt);
+			if (d == 0) return PointInPolygonResult.IsOn;
+			if ((d < 0) == isAbove) val = 1 - val;
+		}
+
 		if (val == 0) return PointInPolygonResult.IsOutside;
 		else return PointInPolygonResult.IsInside;
 	}
@@ -2701,27 +2722,11 @@ abstract class ClipperBase {
 		return true;
 	}
 
-	private boolean Path1InsidePath2(OutRec or1, OutRec or2) {
-		PointInPolygonResult result;
-		OutPt op = or1.pts;
-		do {
-			result = InternalClipper.PointInPolygon(op.pt, or2.path);
-			if (result != PointInPolygonResult.IsOn) {
-				break;
-			}
-			op = op.next;
-		} while (op != or1.pts);
-		if (result == PointInPolygonResult.IsOn) {
-			return Area(op) < Area(or2.pts);
-		}
-		return result == PointInPolygonResult.IsInside;
-	}
-
 	public static Rect64 GetBounds(Path64 path) {
 		if (path.isEmpty()) {
 			return new Rect64();
 		}
-		Rect64 result = new Rect64(Long.MAX_VALUE, Long.MAX_VALUE, -Long.MAX_VALUE, -Long.MAX_VALUE);
+		Rect64 result = Clipper.InvalidRect64;
 		for (Point64 pt : path) {
 			if (pt.x < result.left) {
 				result.left = pt.x;
@@ -2767,7 +2772,7 @@ abstract class ClipperBase {
 
 		while (outrec.owner != null)
 			if (outrec.owner.bounds.Contains(outrec.bounds) &&
-					Path1InsidePath2(outrec, outrec.owner))
+					Path1InsidePath2(outrec.pts, outrec.owner.pts))
 				break; // found - owner contain outrec!
 			else
 				outrec.owner = outrec.owner.owner;
@@ -2791,7 +2796,7 @@ abstract class ClipperBase {
 				if (split != null && split != outrec &&
 						split != outrec.owner && CheckBounds(split) &&
 						split.bounds.Contains(outrec.bounds) &&
-						Path1InsidePath2(outrec, split))
+						Path1InsidePath2(outrec.pts, split.pts))
 				{
 					RecursiveCheckOwners(split, polypath);
 					outrec.owner = split; //found in split
@@ -2827,7 +2832,7 @@ abstract class ClipperBase {
 	}
 
 	public final Rect64 GetBounds() {
-		Rect64 bounds = Clipper.MaxInvalidRect64;
+		Rect64 bounds = Clipper.InvalidRect64;
 		for (Vertex t : vertexList) {
 			Vertex v = t;
 			do {

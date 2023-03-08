@@ -10,6 +10,7 @@ public final class InternalClipper {
 	private static final double min_coord = -MaxCoord;
 	private static final long Invalid64 = MaxInt64;
 
+	public static final double DEFAULT_ARC_TOLERANCE = 0.25;
 	private static final double FLOATING_POINT_TOLERANCE = 1E-12;
 	private static final double DEFAULT_MIN_EDGE_LENGTH = 0.1;
 
@@ -122,63 +123,73 @@ public final class InternalClipper {
 	}
 
 	public static PointInPolygonResult PointInPolygon(Point64 pt, Path64 polygon) {
-		int len = polygon.size(), i = len - 1;
-
+		int len = polygon.size(), start = 0;
 		if (len < 3) {
 			return PointInPolygonResult.IsOutside;
 		}
 
-		while (i >= 0 && polygon.get(i).y == pt.y) {
-			--i;
-		}
-		if (i < 0) {
+		while (start < len && polygon.get(start).y == pt.y) start++;
+		if (start == len) {
 			return PointInPolygonResult.IsOutside;
 		}
 
-		int val = 0;
-		boolean isAbove = polygon.get(i).y < pt.y;
-		i = 0;
+		double d;
+		boolean isAbove = polygon.get(start).y < pt.y, startingAbove = isAbove;
+		int val = 0, i = start + 1, end = len;
+		while (true) {
+			if (i == end) {
+				if (end == 0 || start == 0) {
+					break;
+				}
+				end = start;
+				i = 0;
+			}
 
-		while (i < len) {
 			if (isAbove) {
-				while (i < len && polygon.get(i).y < pt.y) {
+				while (i < end && polygon.get(i).y < pt.y) {
 					i++;
 				}
-				if (i == len) {
-					break;
+				if (i == end) {
+					continue;
 				}
 			} else {
-				while (i < len && polygon.get(i).y > pt.y) {
+				while (i < end && polygon.get(i).y > pt.y) {
 					i++;
 				}
-				if (i == len) {
-					break;
+				if (i == end) {
+					continue;
 				}
 			}
 
-			Point64 prev;
-
-			Point64 curr = polygon.get(i);
+			Point64 curr = polygon.get(i), prev;
 			if (i > 0) {
 				prev = polygon.get(i - 1);
 			} else {
 				prev = polygon.get(len - 1);
 			}
 
-			if (curr.y == pt.y) {
-				if (curr.x == pt.x || (curr.y == prev.y && ((pt.x < prev.x) != (pt.x < curr.x)))) {
+			if (curr.y == pt.y)
+			{
+				if (curr.x == pt.x || (curr.y == prev.y &&
+						((pt.x < prev.x) != (pt.x < curr.x)))) {
 					return PointInPolygonResult.IsOn;
 				}
 				i++;
+				if (i == start) {
+					break;
+				}
 				continue;
 			}
 
-			if (pt.x < curr.x && pt.x < prev.x) {
+			if (pt.x < curr.x && pt.x < prev.x)
+			{
 				// we're only interested in edges crossing on the left
-			} else if (pt.x > prev.x && pt.x > curr.x) {
+			}
+			else if (pt.x > prev.x && pt.x > curr.x)
+			{
 				val = 1 - val; // toggle val
 			} else {
-				double d = CrossProduct(prev, curr, pt);
+				d = CrossProduct(prev, curr, pt);
 				if (d == 0) {
 					return PointInPolygonResult.IsOn;
 				}
@@ -189,6 +200,24 @@ public final class InternalClipper {
 			isAbove = !isAbove;
 			i++;
 		}
+
+		if (isAbove != startingAbove) {
+			if (i == len) {
+				i = 0;
+			}
+			if (i == 0) {
+				d = CrossProduct(polygon.get(len - 1), polygon.get(0), pt);
+			} else {
+				d = CrossProduct(polygon.get(i - 1), polygon.get(i), pt);
+			}
+			if (d == 0) {
+				return PointInPolygonResult.IsOn;
+			}
+			if ((d < 0) == isAbove) {
+				val = 1 - val;
+			}
+		}
+
 		if (val == 0) {
 			return PointInPolygonResult.IsOutside;
 		}
