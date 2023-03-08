@@ -319,11 +319,11 @@ abstract class ClipperBase {
 	}
 
 	private static boolean IsHeadingRightHorz(Active ae) {
-		return (Double.isInfinite(ae.dx));
+		return Double.NEGATIVE_INFINITY == ae.dx;
 	}
 
 	private static boolean IsHeadingLeftHorz(Active ae) {
-		return (Double.isInfinite(ae.dx));
+		return Double.POSITIVE_INFINITY == ae.dx;
 	}
 
 	private static void SwapActives(RefObject<Active> ae1, RefObject<Active> ae2) {
@@ -1003,7 +1003,7 @@ abstract class ClipperBase {
 		}
 	}
 
-	private static void InsertRightEdge(Active ae, Active ae2) {
+	private /*static*/ void InsertRightEdge(Active ae, Active ae2) {
 		ae2.nextInAEL = ae.nextInAEL;
 		if (ae.nextInAEL != null) {
 			ae.nextInAEL.prevInAEL = ae2;
