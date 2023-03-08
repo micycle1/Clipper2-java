@@ -21,7 +21,7 @@ class TestLines {
 	}
 
 	@MethodSource("testCases")
-	@ParameterizedTest(name = "{0} {2} {3}")
+	@ParameterizedTest(name = "{1} {2} {3}")
 	final void RunLinesTestCase(TestCase test, String caption, Object o, Object o1) {
 		Clipper64 c64 = new Clipper64();
 		Paths64 solution = new Paths64();
