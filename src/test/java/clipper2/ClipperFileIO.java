@@ -83,6 +83,8 @@ class ClipperFileIO {
 
 	static List<TestCase> loadTestCases(String testFileName) throws IOException {
 		List<String> lines = Files.readAllLines(Paths.get(String.format("src/test/resources/%s", testFileName)));
+		lines = new ArrayList<>(lines);
+		lines.add("");
 
 		String caption = "";
 		ClipType ct = ClipType.None;
@@ -97,12 +99,15 @@ class ClipperFileIO {
 		List<TestCase> cases = new ArrayList<>();
 
 		for (String s : lines) {
-			if (s.matches("\\s*") || s.length() == 0) {
-				cases.add(new TestCase(caption, ct, fillRule, area, count, GetIdx, new Paths64(subj), new Paths64(subj_open),
-						new Paths64(clip), cases.size()+1));
-				subj.clear();
-				subj_open.clear();
-				clip.clear();
+			if (s.matches("\\s*")) {
+				if (GetIdx != 0) {
+					cases.add(new TestCase(caption, ct, fillRule, area, count, GetIdx, new Paths64(subj), new Paths64(subj_open),
+							new Paths64(clip), cases.size() + 1));
+					subj.clear();
+					subj_open.clear();
+					clip.clear();
+					GetIdx = 0;
+				}
 				continue;
 			}
 
@@ -182,11 +187,6 @@ class ClipperFileIO {
 				clip.add(paths.get(0));
 			}
 
-		}
-
-		if (cases.isEmpty()) {
-			cases.add(new TestCase(caption, ct, fillRule, area, count, GetIdx, new Paths64(subj), new Paths64(subj_open), new Paths64(clip),
-					cases.size()+1));
 		}
 
 		return cases;
