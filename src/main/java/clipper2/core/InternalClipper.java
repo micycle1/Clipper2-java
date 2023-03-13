@@ -4,22 +4,21 @@ import clipper2.engine.PointInPolygonResult;
 
 public final class InternalClipper {
 
-	private static final long MaxInt64 = 9223372036854775807L;
-	private static final long MaxCoord = MaxInt64 / 4;
-	private static final double max_coord = MaxCoord;
-	private static final double min_coord = -MaxCoord;
-	private static final long Invalid64 = MaxInt64;
+	private static final long MAXCOORD = Long.MAX_VALUE / 4;
+	private static final double MAX_COORD = MAXCOORD;
+	private static final double MIN_COORD = -MAXCOORD;
+	private static final long Invalid64 = Long.MAX_VALUE;
 
 	public static final double DEFAULT_ARC_TOLERANCE = 0.25;
 	private static final double FLOATING_POINT_TOLERANCE = 1E-12;
-	private static final double DEFAULT_MIN_EDGE_LENGTH = 0.1;
+//	private static final double DEFAULT_MIN_EDGE_LENGTH = 0.1;
 
 	private static final String PRECISION_RANGE_ERROR = "Error: Precision is out of range.";
 
-	public static void CheckPrecision(int precision)
-	{
-		if (precision < -8 || precision > 8)
+	public static void CheckPrecision(int precision) {
+		if (precision < -8 || precision > 8) {
 			throw new IllegalArgumentException(PRECISION_RANGE_ERROR);
+		}
 	}
 
 	private InternalClipper() {
@@ -45,14 +44,14 @@ public final class InternalClipper {
 		return (vec1.x * vec2.x + vec1.y * vec2.y);
 	}
 
-	public static long CheckCastInt64(double val)
-	{
-		if ((val >= max_coord) || (val <= min_coord)) return Invalid64;
-		return (long)Math.rint(val);
+	public static long CheckCastInt64(double val) {
+		if ((val >= MAX_COORD) || (val <= MIN_COORD)) {
+			return Invalid64;
+		}
+		return (long) Math.rint(val);
 	}
 
-	public static boolean GetIntersectPt(Point64 ln1a, Point64 ln1b, Point64 ln2a, Point64 ln2b, /*out*/ Point64 ip)
-	{
+	public static boolean GetIntersectPt(Point64 ln1a, Point64 ln1b, Point64 ln2a, Point64 ln2b, /* out */ Point64 ip) {
 		double dy1 = (ln1b.y - ln1a.y);
 		double dx1 = (ln1b.x - ln1a.x);
 		double dy2 = (ln2b.y - ln2a.y);
@@ -103,23 +102,24 @@ public final class InternalClipper {
 			// ensure NOT collinear
 			return (res1 != 0 || res2 != 0 || res3 != 0 || res4 != 0);
 		} else {
-			return (CrossProduct(seg1a, seg2a, seg2b) *
-					CrossProduct(seg1b, seg2a, seg2b) < 0) &&
-					(CrossProduct(seg2a, seg1a, seg1b) *
-							CrossProduct(seg2b, seg1a, seg1b) < 0);
+			return (CrossProduct(seg1a, seg2a, seg2b) * CrossProduct(seg1b, seg2a, seg2b) < 0)
+					&& (CrossProduct(seg2a, seg1a, seg1b) * CrossProduct(seg2b, seg1a, seg1b) < 0);
 		}
 	}
 
-	public static Point64 GetClosestPtOnSegment(Point64 offPt, Point64 seg1, Point64 seg2)
-	{
-		if (seg1.x == seg2.x && seg1.y == seg2.y) return seg1;
+	public static Point64 GetClosestPtOnSegment(Point64 offPt, Point64 seg1, Point64 seg2) {
+		if (seg1.x == seg2.x && seg1.y == seg2.y) {
+			return seg1;
+		}
 		double dx = (seg2.x - seg1.x);
 		double dy = (seg2.y - seg1.y);
-		double q = ((offPt.x - seg1.x) * dx +
-				(offPt.y - seg1.y) * dy) / ((dx*dx) + (dy*dy));
-		if (q < 0) q = 0; else if (q > 1) q = 1;
-		return new Point64(
-				seg1.x + Math.rint(q * dx), seg1.y + Math.rint(q* dy));
+		double q = ((offPt.x - seg1.x) * dx + (offPt.y - seg1.y) * dy) / ((dx * dx) + (dy * dy));
+		if (q < 0) {
+			q = 0;
+		} else if (q > 1) {
+			q = 1;
+		}
+		return new Point64(seg1.x + Math.rint(q * dx), seg1.y + Math.rint(q * dy));
 	}
 
 	public static PointInPolygonResult PointInPolygon(Point64 pt, Path64 polygon) {
@@ -128,7 +128,9 @@ public final class InternalClipper {
 			return PointInPolygonResult.IsOutside;
 		}
 
-		while (start < len && polygon.get(start).y == pt.y) start++;
+		while (start < len && polygon.get(start).y == pt.y) {
+			start++;
+		}
 		if (start == len) {
 			return PointInPolygonResult.IsOutside;
 		}
@@ -168,10 +170,8 @@ public final class InternalClipper {
 				prev = polygon.get(len - 1);
 			}
 
-			if (curr.y == pt.y)
-			{
-				if (curr.x == pt.x || (curr.y == prev.y &&
-						((pt.x < prev.x) != (pt.x < curr.x)))) {
+			if (curr.y == pt.y) {
+				if (curr.x == pt.x || (curr.y == prev.y && ((pt.x < prev.x) != (pt.x < curr.x)))) {
 					return PointInPolygonResult.IsOn;
 				}
 				i++;
@@ -181,12 +181,9 @@ public final class InternalClipper {
 				continue;
 			}
 
-			if (pt.x < curr.x && pt.x < prev.x)
-			{
+			if (pt.x < curr.x && pt.x < prev.x) {
 				// we're only interested in edges crossing on the left
-			}
-			else if (pt.x > prev.x && pt.x > curr.x)
-			{
+			} else if (pt.x > prev.x && pt.x > curr.x) {
 				val = 1 - val; // toggle val
 			} else {
 				d = CrossProduct(prev, curr, pt);

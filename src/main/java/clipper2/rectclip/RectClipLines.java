@@ -24,54 +24,61 @@ public class RectClipLines extends RectClip {
 		super(rect);
 	}
 
-	public Paths64 Execute(Paths64 paths)
-	{
+	public Paths64 Execute(Paths64 paths) {
 		Paths64 result = new Paths64();
-		if (rect.IsEmpty()) return result;
-		for (Path64 path: paths)
-		{
-			if (path.size() < 2) continue;
-			pathBounds_ = Clipper.GetBounds(path);
-			if (!rect.Intersects(pathBounds_))
+		if (rect.IsEmpty()) {
+			return result;
+		}
+		for (Path64 path : paths) {
+			if (path.size() < 2) {
+				continue;
+			}
+			pathBounds = Clipper.GetBounds(path);
+			if (!rect.Intersects(pathBounds)) {
 				continue; // the path must be completely outside fRect
+			}
 			// Apart from that, we can't be sure whether the path
 			// is completely outside or completed inside or intersects
 			// fRect, simply by comparing path bounds with fRect.
 			ExecuteInternal(path);
 
-			for (@Nullable OutPt2 op: results_)
-			{
+			for (@Nullable
+			OutPt2 op : results) {
 				Path64 tmp = GetPath(op);
-				if (tmp.size() > 0) result.add(tmp);
+				if (!tmp.isEmpty()) {
+					result.add(tmp);
+				}
 			}
 
-			//clean up after every loop
-			results_.clear();
-			for(int i = 0; i < 8; i++)
-				edges_[i].clear();
+			// clean up after every loop
+			results.clear();
+			for (int i = 0; i < 8; i++) {
+				edges[i].clear();
+			}
 		}
 		return result;
 	}
 
-	private Path64 GetPath(@Nullable OutPt2 op)
-	{
+	private Path64 GetPath(@Nullable OutPt2 op) {
 		Path64 result = new Path64();
-		if (op == null || op == op.next) return result;
+		if (op == null || op == op.next) {
+			return result;
+		}
 		op = op.next; // starting at path beginning
 		result.add(op.pt);
 		OutPt2 op2 = op.next;
-		while (op2 != op)
-		{
+		while (op2 != op) {
 			result.add(op2.pt);
 			op2 = op2.next;
 		}
 		return result;
 	}
 
-	private void ExecuteInternal(Path64 path)
-	{
-		results_.clear();
-		if (path.size() < 2 || rect.IsEmpty()) return;
+	private void ExecuteInternal(Path64 path) {
+		results.clear();
+		if (path.size() < 2 || rect.IsEmpty()) {
+			return;
+		}
 
 		RefObject<Location> prev = new RefObject<>(Location.INSIDE);
 		RefObject<Integer> i = new RefObject<>(1);
@@ -82,7 +89,9 @@ public class RectClipLines extends RectClip {
 				i.argValue++;
 			}
 			if (i.argValue > highI) {
-				for (Point64 pt: path) Add(pt);
+				for (Point64 pt : path) {
+					Add(pt);
+				}
 			}
 			if (prev.argValue == Location.INSIDE) {
 				loc.argValue = Location.INSIDE;

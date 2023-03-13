@@ -30,8 +30,9 @@ public class PathD extends ArrayList<PointD> {
 	@Override
 	public String toString() {
 		String s = "";
-		for (PointD p : this)
+		for (PointD p : this) {
 			s = s + p.toString() + " ";
+		}
 		return s;
 	}
 

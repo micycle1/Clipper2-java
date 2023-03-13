@@ -107,12 +107,16 @@ public final class Clipper {
 		return solution;
 	}
 
-	public static void BooleanOp(ClipType clipType, @Nullable Paths64 subject, @Nullable Paths64 clip, PolyTree64 polytree, FillRule fillRule) {
-		if (subject == null) return;
+	public static void BooleanOp(ClipType clipType, @Nullable Paths64 subject, @Nullable Paths64 clip, PolyTree64 polytree,
+			FillRule fillRule) {
+		if (subject == null) {
+			return;
+		}
 		Clipper64 c = new Clipper64();
 		c.AddPaths(subject, PathType.Subject);
-		if (clip != null)
+		if (clip != null) {
 			c.AddPaths(clip, PathType.Clip);
+		}
 		c.Execute(clipType, fillRule, polytree);
 	}
 
@@ -131,16 +135,21 @@ public final class Clipper {
 		return solution;
 	}
 
-	public static void BooleanOp(ClipType clipType, @Nullable PathsD subject, @Nullable PathsD clip, PolyTreeD polytree, FillRule fillRule) {
+	public static void BooleanOp(ClipType clipType, @Nullable PathsD subject, @Nullable PathsD clip, PolyTreeD polytree,
+			FillRule fillRule) {
 		BooleanOp(clipType, subject, clip, polytree, fillRule, 2);
 	}
 
-	public static void BooleanOp(ClipType clipType, @Nullable PathsD subject, @Nullable PathsD clip, PolyTreeD polytree, FillRule fillRule, int precision) {
-		if (subject == null) return;
+	public static void BooleanOp(ClipType clipType, @Nullable PathsD subject, @Nullable PathsD clip, PolyTreeD polytree, FillRule fillRule,
+			int precision) {
+		if (subject == null) {
+			return;
+		}
 		ClipperD c = new ClipperD(precision);
 		c.AddPaths(subject, PathType.Subject);
-		if (clip != null)
+		if (clip != null) {
 			c.AddPaths(clip, PathType.Clip);
+		}
 		c.Execute(clipType, fillRule, polytree);
 	}
 
@@ -269,6 +278,7 @@ public final class Clipper {
 		tmp.add(path);
 		return RectClip(rect, tmp, precision, convexOnly);
 	}
+
 	public static Paths64 RectClipLines(Rect64 rect, Paths64 paths) {
 		if (rect.IsEmpty() || paths.size() == 0) {
 			return new Paths64();
@@ -1015,190 +1025,203 @@ public final class Clipper {
 		return result;
 	}
 
-	private static int GetNext(int current, int high, final /*ref*/ boolean[] flags)
-	{
+	private static int GetNext(int current, int high, final /* ref */ boolean[] flags) {
 		++current;
-		while (current <= high && flags[current]) ++current;
-		if (current <= high) return current;
+		while (current <= high && flags[current]) {
+			++current;
+		}
+		if (current <= high) {
+			return current;
+		}
 		current = 0;
-		while (flags[current]) ++current;
+		while (flags[current]) {
+			++current;
+		}
 		return current;
 	}
 
-	private static int GetPrior(int current, int high, final /*ref*/ boolean[] flags)
-	{
-		if (current == 0) current = high;
-		else --current;
-		while (current > 0 && flags[current]) --current;
-		if (!flags[current]) return current;
+	private static int GetPrior(int current, int high, final /* ref */ boolean[] flags) {
+		if (current == 0) {
+			current = high;
+		} else {
+			--current;
+		}
+		while (current > 0 && flags[current]) {
+			--current;
+		}
+		if (!flags[current]) {
+			return current;
+		}
 		current = high;
-		while (flags[current]) --current;
+		while (flags[current]) {
+			--current;
+		}
 		return current;
 	}
 
-	public static Path64 SimplifyPath(Path64 path, double epsilon)
-	{
+	public static Path64 SimplifyPath(Path64 path, double epsilon) {
 		return SimplifyPath(path, epsilon, false);
 	}
 
-	public static Path64 SimplifyPath(Path64 path, double epsilon, boolean isOpenPath)
-	{
+	public static Path64 SimplifyPath(Path64 path, double epsilon, boolean isOpenPath) {
 		int len = path.size(), high = len - 1;
 		double epsSqr = Sqr(epsilon);
-		if (len < 4) return path;
+		if (len < 4) {
+			return path;
+		}
 
 		boolean[] flags = new boolean[len];
 		double[] dsq = new double[len];
 		int prev = high, curr = 0, start, next, prior2, next2;
-		if (isOpenPath)
-		{
+		if (isOpenPath) {
 			dsq[0] = Double.MAX_VALUE;
 			dsq[high] = Double.MAX_VALUE;
-		}
-		else
-		{
+		} else {
 			dsq[0] = PerpendicDistFromLineSqrd(path.get(0), path.get(high), path.get(1));
 			dsq[high] = PerpendicDistFromLineSqrd(path.get(high), path.get(0), path.get(high - 1));
 		}
-		for (int i = 1; i < high; ++i)
+		for (int i = 1; i < high; ++i) {
 			dsq[i] = PerpendicDistFromLineSqrd(path.get(i), path.get(i - 1), path.get(i + 1));
+		}
 
-		for (; ; )
-		{
-			if (dsq[curr] > epsSqr)
-			{
+		for (;;) {
+			if (dsq[curr] > epsSqr) {
 				start = curr;
-				do
-				{
-					curr = GetNext(curr, high, /*ref*/ flags);
+				do {
+					curr = GetNext(curr, high, /* ref */ flags);
 				} while (curr != start && dsq[curr] > epsSqr);
-				if (curr == start) break;
+				if (curr == start) {
+					break;
+				}
 			}
 
-			prev = GetPrior(curr, high, /*ref*/ flags);
-			next = GetNext(curr, high, /*ref*/ flags);
-			if (next == prev) break;
+			prev = GetPrior(curr, high, /* ref */ flags);
+			next = GetNext(curr, high, /* ref */ flags);
+			if (next == prev) {
+				break;
+			}
 
-			if (dsq[next] < dsq[curr])
-			{
+			if (dsq[next] < dsq[curr]) {
 				flags[next] = true;
-				next = GetNext(next, high, /*ref*/ flags);
-				next2 = GetNext(next, high, /*ref*/ flags);
+				next = GetNext(next, high, /* ref */ flags);
+				next2 = GetNext(next, high, /* ref */ flags);
 				dsq[curr] = PerpendicDistFromLineSqrd(path.get(curr), path.get(prev), path.get(next));
-				if (next != high || !isOpenPath)
+				if (next != high || !isOpenPath) {
 					dsq[next] = PerpendicDistFromLineSqrd(path.get(next), path.get(curr), path.get(next2));
+				}
 				curr = next;
-			}
-			else
-			{
+			} else {
 				flags[curr] = true;
 				curr = next;
-				next = GetNext(next, high, /*ref*/ flags);
-				prior2 = GetPrior(prev, high, /*ref*/ flags);
+				next = GetNext(next, high, /* ref */ flags);
+				prior2 = GetPrior(prev, high, /* ref */ flags);
 				dsq[curr] = PerpendicDistFromLineSqrd(path.get(curr), path.get(prev), path.get(next));
-				if (prev != 0 || !isOpenPath)
+				if (prev != 0 || !isOpenPath) {
 					dsq[prev] = PerpendicDistFromLineSqrd(path.get(prev), path.get(prior2), path.get(curr));
+				}
 			}
 		}
 		Path64 result = new Path64(len);
-		for (int i = 0; i < len; i++)
-			if (!flags[i]) result.add(path.get(i));
+		for (int i = 0; i < len; i++) {
+			if (!flags[i]) {
+				result.add(path.get(i));
+			}
+		}
 		return result;
 	}
 
-	public static Paths64 SimplifyPaths(Paths64 paths, double epsilon)
-	{
+	public static Paths64 SimplifyPaths(Paths64 paths, double epsilon) {
 		return SimplifyPaths(paths, epsilon, false);
 	}
 
-	public static Paths64 SimplifyPaths(Paths64 paths, double epsilon, boolean isOpenPath)
-	{
+	public static Paths64 SimplifyPaths(Paths64 paths, double epsilon, boolean isOpenPath) {
 		Paths64 result = new Paths64(paths.size());
-		for (Path64 path : paths)
-		result.add(SimplifyPath(path, epsilon, isOpenPath));
+		for (Path64 path : paths) {
+			result.add(SimplifyPath(path, epsilon, isOpenPath));
+		}
 		return result;
 	}
 
-	public static PathD SimplifyPath(PathD path, double epsilon)
-	{
+	public static PathD SimplifyPath(PathD path, double epsilon) {
 		return SimplifyPath(path, epsilon, false);
 	}
 
-	public static PathD SimplifyPath(PathD path, double epsilon, boolean isOpenPath)
-	{
+	public static PathD SimplifyPath(PathD path, double epsilon, boolean isOpenPath) {
 		int len = path.size(), high = len - 1;
 		double epsSqr = Sqr(epsilon);
-		if (len < 4) return path;
+		if (len < 4) {
+			return path;
+		}
 
 		boolean[] flags = new boolean[len];
 		double[] dsq = new double[len];
 		int prev = high, curr = 0, start, next, prior2, next2;
-		if (isOpenPath)
-		{
+		if (isOpenPath) {
 			dsq[0] = Double.MAX_VALUE;
 			dsq[high] = Double.MAX_VALUE;
-		}
-		else
-		{
+		} else {
 			dsq[0] = PerpendicDistFromLineSqrd(path.get(0), path.get(high), path.get(1));
 			dsq[high] = PerpendicDistFromLineSqrd(path.get(high), path.get(0), path.get(high - 1));
 		}
-		for (int i = 1; i < high; ++i)
+		for (int i = 1; i < high; ++i) {
 			dsq[i] = PerpendicDistFromLineSqrd(path.get(i), path.get(i - 1), path.get(i + 1));
+		}
 
-		for (; ; )
-		{
-			if (dsq[curr] > epsSqr)
-			{
+		for (;;) {
+			if (dsq[curr] > epsSqr) {
 				start = curr;
-				do
-				{
-					curr = GetNext(curr, high, /*ref*/ flags);
+				do {
+					curr = GetNext(curr, high, /* ref */ flags);
 				} while (curr != start && dsq[curr] > epsSqr);
-				if (curr == start) break;
+				if (curr == start) {
+					break;
+				}
 			}
 
-			prev = GetPrior(curr, high, /*ref*/ flags);
-			next = GetNext(curr, high, /*ref*/ flags);
-			if (next == prev) break;
+			prev = GetPrior(curr, high, /* ref */ flags);
+			next = GetNext(curr, high, /* ref */ flags);
+			if (next == prev) {
+				break;
+			}
 
-			if (dsq[next] < dsq[curr])
-			{
+			if (dsq[next] < dsq[curr]) {
 				flags[next] = true;
-				next = GetNext(next, high, /*ref*/ flags);
-				next2 = GetNext(next, high, /*ref*/ flags);
+				next = GetNext(next, high, /* ref */ flags);
+				next2 = GetNext(next, high, /* ref */ flags);
 				dsq[curr] = PerpendicDistFromLineSqrd(path.get(curr), path.get(prev), path.get(next));
-				if (next != high || !isOpenPath)
+				if (next != high || !isOpenPath) {
 					dsq[next] = PerpendicDistFromLineSqrd(path.get(next), path.get(curr), path.get(next2));
+				}
 				curr = next;
-			}
-			else
-			{
+			} else {
 				flags[curr] = true;
 				curr = next;
-				next = GetNext(next, high, /*ref*/ flags);
-				prior2 = GetPrior(prev, high, /*ref*/ flags);
+				next = GetNext(next, high, /* ref */ flags);
+				prior2 = GetPrior(prev, high, /* ref */ flags);
 				dsq[curr] = PerpendicDistFromLineSqrd(path.get(curr), path.get(prev), path.get(next));
-				if (prev != 0 || !isOpenPath)
+				if (prev != 0 || !isOpenPath) {
 					dsq[prev] = PerpendicDistFromLineSqrd(path.get(prev), path.get(prior2), path.get(curr));
+				}
 			}
 		}
 		PathD result = new PathD(len);
-		for (int i = 0; i < len; i++)
-			if (!flags[i]) result.add(path.get(i));
+		for (int i = 0; i < len; i++) {
+			if (!flags[i]) {
+				result.add(path.get(i));
+			}
+		}
 		return result;
 	}
 
-	public static PathsD SimplifyPaths(PathsD paths, double epsilon)
-	{
+	public static PathsD SimplifyPaths(PathsD paths, double epsilon) {
 		return SimplifyPaths(paths, epsilon, false);
 	}
 
-	public static PathsD SimplifyPaths(PathsD paths, double epsilon, boolean isOpenPath)
-	{
+	public static PathsD SimplifyPaths(PathsD paths, double epsilon, boolean isOpenPath) {
 		PathsD result = new PathsD(paths.size());
-		for (PathD path : paths)
-		result.add(SimplifyPath(path, epsilon, isOpenPath));
+		for (PathD path : paths) {
+			result.add(SimplifyPath(path, epsilon, isOpenPath));
+		}
 		return result;
 	}
 
@@ -1259,8 +1282,8 @@ public final class Clipper {
 		} else if (InternalClipper.CrossProduct(last, path.get(len - 1), result.get(0)) != 0) {
 			result.add(path.get(len - 1));
 		} else {
-			while (result.size() > 2 && InternalClipper.CrossProduct(result.get(result.size() - 1), result.get(result.size() - 2),
-					result.get(0)) == 0) {
+			while (result.size() > 2
+					&& InternalClipper.CrossProduct(result.get(result.size() - 1), result.get(result.size() - 2), result.get(0)) == 0) {
 				result.remove(result.size() - 1);
 			}
 			if (result.size() < 3) {
@@ -1321,6 +1344,7 @@ public final class Clipper {
 		Path64 path = ScalePath64(polygon, scale);
 		return InternalClipper.PointInPolygon(p, path);
 	}
+
 	public static Path64 Ellipse(Point64 center, double radiusX, double radiusY) {
 		return Ellipse(center, radiusX, radiusY, 0);
 	}

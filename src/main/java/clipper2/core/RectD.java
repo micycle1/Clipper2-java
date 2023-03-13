@@ -14,8 +14,9 @@ public final class RectD {
 	}
 
 	public RectD(double l, double t, double r, double b) {
-		if (r < l || b < t)
+		if (r < l || b < t) {
 			throw new IllegalArgumentException(InvalidRect);
+		}
 		left = l;
 		top = t;
 		right = r;
@@ -28,7 +29,6 @@ public final class RectD {
 		right = rec.right;
 		bottom = rec.bottom;
 	}
-
 
 	public RectD(boolean isValid) {
 		if (isValid) {
@@ -81,8 +81,8 @@ public final class RectD {
 	}
 
 	public PathD AsPath() {
-		PathD result = new PathD(Arrays.asList(new PointD(left, top), new PointD(right, top), new PointD(right, bottom),
-				new PointD(left, bottom)));
+		PathD result = new PathD(
+				Arrays.asList(new PointD(left, top), new PointD(right, top), new PointD(right, bottom), new PointD(left, bottom)));
 		return result;
 	}
 

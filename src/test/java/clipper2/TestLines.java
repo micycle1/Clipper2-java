@@ -37,8 +37,7 @@ class TestLines {
 			assertEquals(test.area(), area2, test.area() * 0.005);
 		}
 
-		if (test.count() > 0 && Math.abs(solution.size() - test.count()) > 0)
-		{
+		if (test.count() > 0 && Math.abs(solution.size() - test.count()) > 0) {
 			assertTrue(Math.abs(solution.size() - test.count()) < 2,
 					String.format("Vertex count incorrect. Difference=%s", (solution.size() - test.count())));
 		}

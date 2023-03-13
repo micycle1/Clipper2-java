@@ -6,8 +6,6 @@ import clipper2.core.Path64;
 import clipper2.core.PathType;
 import clipper2.core.Paths64;
 
-import java.util.List;
-
 /**
  * The Clipper class performs boolean 'clipping'. This class is very similar to
  * ClipperD except that coordinates passed to Clipper64 objects are of type

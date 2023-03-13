@@ -31,8 +31,9 @@ public class Paths64 extends ArrayList<Path64> {
 	@Override
 	public String toString() {
 		String s = "";
-		for (Path64 p : this)
+		for (Path64 p : this) {
 			s = s + p.toString() + "\n";
+		}
 		return s;
 	}
 

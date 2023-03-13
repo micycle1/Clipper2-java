@@ -1,24 +1,26 @@
 package clipper2;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
 
-import clipper2.core.Path64;
-import clipper2.engine.PolyPathBase;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import clipper2.ClipperFileIO.TestCase;
+import clipper2.core.Path64;
 import clipper2.core.Paths64;
 import clipper2.core.Point64;
 import clipper2.engine.Clipper64;
 import clipper2.engine.PointInPolygonResult;
 import clipper2.engine.PolyPath64;
+import clipper2.engine.PolyPathBase;
 import clipper2.engine.PolyTree64;
 import tangible.RefObject;
 
@@ -40,8 +42,8 @@ class TestPolytree {
 		Paths64 subjectOpen = test.subj_open();
 		Paths64 clip = test.clip();
 
-		List<Point64> pointsOfInterestOutside = Arrays.asList(new Point64(21887, 10420), new Point64(21726, 10825), new Point64(21662, 10845),
-				new Point64(21617, 10890));
+		List<Point64> pointsOfInterestOutside = Arrays.asList(new Point64(21887, 10420), new Point64(21726, 10825),
+				new Point64(21662, 10845), new Point64(21617, 10890));
 
 		for (Point64 pt : pointsOfInterestOutside) {
 			for (Path64 path : subject) {
@@ -50,8 +52,8 @@ class TestPolytree {
 			}
 		}
 
-		List<Point64> pointsOfInterestInside = Arrays.asList(new Point64(21887, 10430), new Point64(21843, 10520), new Point64(21810, 10686),
-				new Point64(21900, 10461));
+		List<Point64> pointsOfInterestInside = Arrays.asList(new Point64(21887, 10430), new Point64(21843, 10520),
+				new Point64(21810, 10686), new Point64(21900, 10461));
 
 		for (Point64 pt : pointsOfInterestInside) {
 			int poi_inside_counter = 0;
@@ -72,10 +74,10 @@ class TestPolytree {
 		double a1 = Clipper.Area(solutionPaths), a2 = solutionTree.Area();
 
 		assertTrue(a1 > 330000, String.format("solution has wrong area - value expected: 331,052; value returned; %1$s ", a1));
-		
+
 		assertTrue(Math.abs(a1 - a2) < 0.0001,
 				String.format("solution tree has wrong area - value expected: %1$s; value returned; %2$s ", a1, a2));
-		
+
 		assertTrue(CheckPolytreeFullyContainsChildren(solutionTree), "The polytree doesn't properly contain its children");
 
 		for (Point64 pt : pointsOfInterestOutside) {
@@ -116,7 +118,7 @@ class TestPolytree {
 	private static boolean PolytreeContainsPoint(PolyTree64 pp, Point64 pt) {
 		int counter = 0;
 		for (int i = 0; i < pp.getCount(); i++) {
-			PolyPath64 child = (PolyPath64) pp.get(i);
+			PolyPath64 child = pp.get(i);
 			tangible.RefObject<Integer> tempRef_counter = new RefObject<>(counter);
 			PolyPathContainsPoint(child, pt, tempRef_counter);
 			counter = tempRef_counter.argValue;
@@ -134,7 +136,7 @@ class TestPolytree {
 			}
 		}
 		for (int i = 0; i < pp.getCount(); i++) {
-			PolyPath64 child = (PolyPath64) pp.get(i);
+			PolyPath64 child = pp.get(i);
 			PolyPathContainsPoint(child, pt, counter);
 		}
 	}

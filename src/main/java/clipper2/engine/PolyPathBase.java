@@ -8,7 +8,8 @@ import clipper2.core.Path64;
 
 public abstract class PolyPathBase implements Iterable<PolyPathBase> {
 
-	@Nullable PolyPathBase parent;
+	@Nullable
+	PolyPathBase parent;
 	List<PolyPathBase> children = new ArrayList<>();
 
 	PolyPathBase(@Nullable PolyPathBase parent) {
@@ -24,11 +25,14 @@ public abstract class PolyPathBase implements Iterable<PolyPathBase> {
 		return new NodeIterator(children);
 	}
 
-	private int GetLevel()
-	{
+	private int GetLevel() {
 		int result = 0;
-		@Nullable PolyPathBase pp = parent;
-		while (pp != null) { ++result; pp = pp.parent; }
+		@Nullable
+		PolyPathBase pp = parent;
+		while (pp != null) {
+			++result;
+			pp = pp.parent;
+		}
 		return result;
 	}
 

@@ -2,16 +2,17 @@ package clipper2;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import clipper2.ClipperFileIO.TestCase;
-import clipper2.core.Paths64;
-import clipper2.engine.Clipper64;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.stream.Stream;
+
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.stream.Stream;
+import clipper2.ClipperFileIO.TestCase;
+import clipper2.core.Paths64;
+import clipper2.engine.Clipper64;
 
 class TestPolygons {
 
@@ -40,40 +41,37 @@ class TestPolygons {
 		double areaDiffRatio = storedArea <= 0 ? 0 : (double) areaDiff / storedArea;
 
 		// check polygon counts
-		if (storedCount > 0)
-		{
-			if (Arrays.asList(140, 150, 165, 166, 172, 173, 176, 177, 179).contains(testNum))
-			{
+		if (storedCount > 0) {
+			if (Arrays.asList(140, 150, 165, 166, 172, 173, 176, 177, 179).contains(testNum)) {
 				assertTrue(countDiff <= 9);
-			}
-			else if (testNum >= 120)
-			{
+			} else if (testNum >= 120) {
 				assertTrue(countDiff <= 6);
-			}
-			else if (Arrays.asList(27, 121, 126).contains(testNum))
+			} else if (Arrays.asList(27, 121, 126).contains(testNum)) {
 				assertTrue(countDiff <= 2);
-			else if (Arrays.asList(23, 37, 43, 45, 87, 102, 111, 118, 119).contains(testNum))
+			} else if (Arrays.asList(23, 37, 43, 45, 87, 102, 111, 118, 119).contains(testNum)) {
 				assertTrue(countDiff <= 1);
-			else
+			} else {
 				assertTrue(countDiff == 0);
+			}
 		}
 
 		// check polygon areas
 		if (storedArea > 0) {
-			if (Arrays.asList(19, 22, 23, 24).contains(test.testNum()))
+			if (Arrays.asList(19, 22, 23, 24).contains(test.testNum())) {
 				assertTrue(areaDiffRatio <= 0.5);
-			else if (testNum == 193)
+			} else if (testNum == 193) {
 				assertTrue(areaDiffRatio <= 0.25);
-			else if (testNum == 63)
+			} else if (testNum == 63) {
 				assertTrue(areaDiffRatio <= 0.1);
-			else if (testNum == 16)
+			} else if (testNum == 16) {
 				assertTrue(areaDiffRatio <= 0.075);
-			else if (Arrays.asList(15, 26).contains(test.testNum()))
+			} else if (Arrays.asList(15, 26).contains(test.testNum())) {
 				assertTrue(areaDiffRatio <= 0.05);
-			else if (Arrays.asList(52, 53, 54, 59, 60, 64, 117, 118, 119, 184).contains(test.testNum()))
+			} else if (Arrays.asList(52, 53, 54, 59, 60, 64, 117, 118, 119, 184).contains(test.testNum())) {
 				assertTrue(areaDiffRatio <= 0.02);
-			else
+			} else {
 				assertTrue(areaDiffRatio <= 0.01);
+			}
 		}
 
 	}

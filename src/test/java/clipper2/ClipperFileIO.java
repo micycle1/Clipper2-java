@@ -1,20 +1,20 @@
 package clipper2;
 
-import clipper2.core.ClipType;
-import clipper2.core.FillRule;
-import clipper2.core.Path64;
-import clipper2.core.Paths64;
-import clipper2.core.Point64;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
+import clipper2.core.ClipType;
+import clipper2.core.FillRule;
+import clipper2.core.Path64;
+import clipper2.core.Paths64;
+import clipper2.core.Point64;
+
 class ClipperFileIO {
 
-	static class TestCase{
+	static class TestCase {
 		private final String caption;
 		private final ClipType clipType;
 		private final FillRule fillRule;
@@ -26,8 +26,8 @@ class ClipperFileIO {
 		private final Paths64 clip;
 		private final int testNum;
 
-		TestCase(
-	String caption, ClipType clipType, FillRule fillRule, long area, int count, int GetIdx, Paths64 subj, Paths64 subj_open, Paths64 clip, int testNum) {
+		TestCase(String caption, ClipType clipType, FillRule fillRule, long area, int count, int GetIdx, Paths64 subj, Paths64 subj_open,
+				Paths64 clip, int testNum) {
 			this.caption = caption;
 			this.clipType = clipType;
 			this.fillRule = fillRule;
@@ -193,57 +193,89 @@ class ClipperFileIO {
 	}
 
 	static Paths64 PathFromStr(String s) {
-		if (s == null) return new Paths64();
+		if (s == null) {
+			return new Paths64();
+		}
 		Path64 p = new Path64();
 		Paths64 pp = new Paths64();
 		int len = s.length(), i = 0, j;
-		while (i < len)
-		{
+		while (i < len) {
 			boolean isNeg;
-			while (s.charAt(i) < 33 && i < len) i++;
-			if (i >= len) break;
-			//get X ...
+			while (s.charAt(i) < 33 && i < len) {
+				i++;
+			}
+			if (i >= len) {
+				break;
+			}
+			// get X ...
 			isNeg = s.charAt(i) == 45;
-			if (isNeg) i++;
-			if (i >= len || s.charAt(i) < 48 || s.charAt(i) > 57) break;
+			if (isNeg) {
+				i++;
+			}
+			if (i >= len || s.charAt(i) < 48 || s.charAt(i) > 57) {
+				break;
+			}
 			j = i + 1;
-			while (j < len && s.charAt(j) > 47 && s.charAt(j) < 58) j++;
+			while (j < len && s.charAt(j) > 47 && s.charAt(j) < 58) {
+				j++;
+			}
 			Long x = LongTryParse(s.substring(i, j));
-			if (x == null) break;
-			if (isNeg) x = -x;
-			//skip space or comma between X & Y ...
+			if (x == null) {
+				break;
+			}
+			if (isNeg) {
+				x = -x;
+			}
+			// skip space or comma between X & Y ...
 			i = j;
-			while (i < len && (s.charAt(i) == 32 || s.charAt(i) == 44)) i++;
-			//get Y ...
-			if (i >= len) break;
+			while (i < len && (s.charAt(i) == 32 || s.charAt(i) == 44)) {
+				i++;
+			}
+			// get Y ...
+			if (i >= len) {
+				break;
+			}
 			isNeg = s.charAt(i) == 45;
-			if (isNeg) i++;
-			if (i >= len || s.charAt(i) < 48 || s.charAt(i) > 57) break;
+			if (isNeg) {
+				i++;
+			}
+			if (i >= len || s.charAt(i) < 48 || s.charAt(i) > 57) {
+				break;
+			}
 			j = i + 1;
-			while (j < len && s.charAt(j) > 47 && s.charAt(j) < 58) j++;
+			while (j < len && s.charAt(j) > 47 && s.charAt(j) < 58) {
+				j++;
+			}
 			Long y = LongTryParse(s.substring(i, j));
-			if (y == null) break;
-			if (isNeg) y = -y;
+			if (y == null) {
+				break;
+			}
+			if (isNeg) {
+				y = -y;
+			}
 			p.add(new Point64(x, y));
-			//skip trailing space, comma ...
+			// skip trailing space, comma ...
 			i = j;
 			int nlCnt = 0;
-			while (i < len && (s.charAt(i) < 33 || s.charAt(i) == 44))
-			{
-				if (i >= len) break;
-				if (s.charAt(i) == 10)
-				{
+			while (i < len && (s.charAt(i) < 33 || s.charAt(i) == 44)) {
+				if (i >= len) {
+					break;
+				}
+				if (s.charAt(i) == 10) {
 					nlCnt++;
-					if (nlCnt == 2)
-					{
-						if (p.size() > 0) pp.add(p);
+					if (nlCnt == 2) {
+						if (p.size() > 0) {
+							pp.add(p);
+						}
 						p = new Path64();
 					}
 				}
 				i++;
 			}
 		}
-		if (p.size() > 0) pp.add(p);
+		if (p.size() > 0) {
+			pp.add(p);
+		}
 		return pp;
 	}
 

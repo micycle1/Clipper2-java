@@ -26,8 +26,9 @@ public class PathsD extends ArrayList<PathD> {
 	@Override
 	public String toString() {
 		String s = "";
-		for (PathD p : this)
+		for (PathD p : this) {
 			s = s + p.toString() + "\n";
+		}
 		return s;
 	}
 

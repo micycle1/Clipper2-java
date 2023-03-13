@@ -16,8 +16,8 @@ import clipper2.core.PathsD;
  */
 public class ClipperD extends ClipperBase {
 
-	private double _scale;
-	private double _invScale;
+	private double scale;
+	private double invScale;
 
 	public ClipperD() {
 		this(2);
@@ -30,8 +30,8 @@ public class ClipperD extends ClipperBase {
 		if (roundingDecimalPrecision < -8 || roundingDecimalPrecision > 8) {
 			throw new IllegalArgumentException("Error - RoundingDecimalPrecision exceeds the allowed range.");
 		}
-		_scale = Math.pow(10, roundingDecimalPrecision);
-		_invScale = 1 / _scale;
+		scale = Math.pow(10, roundingDecimalPrecision);
+		invScale = 1 / scale;
 	}
 
 	public void AddPath(PathD path, PathType polytype) {
@@ -39,7 +39,7 @@ public class ClipperD extends ClipperBase {
 	}
 
 	public void AddPath(PathD path, PathType polytype, boolean isOpen) {
-		super.AddPath(Clipper.ScalePath64(path, _scale), polytype, isOpen);
+		super.AddPath(Clipper.ScalePath64(path, scale), polytype, isOpen);
 	}
 
 	public void AddPaths(PathsD paths, PathType polytype) {
@@ -47,7 +47,7 @@ public class ClipperD extends ClipperBase {
 	}
 
 	public void AddPaths(PathsD paths, PathType polytype, boolean isOpen) {
-		super.AddPaths(Clipper.ScalePaths64(paths, _scale), polytype, isOpen);
+		super.AddPaths(Clipper.ScalePaths64(paths, scale), polytype, isOpen);
 	}
 
 	public void AddSubject(PathD path) {
@@ -93,10 +93,10 @@ public class ClipperD extends ClipperBase {
 		}
 
 		for (Path64 path : solClosed64) {
-			solutionClosed.add(Clipper.ScalePathD(path, _invScale));
+			solutionClosed.add(Clipper.ScalePathD(path, invScale));
 		}
 		for (Path64 path : solOpen64) {
-			solutionOpen.add(Clipper.ScalePathD(path, _invScale));
+			solutionOpen.add(Clipper.ScalePathD(path, invScale));
 		}
 
 		return true;
@@ -108,7 +108,7 @@ public class ClipperD extends ClipperBase {
 
 	public boolean Execute(ClipType clipType, FillRule fillRule, PolyTreeD polytree, PathsD openPaths) {
 		polytree.Clear();
-		polytree.setScale(_scale);
+		polytree.setScale(scale);
 		openPaths.clear();
 		Paths64 oPaths = new Paths64();
 		boolean success = true;
@@ -122,9 +122,10 @@ public class ClipperD extends ClipperBase {
 		if (!success) {
 			return false;
 		}
-		if (oPaths.size() > 0) {
-			for (Path64 path : oPaths)
-				openPaths.add(Clipper.ScalePathD(path, _invScale));
+		if (!oPaths.isEmpty()) {
+			for (Path64 path : oPaths) {
+				openPaths.add(Clipper.ScalePathD(path, invScale));
+			}
 		}
 
 		return true;

@@ -12,8 +12,9 @@ public final class Rect64 {
 	}
 
 	public Rect64(long l, long t, long r, long b) {
-		if (r < l || b < t)
+		if (r < l || b < t) {
 			throw new IllegalArgumentException(InvalidRect);
+		}
 		left = l;
 		top = t;
 		right = r;
@@ -79,8 +80,7 @@ public final class Rect64 {
 	}
 
 	public boolean Intersects(Rect64 rec) {
-		return (Math.max(left, rec.left) <= Math.min(right, rec.right)) &&
-				(Math.max(top, rec.top) <= Math.min(bottom, rec.bottom));
+		return (Math.max(left, rec.left) <= Math.min(right, rec.right)) && (Math.max(top, rec.top) <= Math.min(bottom, rec.bottom));
 	}
 
 	public boolean Contains(Rect64 rec) {
