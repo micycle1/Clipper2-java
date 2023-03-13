@@ -21,7 +21,7 @@ class TestLines {
 	}
 
 	@MethodSource("testCases")
-	@ParameterizedTest(name = "{0} {2} {3}")
+	@ParameterizedTest(name = "{1} {2} {3}")
 	final void RunLinesTestCase(TestCase test, String caption, Object o, Object o1) {
 		Clipper64 c64 = new Clipper64();
 		Paths64 solution = new Paths64();
@@ -37,9 +37,9 @@ class TestLines {
 			assertEquals(test.area(), area2, test.area() * 0.005);
 		}
 
-		if (test.count() > 0 && Math.abs(solution.size() - test.count()) > 2
-				&& Math.abs(solution.size() - test.count()) / test.count() > 0.03) {
-			assertTrue(Math.abs(solution.size() - test.count()) <= 4,
+		if (test.count() > 0 && Math.abs(solution.size() - test.count()) > 0)
+		{
+			assertTrue(Math.abs(solution.size() - test.count()) < 2,
 					String.format("Vertex count incorrect. Difference=%s", (solution.size() - test.count())));
 		}
 	}

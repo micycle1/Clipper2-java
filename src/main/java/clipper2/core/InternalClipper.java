@@ -4,8 +4,23 @@ import clipper2.engine.PointInPolygonResult;
 
 public final class InternalClipper {
 
+	private static final long MaxInt64 = 9223372036854775807L;
+	private static final long MaxCoord = MaxInt64 / 4;
+	private static final double max_coord = MaxCoord;
+	private static final double min_coord = -MaxCoord;
+	private static final long Invalid64 = MaxInt64;
+
+	public static final double DEFAULT_ARC_TOLERANCE = 0.25;
 	private static final double FLOATING_POINT_TOLERANCE = 1E-12;
 	private static final double DEFAULT_MIN_EDGE_LENGTH = 0.1;
+
+	private static final String PRECISION_RANGE_ERROR = "Error: Precision is out of range.";
+
+	public static void CheckPrecision(int precision)
+	{
+		if (precision < -8 || precision > 8)
+			throw new IllegalArgumentException(PRECISION_RANGE_ERROR);
+	}
 
 	private InternalClipper() {
 	}
@@ -30,75 +45,50 @@ public final class InternalClipper {
 		return (vec1.x * vec2.x + vec1.y * vec2.y);
 	}
 
-	public static boolean GetIntersectPoint64(Point64 ln1a, Point64 ln1b, Point64 ln2a, Point64 ln2b, /* out */ Point64 ip) {
-		double m1, b1, m2, b2;
-		if (ln1b.x == ln1a.x) {
-			if (ln2b.x == ln2a.x) {
-				return false;
-			}
-			m2 = (double) (ln2b.y - ln2a.y) / (ln2b.x - ln2a.x);
-			b2 = ln2a.y - m2 * ln2a.x;
-			ip.x = ln1a.x;
-			ip.y = Math.round(m2 * ln1a.x + b2);
-		} else if (ln2b.x == ln2a.x) {
-			m1 = (double) (ln1b.y - ln1a.y) / (ln1b.x - ln1a.x);
-			b1 = ln1a.y - m1 * ln1a.x;
-			ip.x = ln2a.x;
-			ip.y = Math.round(m1 * ln2a.x + b1);
-		} else {
-			m1 = (double) (ln1b.y - ln1a.y) / (ln1b.x - ln1a.x);
-			b1 = ln1a.y - m1 * ln1a.x;
-			m2 = (double) (ln2b.y - ln2a.y) / (ln2b.x - ln2a.x);
-			b2 = ln2a.y - m2 * ln2a.x;
-			if (Math.abs(m1 - m2) > FLOATING_POINT_TOLERANCE) {
-				double x = (b2 - b1) / (m1 - m2);
-				ip.x = Math.round(x);
-				ip.y = Math.round(m1 * x + b1);
-			} else {
-				ip.x = Math.round((ln1a.x + ln1b.x) * 0.5);
-				ip.y = Math.round((ln1a.y + ln1b.y) * 0.5);
-			}
+	public static long CheckCastInt64(double val)
+	{
+		if ((val >= max_coord) || (val <= min_coord)) return Invalid64;
+		return (long)Math.rint(val);
+	}
+
+	public static boolean GetIntersectPt(Point64 ln1a, Point64 ln1b, Point64 ln2a, Point64 ln2b, /*out*/ Point64 ip)
+	{
+		double dy1 = (ln1b.y - ln1a.y);
+		double dx1 = (ln1b.x - ln1a.x);
+		double dy2 = (ln2b.y - ln2a.y);
+		double dx2 = (ln2b.x - ln2a.x);
+		double cp = dy1 * dx2 - dy2 * dx1;
+		if (cp == 0.0) {
+			return false;
 		}
-		return true;
+		double qx = dx1 * ln1a.y - dy1 * ln1a.x;
+		double qy = dx2 * ln2a.y - dy2 * ln2a.x;
+		ip.x = CheckCastInt64((dx1 * qy - dx2 * qx) / cp);
+		ip.y = CheckCastInt64((dy1 * qy - dy2 * qx) / cp);
+		return (ip.x != Invalid64 && ip.y != Invalid64);
 	}
 
 	public static boolean GetIntersectPoint(Point64 ln1a, Point64 ln1b, Point64 ln2a, Point64 ln2b, /* out */ PointD ip) {
-		double m1, b1, m2, b2;
-		if (ln1b.x == ln1a.x) {
-			if (ln2b.x == ln2a.x) {
-				return false;
-			}
-			m2 = (double) (ln2b.y - ln2a.y) / (ln2b.x - ln2a.x);
-			b2 = ln2a.y - m2 * ln2a.x;
-			ip.x = ln1a.x;
-			ip.y = m2 * ln1a.x + b2;
-		} else if (ln2b.x == ln2a.x) {
-			m1 = (double) (ln1b.y - ln1a.y) / (ln1b.x - ln1a.x);
-			b1 = ln1a.y - m1 * ln1a.x;
-			ip.x = ln2a.x;
-			ip.y = m1 * ln2a.x + b1;
-		} else {
-			m1 = (double) (ln1b.y - ln1a.y) / (ln1b.x - ln1a.x);
-			b1 = ln1a.y - m1 * ln1a.x;
-			m2 = (double) (ln2b.y - ln2a.y) / (ln2b.x - ln2a.x);
-			b2 = ln2a.y - m2 * ln2a.x;
-			if (Math.abs(m1 - m2) > FLOATING_POINT_TOLERANCE) {
-				ip.x = (b2 - b1) / (m1 - m2);
-				ip.y = m1 * ip.x + b1;
-			} else {
-				ip.x = (ln1a.x + ln1b.x) * 0.5;
-				ip.y = (ln1a.y + ln1b.y) * 0.5;
-			}
+		double dy1 = (ln1b.y - ln1a.y);
+		double dx1 = (ln1b.x - ln1a.x);
+		double dy2 = (ln2b.y - ln2a.y);
+		double dx2 = (ln2b.x - ln2a.x);
+		double q1 = dy1 * ln1a.x - dx1 * ln1a.y;
+		double q2 = dy2 * ln2a.x - dx2 * ln2a.y;
+		double cross_prod = dy1 * dx2 - dy2 * dx1;
+		if (cross_prod == 0.0) {
+			return false;
 		}
-
+		ip.x = (dx2 * q1 - dx1 * q2) / cross_prod;
+		ip.y = (dy2 * q1 - dy1 * q2) / cross_prod;
 		return true;
 	}
 
-	public static boolean SegmentsIntersect(Point64 seg1a, Point64 seg1b, Point64 seg2a, Point64 seg2b) {
-		return SegmentsIntersect(seg1a, seg1b, seg2a, seg2b, false);
+	public static boolean SegsIntersect(Point64 seg1a, Point64 seg1b, Point64 seg2a, Point64 seg2b) {
+		return SegsIntersect(seg1a, seg1b, seg2a, seg2b, false);
 	}
 
-	public static boolean SegmentsIntersect(Point64 seg1a, Point64 seg1b, Point64 seg2a, Point64 seg2b, boolean inclusive) {
+	public static boolean SegsIntersect(Point64 seg1a, Point64 seg1b, Point64 seg2a, Point64 seg2b, boolean inclusive) {
 		if (inclusive) {
 			double res1 = CrossProduct(seg1a, seg2a, seg2b);
 			double res2 = CrossProduct(seg1b, seg2a, seg2b);
@@ -113,75 +103,93 @@ public final class InternalClipper {
 			// ensure NOT collinear
 			return (res1 != 0 || res2 != 0 || res3 != 0 || res4 != 0);
 		} else {
-			double dx1 = seg1a.x - seg1b.x;
-			double dy1 = seg1a.y - seg1b.y;
-			double dx2 = seg2a.x - seg2b.x;
-			double dy2 = seg2a.y - seg2b.y;
-			return (((dy1 * (seg2a.x - seg1a.x) - dx1 * (seg2a.y - seg1a.y))
-					* (dy1 * (seg2b.x - seg1a.x) - dx1 * (seg2b.y - seg1a.y)) < 0)
-					&& ((dy2 * (seg1a.x - seg2a.x) - dx2 * (seg1a.y - seg2a.y))
-							* (dy2 * (seg1b.x - seg2a.x) - dx2 * (seg1b.y - seg2a.y)) < 0));
+			return (CrossProduct(seg1a, seg2a, seg2b) *
+					CrossProduct(seg1b, seg2a, seg2b) < 0) &&
+					(CrossProduct(seg2a, seg1a, seg1b) *
+							CrossProduct(seg2b, seg1a, seg1b) < 0);
 		}
 	}
 
-	public static PointInPolygonResult PointInPolygon(Point64 pt, Path64 polygon) {
-		int len = polygon.size(), i = len - 1;
+	public static Point64 GetClosestPtOnSegment(Point64 offPt, Point64 seg1, Point64 seg2)
+	{
+		if (seg1.x == seg2.x && seg1.y == seg2.y) return seg1;
+		double dx = (seg2.x - seg1.x);
+		double dy = (seg2.y - seg1.y);
+		double q = ((offPt.x - seg1.x) * dx +
+				(offPt.y - seg1.y) * dy) / ((dx*dx) + (dy*dy));
+		if (q < 0) q = 0; else if (q > 1) q = 1;
+		return new Point64(
+				seg1.x + Math.rint(q * dx), seg1.y + Math.rint(q* dy));
+	}
 
+	public static PointInPolygonResult PointInPolygon(Point64 pt, Path64 polygon) {
+		int len = polygon.size(), start = 0;
 		if (len < 3) {
 			return PointInPolygonResult.IsOutside;
 		}
 
-		while (i >= 0 && polygon.get(i).y == pt.y) {
-			--i;
-		}
-		if (i < 0) {
+		while (start < len && polygon.get(start).y == pt.y) start++;
+		if (start == len) {
 			return PointInPolygonResult.IsOutside;
 		}
 
-		int val = 0;
-		boolean isAbove = polygon.get(i).y < pt.y;
-		i = 0;
+		double d;
+		boolean isAbove = polygon.get(start).y < pt.y, startingAbove = isAbove;
+		int val = 0, i = start + 1, end = len;
+		while (true) {
+			if (i == end) {
+				if (end == 0 || start == 0) {
+					break;
+				}
+				end = start;
+				i = 0;
+			}
 
-		while (i < len) {
 			if (isAbove) {
-				while (i < len && polygon.get(i).y < pt.y) {
+				while (i < end && polygon.get(i).y < pt.y) {
 					i++;
 				}
-				if (i == len) {
-					break;
+				if (i == end) {
+					continue;
 				}
 			} else {
-				while (i < len && polygon.get(i).y > pt.y) {
+				while (i < end && polygon.get(i).y > pt.y) {
 					i++;
 				}
-				if (i == len) {
-					break;
+				if (i == end) {
+					continue;
 				}
 			}
 
-			Point64 prev;
-
-			Point64 curr = polygon.get(i);
+			Point64 curr = polygon.get(i), prev;
 			if (i > 0) {
 				prev = polygon.get(i - 1);
 			} else {
 				prev = polygon.get(len - 1);
 			}
 
-			if (curr.y == pt.y) {
-				if (curr.x == pt.x || (curr.y == prev.y && ((pt.x < prev.x) != (pt.x < curr.x)))) {
+			if (curr.y == pt.y)
+			{
+				if (curr.x == pt.x || (curr.y == prev.y &&
+						((pt.x < prev.x) != (pt.x < curr.x)))) {
 					return PointInPolygonResult.IsOn;
 				}
 				i++;
+				if (i == start) {
+					break;
+				}
 				continue;
 			}
 
-			if (pt.x < curr.x && pt.x < prev.x) {
+			if (pt.x < curr.x && pt.x < prev.x)
+			{
 				// we're only interested in edges crossing on the left
-			} else if (pt.x > prev.x && pt.x > curr.x) {
+			}
+			else if (pt.x > prev.x && pt.x > curr.x)
+			{
 				val = 1 - val; // toggle val
 			} else {
-				double d = CrossProduct(prev, curr, pt);
+				d = CrossProduct(prev, curr, pt);
 				if (d == 0) {
 					return PointInPolygonResult.IsOn;
 				}
@@ -192,6 +200,24 @@ public final class InternalClipper {
 			isAbove = !isAbove;
 			i++;
 		}
+
+		if (isAbove != startingAbove) {
+			if (i == len) {
+				i = 0;
+			}
+			if (i == 0) {
+				d = CrossProduct(polygon.get(len - 1), polygon.get(0), pt);
+			} else {
+				d = CrossProduct(polygon.get(i - 1), polygon.get(i), pt);
+			}
+			if (d == 0) {
+				return PointInPolygonResult.IsOn;
+			}
+			if ((d < 0) == isAbove) {
+				val = 1 - val;
+			}
+		}
+
 		if (val == 0) {
 			return PointInPolygonResult.IsOutside;
 		}

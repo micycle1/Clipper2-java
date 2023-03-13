@@ -32,4 +32,12 @@ public class Path64 extends ArrayList<Point64> {
 		super(Arrays.asList(path));
 	}
 
+	@Override
+	public String toString() {
+		String s = "";
+		for (Point64 p : this)
+			s = s + p.toString() + " ";
+		return s;
+	}
+
 }

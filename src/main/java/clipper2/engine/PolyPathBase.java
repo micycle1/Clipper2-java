@@ -6,17 +6,16 @@ import java.util.List;
 import clipper2.Nullable;
 import clipper2.core.Path64;
 
-public abstract class PolyPathNode implements Iterable<PolyPathNode> {
+public abstract class PolyPathBase implements Iterable<PolyPathBase> {
 
-	@Nullable
-	final PolyPathNode parent;
-	List<PolyPathNode> children = new ArrayList<>();
+	@Nullable PolyPathBase parent;
+	List<PolyPathBase> children = new ArrayList<>();
 
-	PolyPathNode(PolyPathNode parent) {
+	PolyPathBase(@Nullable PolyPathBase parent) {
 		this.parent = parent;
 	}
 
-	PolyPathNode() {
+	PolyPathBase() {
 		this(null);
 	}
 
@@ -25,19 +24,21 @@ public abstract class PolyPathNode implements Iterable<PolyPathNode> {
 		return new NodeIterator(children);
 	}
 
+	private int GetLevel()
+	{
+		int result = 0;
+		@Nullable PolyPathBase pp = parent;
+		while (pp != null) { ++result; pp = pp.parent; }
+		return result;
+	}
+
 	/**
 	 * Indicates whether the Polygon property represents a hole or the outer bounds
 	 * of a polygon.
 	 */
 	public final boolean getIsHole() {
-		boolean result = true;
-		PolyPathNode pp = parent;
-		while (pp != null) {
-			result = !result;
-			pp = pp.parent;
-		}
-
-		return result;
+		int lvl = GetLevel();
+		return lvl != 0 && (lvl & 1) == 0;
 	}
 
 	/**
@@ -47,7 +48,7 @@ public abstract class PolyPathNode implements Iterable<PolyPathNode> {
 		return children.size();
 	}
 
-	public abstract PolyPathNode AddChild(Path64 p);
+	public abstract PolyPathBase AddChild(Path64 p);
 
 	/**
 	 * This method clears the Polygon and deletes any contained children.

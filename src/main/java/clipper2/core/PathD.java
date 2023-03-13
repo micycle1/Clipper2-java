@@ -27,4 +27,12 @@ public class PathD extends ArrayList<PointD> {
 		super(path);
 	}
 
+	@Override
+	public String toString() {
+		String s = "";
+		for (PointD p : this)
+			s = s + p.toString() + " ";
+		return s;
+	}
+
 }

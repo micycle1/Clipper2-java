@@ -1,16 +1,16 @@
 package clipper2;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-
 import clipper2.core.ClipType;
 import clipper2.core.FillRule;
 import clipper2.core.Path64;
 import clipper2.core.Paths64;
 import clipper2.core.Point64;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 
 class ClipperFileIO {
 
@@ -83,6 +83,8 @@ class ClipperFileIO {
 
 	static List<TestCase> loadTestCases(String testFileName) throws IOException {
 		List<String> lines = Files.readAllLines(Paths.get(String.format("src/test/resources/%s", testFileName)));
+		lines = new ArrayList<>(lines);
+		lines.add("");
 
 		String caption = "";
 		ClipType ct = ClipType.None;
@@ -97,12 +99,15 @@ class ClipperFileIO {
 		List<TestCase> cases = new ArrayList<>();
 
 		for (String s : lines) {
-			if (s.matches("\\s*") || s.length() == 0) {
-				cases.add(new TestCase(caption, ct, fillRule, area, count, GetIdx, new Paths64(subj), new Paths64(subj_open),
-						new Paths64(clip), cases.size()+1));
-				subj.clear();
-				subj_open.clear();
-				clip.clear();
+			if (s.matches("\\s*")) {
+				if (GetIdx != 0) {
+					cases.add(new TestCase(caption, ct, fillRule, area, count, GetIdx, new Paths64(subj), new Paths64(subj_open),
+							new Paths64(clip), cases.size() + 1));
+					subj.clear();
+					subj_open.clear();
+					clip.clear();
+					GetIdx = 0;
+				}
 				continue;
 			}
 
@@ -184,31 +189,70 @@ class ClipperFileIO {
 
 		}
 
-		if (cases.isEmpty()) {
-			cases.add(new TestCase(caption, ct, fillRule, area, count, GetIdx, new Paths64(subj), new Paths64(subj_open), new Paths64(clip),
-					cases.size()+1));
-		}
-
 		return cases;
 	}
 
 	static Paths64 PathFromStr(String s) {
-		if (s == null) {
-			return null;
-		}
+		if (s == null) return new Paths64();
 		Path64 p = new Path64();
 		Paths64 pp = new Paths64();
-
-		for (String pair : s.split(" ")) {
-			String[] xy = pair.split(",");
-			long x = Long.parseLong(xy[0]);
-			long y = Long.parseLong(xy[1]);
+		int len = s.length(), i = 0, j;
+		while (i < len)
+		{
+			boolean isNeg;
+			while (s.charAt(i) < 33 && i < len) i++;
+			if (i >= len) break;
+			//get X ...
+			isNeg = s.charAt(i) == 45;
+			if (isNeg) i++;
+			if (i >= len || s.charAt(i) < 48 || s.charAt(i) > 57) break;
+			j = i + 1;
+			while (j < len && s.charAt(j) > 47 && s.charAt(j) < 58) j++;
+			Long x = LongTryParse(s.substring(i, j));
+			if (x == null) break;
+			if (isNeg) x = -x;
+			//skip space or comma between X & Y ...
+			i = j;
+			while (i < len && (s.charAt(i) == 32 || s.charAt(i) == 44)) i++;
+			//get Y ...
+			if (i >= len) break;
+			isNeg = s.charAt(i) == 45;
+			if (isNeg) i++;
+			if (i >= len || s.charAt(i) < 48 || s.charAt(i) > 57) break;
+			j = i + 1;
+			while (j < len && s.charAt(j) > 47 && s.charAt(j) < 58) j++;
+			Long y = LongTryParse(s.substring(i, j));
+			if (y == null) break;
+			if (isNeg) y = -y;
 			p.add(new Point64(x, y));
+			//skip trailing space, comma ...
+			i = j;
+			int nlCnt = 0;
+			while (i < len && (s.charAt(i) < 33 || s.charAt(i) == 44))
+			{
+				if (i >= len) break;
+				if (s.charAt(i) == 10)
+				{
+					nlCnt++;
+					if (nlCnt == 2)
+					{
+						if (p.size() > 0) pp.add(p);
+						p = new Path64();
+					}
+				}
+				i++;
+			}
 		}
-		if (p.size() > 2) {
-			pp.add(p);
-		}
+		if (p.size() > 0) pp.add(p);
 		return pp;
+	}
+
+	private static @Nullable Long LongTryParse(String s) {
+		try {
+			return Long.valueOf(s);
+		} catch (NumberFormatException e) {
+			return null;
+		}
 	}
 
 }

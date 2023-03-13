@@ -2,10 +2,12 @@ package clipper2.rectclip;
 
 import static clipper2.Clipper.GetBounds;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
 
 import clipper2.Clipper;
+import clipper2.Nullable;
 import clipper2.core.InternalClipper;
 import clipper2.core.Path64;
 import clipper2.core.Paths64;
@@ -22,10 +24,26 @@ import tangible.RefObject;
  * This function is extremely fast when compared to the Library's general
  * purpose Intersect clipper. Where Intersect has roughly O(n³) performance,
  * RectClip has O(n) performance.
- * 
+ *
  * @since 1.0.6
  */
 public class RectClip {
+
+	protected static class OutPt2 {
+		@Nullable
+		public OutPt2 next;
+		@Nullable
+		public OutPt2 prev;
+
+		public Point64 pt;
+		public int ownerIdx;
+		@Nullable
+		public List<@Nullable OutPt2> edge;
+
+		public OutPt2(Point64 pt) {
+			this.pt = pt;
+		}
+	}
 
 	protected enum Location {
 		LEFT, TOP, RIGHT, BOTTOM, INSIDE
@@ -34,27 +52,74 @@ public class RectClip {
 	final protected Rect64 rect;
 	final protected Point64 mp;
 	final protected Path64 rectPath;
-	protected Path64 result_;
-	protected Location firstCross;
-	protected List<Location> startLocs = new ArrayList<>();
+	protected Rect64 pathBounds_;
+	protected List<@Nullable OutPt2> results_;
+	protected List<@Nullable OutPt2>[] edges_;
+	protected int currIdx_ = -1;
 
 	public RectClip(Rect64 rect) {
+		currIdx_ = -1;
 		this.rect = rect;
 		mp = rect.MidPoint();
 		rectPath = this.rect.AsPath();
-		result_ = new Path64();
-		firstCross = Location.INSIDE;
+		results_ = new ArrayList<>();
+		edges_ = new List[8];
+		for (int i = 0; i < 8; i++)
+			edges_[i] = new ArrayList<@Nullable OutPt2>();
 	}
 
-	private static PointInPolygonResult Path1ContainsPath2(Path64 path1, Path64 path2) {
-		PointInPolygonResult result = PointInPolygonResult.IsOn;
-		for (Point64 pt : path2) {
-			result = Clipper.PointInPolygon(pt, path1);
-			if (result != PointInPolygonResult.IsOn) {
-				break;
-			}
+	protected OutPt2 Add(Point64 pt) {
+		return Add(pt, false);
+	}
+
+	protected OutPt2 Add(Point64 pt, boolean startingNewPath) {
+		// this method is only called by InternalExecute.
+		// Later splitting and rejoining won't create additional op's,
+		// though they will change the (non-storage) fResults count.
+		int currIdx = results_.size();
+		OutPt2 result;
+		if ((currIdx == 0) || startingNewPath)
+		{
+			result = new OutPt2(pt);
+			results_.add(result);
+			result.ownerIdx = currIdx;
+			result.prev = result;
+			result.next = result;
+		}
+		else
+		{
+			currIdx--;
+			@Nullable OutPt2 prevOp = results_.get(currIdx);
+			if (prevOp.pt == pt) return prevOp;
+			result = new OutPt2(pt);
+			result.ownerIdx = currIdx;
+			result.next = prevOp.next;
+			prevOp.next.prev = result;
+			prevOp.next = result;
+			result.prev = prevOp;
+			results_.set(currIdx, result);
 		}
 		return result;
+	}
+
+	private static boolean Path1ContainsPath2(Path64 path1, Path64 path2) {
+		// nb: occasionally, due to rounding, path1 may
+		// appear (momentarily) inside or outside path2.
+		int ioCount = 0;
+		for (Point64 pt: path2)
+		{
+			PointInPolygonResult pip =
+					InternalClipper.PointInPolygon(pt, path1);
+			switch(pip)
+			{
+				case IsInside:
+					ioCount--; break;
+				case IsOutside:
+					ioCount++; break;
+			}
+			if (Math.abs(ioCount) > 1) break;
+		}
+		return ioCount <= 0;
 	}
 
 	private static boolean IsClockwise(Location prev, Location curr, Point64 prevPt, Point64 currPt, Point64 rectMidPoint) {
@@ -78,21 +143,102 @@ public class RectClip {
 		return Location.values()[(loc.ordinal() + delta) % 4];
 	}
 
+	private static @Nullable OutPt2 UnlinkOp(OutPt2 op)
+	{
+		if (op.next == op) return null;
+		op.prev.next = op.next;
+		op.next.prev = op.prev;
+		return op.next;
+	}
+
+	private static @Nullable OutPt2 UnlinkOpBack(OutPt2 op)
+	{
+		if (op.next == op) return null;
+		op.prev.next = op.next;
+		op.next.prev = op.prev;
+		return op.prev;
+	}
+
+	private static /*unsigned*/ int GetEdgesForPt(Point64 pt, Rect64 rec)
+	{
+		/*unsigned*/ int result = 0;
+		if (pt.x == rec.left) result = 1;
+		else if (pt.x == rec.right) result = 4;
+		if (pt.y == rec.top) result += 2;
+		else if (pt.y == rec.bottom) result += 8;
+		return result;
+	}
+
+	private static boolean IsHeadingClockwise(Point64 pt1, Point64 pt2, int edgeIdx)
+	{
+		switch(edgeIdx) {
+			case 0: return pt2.y < pt1.y;
+			case 1: return pt2.x > pt1.x;
+			case 2: return pt2.y > pt1.y;
+			default: return pt2.x < pt1.x;
+		}
+	}
+
+	private static boolean HasHorzOverlap(Point64 left1, Point64 right1,
+			Point64 left2, Point64 right2)
+	{
+		return (left1.x < right2.x) && (right1.x > left2.x);
+	}
+
+	private static boolean HasVertOverlap(Point64 top1, Point64 bottom1,
+			Point64 top2, Point64 bottom2)
+	{
+		return (top1.y < bottom2.y) && (bottom1.y > top2.y);
+	}
+
+	private static void AddToEdge(List<@Nullable OutPt2> edge, OutPt2 op)
+	{
+		if (op.edge != null) return;
+		op.edge = edge;
+		edge.add(op);
+	}
+
+	private static void UncoupleEdge(OutPt2 op)
+	{
+		if (op.edge == null) return;
+		for (int i = 0; i < op.edge.size(); i++)
+		{
+			@Nullable OutPt2 op2 = op.edge.get(i);
+			if (op2 == op)
+			{
+				op.edge.set(i, null);
+				break;
+			}
+		}
+		op.edge = null;
+	}
+
+	private static void SetNewOwner(OutPt2 op, int newIdx)
+	{
+		op.ownerIdx = newIdx;
+		OutPt2 op2 = op.next;
+		while (op2 != op)
+		{
+			op2.ownerIdx = newIdx;
+			op2 = op2.next;
+		}
+	}
+
 	private void AddCorner(Location prev, Location curr) {
 		if (HeadingClockwise(prev, curr)) {
-			result_.add(rectPath.get(prev.ordinal()));
+			Add(rectPath.get(prev.ordinal()));
 		} else {
-			result_.add(rectPath.get(curr.ordinal()));
+			Add(rectPath.get(curr.ordinal()));
 		}
 	}
 
 	private void AddCorner(RefObject<Location> loc, boolean isClockwise) {
 		if (isClockwise) {
-			result_.add(rectPath.get(loc.argValue.ordinal()));
+			Add(rectPath.get(loc.argValue.ordinal()));
 			loc.argValue = GetAdjacentLocation(loc.argValue, true);
 		} else {
 			loc.argValue = GetAdjacentLocation(loc.argValue, false);
-			result_.add(rectPath.get(loc.argValue.ordinal()));
+			Add(rectPath.get(loc.argValue.ordinal()));
 		}
 	}
 
@@ -135,14 +281,14 @@ public class RectClip {
 		 */
 		switch (loc.argValue) {
 			case LEFT:
-				if (InternalClipper.SegmentsIntersect(p, p2, rectPath.get(0), rectPath.get(3), true)) {
-					InternalClipper.GetIntersectPoint64(p, p2, rectPath.get(0), rectPath.get(3), ip);
+				if (InternalClipper.SegsIntersect(p, p2, rectPath.get(0), rectPath.get(3), true)) {
+					InternalClipper.GetIntersectPt(p, p2, rectPath.get(0), rectPath.get(3), ip);
 				} else if (p.y < rectPath.get(0).y
-						&& InternalClipper.SegmentsIntersect(p, p2, rectPath.get(0), rectPath.get(1), true)) {
-					InternalClipper.GetIntersectPoint64(p, p2, rectPath.get(0), rectPath.get(1), ip);
+						&& InternalClipper.SegsIntersect(p, p2, rectPath.get(0), rectPath.get(1), true)) {
+					InternalClipper.GetIntersectPt(p, p2, rectPath.get(0), rectPath.get(1), ip);
 					loc.argValue = Location.TOP;
-				} else if (InternalClipper.SegmentsIntersect(p, p2, rectPath.get(2), rectPath.get(3), true)) {
-					InternalClipper.GetIntersectPoint64(p, p2, rectPath.get(2), rectPath.get(3), ip);
+				} else if (InternalClipper.SegsIntersect(p, p2, rectPath.get(2), rectPath.get(3), true)) {
+					InternalClipper.GetIntersectPt(p, p2, rectPath.get(2), rectPath.get(3), ip);
 					loc.argValue = Location.BOTTOM;
 				} else {
 					return false;
@@ -150,14 +296,14 @@ public class RectClip {
 				break;
 
 			case RIGHT:
-				if (InternalClipper.SegmentsIntersect(p, p2, rectPath.get(1), rectPath.get(2), true)) {
-					InternalClipper.GetIntersectPoint64(p, p2, rectPath.get(1), rectPath.get(2), ip);
+				if (InternalClipper.SegsIntersect(p, p2, rectPath.get(1), rectPath.get(2), true)) {
+					InternalClipper.GetIntersectPt(p, p2, rectPath.get(1), rectPath.get(2), ip);
 				} else if (p.y < rectPath.get(0).y
-						&& InternalClipper.SegmentsIntersect(p, p2, rectPath.get(0), rectPath.get(1), true)) {
-					InternalClipper.GetIntersectPoint64(p, p2, rectPath.get(0), rectPath.get(1), ip);
+						&& InternalClipper.SegsIntersect(p, p2, rectPath.get(0), rectPath.get(1), true)) {
+					InternalClipper.GetIntersectPt(p, p2, rectPath.get(0), rectPath.get(1), ip);
 					loc.argValue = Location.TOP;
-				} else if (InternalClipper.SegmentsIntersect(p, p2, rectPath.get(2), rectPath.get(3), true)) {
-					InternalClipper.GetIntersectPoint64(p, p2, rectPath.get(2), rectPath.get(3), ip);
+				} else if (InternalClipper.SegsIntersect(p, p2, rectPath.get(2), rectPath.get(3), true)) {
+					InternalClipper.GetIntersectPt(p, p2, rectPath.get(2), rectPath.get(3), ip);
 					loc.argValue = Location.BOTTOM;
 				} else {
 					return false;
@@ -165,15 +311,15 @@ public class RectClip {
 				break;
 
 			case TOP:
-				if (InternalClipper.SegmentsIntersect(p, p2, rectPath.get(0), rectPath.get(1), true)) {
-					InternalClipper.GetIntersectPoint64(p, p2, rectPath.get(0), rectPath.get(1), ip);
+				if (InternalClipper.SegsIntersect(p, p2, rectPath.get(0), rectPath.get(1), true)) {
+					InternalClipper.GetIntersectPt(p, p2, rectPath.get(0), rectPath.get(1), ip);
 				} else if (p.x < rectPath.get(0).x
-						&& InternalClipper.SegmentsIntersect(p, p2, rectPath.get(0), rectPath.get(3), true)) {
-					InternalClipper.GetIntersectPoint64(p, p2, rectPath.get(0), rectPath.get(3), ip);
+						&& InternalClipper.SegsIntersect(p, p2, rectPath.get(0), rectPath.get(3), true)) {
+					InternalClipper.GetIntersectPt(p, p2, rectPath.get(0), rectPath.get(3), ip);
 					loc.argValue = Location.LEFT;
 				} else if (p.x > rectPath.get(1).x
-						&& InternalClipper.SegmentsIntersect(p, p2, rectPath.get(1), rectPath.get(2), true)) {
-					InternalClipper.GetIntersectPoint64(p, p2, rectPath.get(1), rectPath.get(2), ip);
+						&& InternalClipper.SegsIntersect(p, p2, rectPath.get(1), rectPath.get(2), true)) {
+					InternalClipper.GetIntersectPt(p, p2, rectPath.get(1), rectPath.get(2), ip);
 					loc.argValue = Location.RIGHT;
 				} else {
 					return false;
@@ -181,15 +327,15 @@ public class RectClip {
 				break;
 
 			case BOTTOM:
-				if (InternalClipper.SegmentsIntersect(p, p2, rectPath.get(2), rectPath.get(3), true)) {
-					InternalClipper.GetIntersectPoint64(p, p2, rectPath.get(2), rectPath.get(3), ip);
+				if (InternalClipper.SegsIntersect(p, p2, rectPath.get(2), rectPath.get(3), true)) {
+					InternalClipper.GetIntersectPt(p, p2, rectPath.get(2), rectPath.get(3), ip);
 				} else if (p.x < rectPath.get(3).x
-						&& InternalClipper.SegmentsIntersect(p, p2, rectPath.get(0), rectPath.get(3), true)) {
-					InternalClipper.GetIntersectPoint64(p, p2, rectPath.get(0), rectPath.get(3), ip);
+						&& InternalClipper.SegsIntersect(p, p2, rectPath.get(0), rectPath.get(3), true)) {
+					InternalClipper.GetIntersectPt(p, p2, rectPath.get(0), rectPath.get(3), ip);
 					loc.argValue = Location.LEFT;
 				} else if (p.x > rectPath.get(2).x
-						&& InternalClipper.SegmentsIntersect(p, p2, rectPath.get(1), rectPath.get(2), true)) {
-					InternalClipper.GetIntersectPoint64(p, p2, rectPath.get(1), rectPath.get(2), ip);
+						&& InternalClipper.SegsIntersect(p, p2, rectPath.get(1), rectPath.get(2), true)) {
+					InternalClipper.GetIntersectPt(p, p2, rectPath.get(1), rectPath.get(2), ip);
 					loc.argValue = Location.RIGHT;
 				} else {
 					return false;
@@ -197,17 +343,17 @@ public class RectClip {
 				break;
 
 			case INSIDE:
-				if (InternalClipper.SegmentsIntersect(p, p2, rectPath.get(0), rectPath.get(3), true)) {
-					InternalClipper.GetIntersectPoint64(p, p2, rectPath.get(0), rectPath.get(3), ip);
+				if (InternalClipper.SegsIntersect(p, p2, rectPath.get(0), rectPath.get(3), true)) {
+					InternalClipper.GetIntersectPt(p, p2, rectPath.get(0), rectPath.get(3), ip);
 					loc.argValue = Location.LEFT;
-				} else if (InternalClipper.SegmentsIntersect(p, p2, rectPath.get(0), rectPath.get(1), true)) {
-					InternalClipper.GetIntersectPoint64(p, p2, rectPath.get(0), rectPath.get(1), ip);
+				} else if (InternalClipper.SegsIntersect(p, p2, rectPath.get(0), rectPath.get(1), true)) {
+					InternalClipper.GetIntersectPt(p, p2, rectPath.get(0), rectPath.get(1), ip);
 					loc.argValue = Location.TOP;
-				} else if (InternalClipper.SegmentsIntersect(p, p2, rectPath.get(1), rectPath.get(2), true)) {
-					InternalClipper.GetIntersectPoint64(p, p2, rectPath.get(1), rectPath.get(2), ip);
+				} else if (InternalClipper.SegsIntersect(p, p2, rectPath.get(1), rectPath.get(2), true)) {
+					InternalClipper.GetIntersectPt(p, p2, rectPath.get(1), rectPath.get(2), ip);
 					loc.argValue = Location.RIGHT;
-				} else if (InternalClipper.SegmentsIntersect(p, p2, rectPath.get(2), rectPath.get(3), true)) {
-					InternalClipper.GetIntersectPoint64(p, p2, rectPath.get(2), rectPath.get(3), ip);
+				} else if (InternalClipper.SegsIntersect(p, p2, rectPath.get(2), rectPath.get(3), true)) {
+					InternalClipper.GetIntersectPt(p, p2, rectPath.get(2), rectPath.get(3), ip);
 					loc.argValue = Location.BOTTOM;
 				} else {
 					return false;
@@ -306,7 +452,7 @@ public class RectClip {
 					} else if (path.get(i.argValue).y < rect.top) {
 						loc.argValue = Location.TOP;
 					} else {
-						result_.add(path.get(i.argValue));
+						Add(path.get(i.argValue));
 						i.argValue++;
 						continue;
 					}
@@ -317,41 +463,32 @@ public class RectClip {
 		} // switch
 	}
 
-	public Path64 ExecuteInternal(Path64 path) {
-		/*
-		 * NOTE: Would ideally be visible to Clipper class only (i.e. not public), but
-		 * must be public since they reside in different packages (Java restriction).
-		 */
+	private void ExecuteInternal(Path64 path) {
+		if (path.size() < 3 || this.rect.IsEmpty()) return;
+		List<Location> startLocs = new ArrayList<>();
 
-		if (path.size() < 3 || rect.IsEmpty()) {
-			return new Path64();
-		}
+		Location firstCross = Location.INSIDE;
+		RefObject<Location> crossingLoc = new RefObject<>(firstCross);
+		RefObject<Location> prev = new RefObject<>(firstCross);
 
-		result_.clear();
-		startLocs.clear();
 		RefObject<Integer> i = new RefObject<>(0);
 		int highI = path.size() - 1;
-		firstCross = Location.INSIDE;
-		RefObject<Location> crossingLoc = new RefObject<>(Location.INSIDE);
-		RefObject<Location> prev = new RefObject<>(null);
 		RefObject<Location> loc = new RefObject<>(null);
-		if (!GetLocation(rect, path.get(highI), loc)) {
-			prev.argValue = loc.argValue;
+		if (!GetLocation(this.rect, path.get(highI), loc))
+		{
 			i.argValue = highI - 1;
-			while (i.argValue >= 0 && !GetLocation(rect, path.get(i.argValue), prev)) {
-				i.argValue--;
+			while (i.argValue >= 0 && !GetLocation(this.rect, path.get(i.argValue), prev)) i.argValue--;
+			if (i.argValue < 0)
+			{
+				for(Point64 pt: path) { Add(pt); }
+				return;
 			}
-			if (i.argValue < 0) {
-				return path;
-			}
-			if (prev.argValue == Location.INSIDE) {
-				loc.argValue = Location.INSIDE;
-			}
-			i.argValue = 0;
+			if (prev.argValue == Location.INSIDE) loc.argValue = Location.INSIDE;
 		}
 		Location startingLoc = loc.argValue;
 
 		///////////////////////////////////////////////////
+		i.argValue = 0;
 		while (i.argValue <= highI) {
 			prev.argValue = loc.argValue;
 			Location prevCrossLoc = crossingLoc.argValue;
@@ -364,8 +501,7 @@ public class RectClip {
 			crossingLoc.argValue = loc.argValue;
 			Point64 ip = new Point64();
 			if (!GetIntersection(rectPath, path.get(i.argValue), prevPt, crossingLoc, ip)) {
-				// ie remaining outside (& crossingLoc still == loc)
-
+				// ie remaining outside
 				if (prevCrossLoc == Location.INSIDE) {
 					boolean isClockw = IsClockwise(prev.argValue, loc.argValue, prevPt, path.get(i.argValue), mp);
 					do {
@@ -414,7 +550,7 @@ public class RectClip {
 				}
 
 				loc.argValue = crossingLoc.argValue;
-				result_.add(ip2);
+				Add(ip2);
 				if (ip.opEquals(ip2)) {
 					// it's very likely that path[i] is on rect
 					GetLocation(rect, path.get(i.argValue), loc);
@@ -430,23 +566,27 @@ public class RectClip {
 				}
 			}
 
-			result_.add(ip);
+			Add(ip);
 		} // while i <= highI
-			///////////////////////////////////////////////////
+		///////////////////////////////////////////////////
 
-		// path must be entering rect
-		if (firstCross == Location.INSIDE) {
-			if (startingLoc == Location.INSIDE) {
-				return path;
+		if (firstCross == Location.INSIDE)
+		{
+			// path never intersects
+			if (startingLoc != Location.INSIDE)
+			{
+				if (pathBounds_.Contains(this.rect) &&
+						Path1ContainsPath2(path, this.rectPath))
+				{
+					for (int j = 0; j < 4; j++)
+					{
+						Add(this.rectPath.get(j));
+						AddToEdge(edges_[j * 2], results_.get(0));
+					}
+				}
 			}
-			Rect64 tmp_rect = GetBounds(path);
-			if (tmp_rect.Contains(rect) && Path1ContainsPath2(path, rectPath) != PointInPolygonResult.IsOutside) {
-				return rectPath;
-			}
-			return new Path64();
 		}
-
-		if (loc.argValue != Location.INSIDE && (loc.argValue != firstCross || startLocs.size() > 2)) {
+		else if (loc.argValue != Location.INSIDE && (loc.argValue != firstCross || startLocs.size() > 2)) {
 			if (startLocs.size() > 0) {
 				prev.argValue = loc.argValue;
 				for (Location loc2 : startLocs) {
@@ -462,41 +602,299 @@ public class RectClip {
 				AddCorner(loc, HeadingClockwise(loc.argValue, firstCross));
 			}
 		}
+	}
 
-		if (result_.size() < 3) {
-			return new Path64();
-		}
-
-		// finally, tidy up result
-		int k = 0, len = result_.size();
-		Point64 lastPt = result_.get(len - 1);
-		Path64 result = new Path64(len);
-		result.add(result_.get(0));
-		for (int xxx = 1; xxx < result_.size(); xxx++) {
-			Point64 pt = result_.get(xxx);
-			if (InternalClipper.CrossProduct(lastPt, result.get(k), pt) != 0) {
-				lastPt = result.get(k++);
-				result.add(pt);
-			} else {
-				result.set(k, pt);
+	public Paths64 Execute(Paths64 paths, boolean convexOnly)
+	{
+		Paths64 result = new Paths64();
+		if (rect.IsEmpty()) return result;
+		for (Path64 path : paths)
+		{
+			if (path.size() < 3) continue;
+			pathBounds_ = Clipper.GetBounds(path);
+			if (!rect.Intersects(pathBounds_))
+				continue; // the path must be completely outside fRect
+			else if (rect.Contains(pathBounds_))
+			{
+				// the path must be completely inside rect_
+				result.add(path);
+				continue;
 			}
-		}
+			ExecuteInternal(path);
+			if (!convexOnly)
+			{
+				CheckEdges();
+				for (int i = 0; i < 4; ++i)
+					TidyEdgePair(i, edges_[i * 2], edges_[i * 2 + 1]);
+			}
 
-		if (k < 2) {
-			result.clear();
-		} else if (InternalClipper.CrossProduct(result.get(0), result.get(k - 1), result.get(k)) == 0) {
-			result.remove(result.size() - 1);
+			for (@Nullable OutPt2 op: results_)
+			{
+				Path64 tmp = GetPath(op);
+				if (tmp.size() > 0) result.add(tmp);
+			}
+
+			//clean up after every loop
+			results_.clear();
+			for (int i = 0; i < 8; i++)
+				edges_[i].clear();
 		}
 		return result;
 	}
 
-	private Paths64 ExecuteInternal(Paths64 paths) {
-		Paths64 result = new Paths64(paths.size());
-		for (Path64 path : paths) {
-			if (rect.Intersects(GetBounds(path))) {
-				result.add(ExecuteInternal(path));
+	private void CheckEdges() {
+		for (int i = 0; i < results_.size(); i++) {
+			@Nullable OutPt2 op = results_.get(i), op2 = op;
+			if (op == null)
+				continue;
+			do {
+				if (InternalClipper.CrossProduct(
+						op2.prev.pt, op2.pt, op2.next.pt) == 0) {
+					if (op2 == op) {
+						op2 = UnlinkOpBack(op2);
+						if (op2 == null)
+							break;
+						op = op2.prev;
+					} else {
+						op2 = UnlinkOpBack(op2);
+						if (op2 == null)
+							break;
+					}
+				} else
+					op2 = op2.next;
+			} while (op2 != op);
+
+			if (op2 == null) {
+				results_.set(i, null);
+				continue;
 			}
+			results_.set(i, op2); // safety first
+
+			/*unsigned*/ int edgeSet1 = GetEdgesForPt(op.prev.pt, rect);
+			op2 = op;
+			do {
+				/*unsigned*/ int edgeSet2 = GetEdgesForPt(op2.pt, rect);
+				if (edgeSet2 != 0 && op2.edge == null) {
+					/*unsigned*/ int combinedSet = (edgeSet1 & edgeSet2);
+					for (int j = 0; j < 4; ++j) {
+						if ((combinedSet & (1 << j)) != 0) {
+							if (IsHeadingClockwise(op2.prev.pt, op2.pt, j))
+								AddToEdge(edges_[j * 2], op2);
+							else
+								AddToEdge(edges_[j * 2 + 1], op2);
+						}
+					}
+				}
+				edgeSet1 = edgeSet2;
+				op2 = op2.next;
+			} while (op2 != op);
+		}
+	}
+
+	private void TidyEdgePair(int idx, List<@Nullable OutPt2> cw, List<@Nullable OutPt2> ccw)
+	{
+		if (ccw.size() == 0) return;
+		boolean isHorz = ((idx == 1) || (idx == 3));
+		boolean cwIsTowardLarger = ((idx == 1) || (idx == 2));
+		int i = 0, j = 0;
+		@Nullable OutPt2 p1, p2, p1a, p2a, op, op2;
+
+		while (i < cw.size())
+		{
+			p1 = cw.get(i);
+			if (p1 == null || p1.next == p1.prev)
+			{
+				cw.get(i++).edge = null;
+				j = 0;
+				continue;
+			}
+
+			int jLim = ccw.size();
+			while (j < jLim &&
+					(ccw.get(j) == null || ccw.get(j).next == ccw.get(j).prev)) ++j;
+
+			if (j == jLim)
+			{
+				++i;
+				j = 0;
+				continue;
+			}
+
+			if (cwIsTowardLarger)
+			{
+				// p1 >>>> p1a;
+				// p2 <<<< p2a;
+				p1 = cw.get(i).prev;
+				p1a = cw.get(i);
+				p2 = ccw.get(j);
+				p2a = ccw.get(j).prev;
+			}
+			else
+			{
+				// p1 <<<< p1a;
+				// p2 >>>> p2a;
+				p1 = cw.get(i);
+				p1a = cw.get(i).prev;
+				p2 = ccw.get(j).prev;
+				p2a = ccw.get(j);
+			}
+
+			if ((isHorz && !HasHorzOverlap(p1.pt, p1a.pt, p2.pt, p2a.pt)) ||
+			(!isHorz && !HasVertOverlap(p1.pt, p1a.pt, p2.pt, p2a.pt)))
+			{
+				++j;
+				continue;
+			}
+
+			// to get here we're either splitting or rejoining
+			boolean isRejoining = cw.get(i).ownerIdx != ccw.get(j).ownerIdx;
+
+			if (isRejoining)
+			{
+				results_.set(p2.ownerIdx, null);
+				SetNewOwner(p2, p1.ownerIdx);
+			}
+
+			// do the split or re-join
+			if (cwIsTowardLarger)
+			{
+				// p1 >> | >> p1a;
+				// p2 << | << p2a;
+				p1.next = p2;
+				p2.prev = p1;
+				p1a.prev = p2a;
+				p2a.next = p1a;
+			}
+			else
+			{
+				// p1 << | << p1a;
+				// p2 >> | >> p2a;
+				p1.prev = p2;
+				p2.next = p1;
+				p1a.next = p2a;
+				p2a.prev = p1a;
+			}
+
+			if (!isRejoining)
+			{
+				int new_idx = results_.size();
+				results_.add(p1a);
+				SetNewOwner(p1a, new_idx);
+			}
+
+			if (cwIsTowardLarger)
+			{
+				op = p2;
+				op2 = p1a;
+			}
+			else
+			{
+				op = p1;
+				op2 = p2a;
+			}
+			results_.set(op.ownerIdx, op);
+			results_.set(op2.ownerIdx, op2);
+
+			// and now lots of work to get ready for the next loop
+
+			boolean opIsLarger, op2IsLarger;
+			if (isHorz) // X
+			{
+				opIsLarger = op.pt.x > op.prev.pt.x;
+				op2IsLarger = op2.pt.x > op2.prev.pt.x;
+			}
+			else       // Y
+			{
+				opIsLarger = op.pt.y > op.prev.pt.y;
+				op2IsLarger = op2.pt.y > op2.prev.pt.y;
+			}
+
+			if ((op.next == op.prev) ||
+					(op.pt == op.prev.pt))
+			{
+				if (op2IsLarger == cwIsTowardLarger)
+				{
+					cw.set(i, op2);
+					ccw.set(j++, null);
+				}
+				else
+				{
+					ccw.set(j, op2);
+					cw.set(i++, null);
+				}
+			}
+			else if ((op2.next == op2.prev) ||
+					(op2.pt == op2.prev.pt))
+			{
+				if (opIsLarger == cwIsTowardLarger)
+				{
+					cw.set(i, op);
+					ccw.set(j++, null);
+				}
+				else
+				{
+					ccw.set(j, op);
+					cw.set(i++, null);
+				}
+			}
+			else if (opIsLarger == op2IsLarger)
+			{
+				if (opIsLarger == cwIsTowardLarger)
+				{
+					cw.set(i, op);
+					UncoupleEdge(op2);
+					AddToEdge(cw, op2);
+					ccw.set(j++, null);
+				}
+				else
+				{
+					cw.set(i++, null);
+					ccw.set(j, op2);
+					UncoupleEdge(op);
+					AddToEdge(ccw, op);
+					j = 0;
+				}
+			}
+			else
+			{
+				if (opIsLarger == cwIsTowardLarger)
+					cw.set(i, op);
+				else
+					ccw.set(j, op);
+				if (op2IsLarger == cwIsTowardLarger)
+					cw.set(i, op2);
+				else
+					ccw.set(j, op2);
+			}
+		}
+	}
+
+	private Path64 GetPath(@Nullable OutPt2 op)
+	{
+		Path64 result = new Path64();
+		if (op == null || op.prev == op.next) return result;
+		@Nullable OutPt2 op2 = op.next;
+		while (op2 != null && op2 != op)
+		{
+			if (InternalClipper.CrossProduct(
+					op2.prev.pt, op2.pt, op2.next.pt) == 0)
+			{
+				op = op2.prev;
+				op2 = UnlinkOp(op2);
+			}
+        else
+			op2 = op2.next;
+		}
+		if (op2 == null) return new Path64();
+
+		result.add(op.pt);
+		op2 = op.next;
+		while (op2 != op)
+		{
+			result.add(op2.pt);
+			op2 = op2.next;
 		}
 		return result;
 	}
+
 }

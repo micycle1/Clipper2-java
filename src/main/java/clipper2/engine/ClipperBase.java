@@ -2,6 +2,7 @@ package clipper2.engine;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.NavigableSet;
 import java.util.TreeSet;
@@ -28,17 +29,17 @@ import tangible.RefObject;
  */
 abstract class ClipperBase {
 
-	private ClipType cliptype;
+	private ClipType cliptype = ClipType.None;
 	private FillRule fillrule = FillRule.EvenOdd;
 	private Active actives = null;
 	private Active sel = null;
-	private Joiner horzJoiners = null;
 	private List<LocalMinima> minimaList;
 	private List<IntersectNode> intersectList;
 	private List<Vertex> vertexList;
 	private List<OutRec> outrecList;
-	private List<Joiner> joinerList;
 	private NavigableSet<Long> scanlineSet;
+	private List<HorzSegment> _horzSegList;
+	private List<HorzJoin> _horzJoinList;
 	private int currentLocMin;
 	private long currentBotY;
 	private boolean isSortedMinimaList;
@@ -57,24 +58,59 @@ abstract class ClipperBase {
 		@Nullable
 		OutRec owner;
 		@Nullable
-		List<OutRec> splits;
-		@Nullable
 		Active frontEdge;
 		@Nullable
 		Active backEdge;
 		@Nullable
 		OutPt pts;
 		@Nullable
-		PolyPathNode polypath;
-		Rect64 bounds;
-		Path64 path;
+		PolyPathBase polypath;
+		Rect64 bounds = new Rect64();
+		Path64 path = new Path64();
 		boolean isOpen;
+		@Nullable
+		public List<Integer> splits = null;
+	}
 
-		OutRec() {
-			bounds = new Rect64();
-			path = new Path64();
+	private static class HorzSegSorter implements Comparator<HorzSegment> {
+		@Override
+		public int compare(@Nullable HorzSegment hs1, @Nullable HorzSegment hs2) {
+			if (hs1 == null || hs2 == null) {
+				return 0;
+			}
+			if (hs1.rightOp == null)
+			{
+				return hs2.rightOp == null ? 0 : 1;
+			}
+			else if (hs2.rightOp == null)
+				return -1;
+			else
+				return Long.compare(hs1.leftOp.pt.x, hs2.leftOp.pt.x);
 		}
+	}
 
+	private static class HorzSegment
+	{
+		public @Nullable OutPt leftOp;
+		public @Nullable OutPt rightOp;
+		public boolean leftToRight;
+
+		public HorzSegment(OutPt op) {
+			leftOp = op;
+			rightOp = null;
+			leftToRight = true;
+		}
+	}
+
+	private static class HorzJoin
+	{
+		public @Nullable OutPt op1;
+		public @Nullable OutPt op2;
+
+		public HorzJoin(OutPt ltor, OutPt rtol) {
+			op1 = ltor;
+			op2 = rtol;
+		}
 	}
 
 	static class Active {
@@ -109,6 +145,7 @@ abstract class ClipperBase {
 		Vertex vertexTop;
 		LocalMinima localMin = new LocalMinima(); // the bottom of an edge 'bound' (also Vatti)
 		boolean isLeftBound;
+		JoinWith joinWith = JoinWith.None;
 
 	}
 
@@ -123,50 +160,20 @@ abstract class ClipperBase {
 		OutPt prev;
 		OutRec outrec;
 		@Nullable
-		Joiner joiner;
+		HorzSegment horz;
 
 		OutPt(Point64 pt, OutRec outrec) {
 			this.pt = pt;
 			this.outrec = outrec;
 			next = this;
 			prev = this;
-			joiner = null;
+			horz = null;
 		}
 
 	}
 
-	/**
-	 * Structure used in merging "touching" solution polygons.
-	 */
-	static class Joiner {
-
-		int idx;
-		OutPt op1;
-		@Nullable
-		OutPt op2;
-		@Nullable
-		Joiner next1;
-		@Nullable
-		Joiner next2;
-		@Nullable
-		Joiner nextH;
-
-		public Joiner(OutPt op1, @Nullable OutPt op2, @Nullable Joiner nextH) {
-			this.idx = -1;
-			this.nextH = nextH;
-			this.op1 = op1;
-			this.op2 = op2;
-			next1 = op1.joiner;
-			op1.joiner = this;
-
-			if (op2 != null) {
-				next2 = op2.joiner;
-				op2.joiner = this;
-			} else {
-				next2 = null;
-			}
-		}
-	}
+	enum JoinWith { None, Left, Right };
+	enum HorzPosition { Bottom, Middle, Top };
 
 	/**
 	 * A structure representing 2 intersecting edges. Intersections must be sorted
@@ -175,15 +182,12 @@ abstract class ClipperBase {
 	 */
 	static final class IntersectNode {
 
-		Point64 pt = new Point64();
-		Active edge1;
-		Active edge2;
-
-		IntersectNode() {
-		}
+		final Point64 pt;
+		final Active edge1;
+		final Active edge2;
 
 		IntersectNode(Point64 pt, Active edge1, Active edge2) {
-			this.pt = pt.clone();
+			this.pt = pt;
 			this.edge1 = edge1;
 			this.edge2 = edge2;
 		}
@@ -204,7 +208,7 @@ abstract class ClipperBase {
 		int flags;
 
 		Vertex(Point64 pt, int flags, Vertex prev) {
-			this.pt = pt.clone();
+			this.pt = pt;
 			this.flags = flags;
 			next = null;
 			this.prev = prev;
@@ -226,8 +230,9 @@ abstract class ClipperBase {
 		intersectList = new ArrayList<>();
 		vertexList = new ArrayList<>();
 		outrecList = new ArrayList<>();
-		joinerList = new ArrayList<>();
 		scanlineSet = new TreeSet<>();
+		_horzSegList = new ArrayList<>();
+		_horzJoinList = new ArrayList<>();
 		setPreserveCollinear(true);
 	}
 
@@ -319,11 +324,11 @@ abstract class ClipperBase {
 	}
 
 	private static boolean IsHeadingRightHorz(Active ae) {
-		return (Double.isInfinite(ae.dx));
+		return Double.NEGATIVE_INFINITY == ae.dx;
 	}
 
 	private static boolean IsHeadingLeftHorz(Active ae) {
-		return (Double.isInfinite(ae.dx));
+		return Double.POSITIVE_INFINITY == ae.dx;
 	}
 
 	private static void SwapActives(RefObject<Active> ae1, RefObject<Active> ae2) {
@@ -338,34 +343,6 @@ abstract class ClipperBase {
 
 	private static boolean IsSamePolyType(Active ae1, Active ae2) {
 		return ae1.localMin.polytype == ae2.localMin.polytype;
-	}
-
-	private static Point64 GetIntersectPoint(Active ae1, Active ae2) {
-		double b1, b2;
-		if (InternalClipper.IsAlmostZero(ae1.dx - ae2.dx)) {
-			return ae1.top;
-		}
-
-		if (InternalClipper.IsAlmostZero(ae1.dx)) {
-			if (IsHorizontal(ae2)) {
-				return new Point64(ae1.bot.x, ae2.bot.y);
-			}
-			b2 = ae2.bot.y - (ae2.bot.x / ae2.dx);
-			return new Point64(ae1.bot.x, (long) Math.rint(ae1.bot.x / ae2.dx + b2));
-		}
-
-		if (InternalClipper.IsAlmostZero(ae2.dx)) {
-			if (IsHorizontal(ae1)) {
-				return new Point64(ae2.bot.x, ae1.bot.y);
-			}
-			b1 = ae1.bot.y - (ae1.bot.x / ae1.dx);
-			return new Point64(ae2.bot.x, (long) Math.rint(ae2.bot.x / ae1.dx + b1));
-		}
-		b1 = ae1.bot.x - ae1.bot.y * ae1.dx;
-		b2 = ae2.bot.x - ae2.bot.y * ae2.dx;
-		double q = (b2 - b1) / (ae1.dx - ae2.dx);
-		return (Math.abs(ae1.dx) < Math.abs(ae2.dx)) ? new Point64((long) (ae1.dx * q + b1), (long) (q))
-				: new Point64((long) (ae2.dx * q + b2), (long) (q));
 	}
 
 	private static void SetDx(Active ae) {
@@ -406,6 +383,22 @@ abstract class ClipperBase {
 		return null;
 	}
 
+	private static @Nullable Vertex GetCurrYMaximaVertex_Open(Active ae) {
+		@Nullable Vertex result = ae.vertexTop;
+		if (ae.windDx > 0)
+			while (result.next.pt.y == result.pt.y &&
+					((result.flags & (VertexFlags.OpenEnd |
+							VertexFlags.LocalMax)) == VertexFlags.None))
+				result = result.next;
+		else
+			while (result.prev.pt.y == result.pt.y &&
+					((result.flags & (VertexFlags.OpenEnd |
+							VertexFlags.LocalMax)) == VertexFlags.None))
+				result = result.prev;
+		if (!IsMaxima(result)) result = null; // not a maxima
+		return result;
+	}
+
 	private static Vertex GetCurrYMaximaVertex(Active ae) {
 		Vertex result = ae.vertexTop;
 		if (ae.windDx > 0) {
@@ -421,25 +414,6 @@ abstract class ClipperBase {
 			result = null; // not a maxima
 		}
 		return result;
-	}
-
-	private static Active GetHorzMaximaPair(Active horz, Vertex maxVert) {
-		// we can't be sure whether the MaximaPair is on the left or right, so ...
-		Active result = horz.prevInAEL;
-		while (result != null && result.curX >= maxVert.pt.x) {
-			if (result.vertexTop == maxVert) {
-				return result; // Found!
-			}
-			result = result.prevInAEL;
-		}
-		result = horz.nextInAEL;
-		while (result != null && TopX(result, horz.top.y) <= maxVert.pt.x) {
-			if (result.vertexTop == maxVert) {
-				return result; // Found!
-			}
-			result = result.nextInAEL;
-		}
-		return null;
 	}
 
 	private static void SetSides(OutRec outrec, Active startEdge, Active endEdge) {
@@ -475,6 +449,20 @@ abstract class ClipperBase {
 
 		ae1.outrec = or2;
 		ae2.outrec = or1;
+	}
+
+	private static void SetOwner(OutRec outrec, OutRec newOwner) {
+		//precondition1: new_owner is never null
+		while (newOwner.owner != null && newOwner.owner.pts == null)
+			newOwner.owner = newOwner.owner.owner;
+
+		//make sure that outrec isn't an owner of newOwner
+		@Nullable OutRec tmp = newOwner;
+		while (tmp != null && tmp != outrec)
+			tmp = tmp.owner;
+		if (tmp != null)
+			newOwner.owner = outrec.owner;
+		outrec.owner = newOwner;
 	}
 
 	private static double Area(OutPt op) {
@@ -527,19 +515,19 @@ abstract class ClipperBase {
 		return (inode.edge1.nextInAEL == inode.edge2) || (inode.edge1.prevInAEL == inode.edge2);
 	}
 
-	protected final void ClearSolution() {
+	protected final void ClearSolutionOnly() {
 		while (actives != null) {
 			DeleteFromAEL(actives);
 		}
 		scanlineSet.clear();
 		DisposeIntersectNodes();
-		joinerList.clear();
-		horzJoiners = null;
 		outrecList.clear();
+		_horzSegList.clear();
+		_horzJoinList.clear();
 	}
 
 	public final void Clear() {
-		ClearSolution();
+		ClearSolutionOnly();
 		minimaList.clear();
 		vertexList.clear();
 		currentLocMin = 0;
@@ -692,8 +680,6 @@ abstract class ClipperBase {
 
 	/**
 	 * Adds one or more closed subject paths (polygons) to the Clipper object.
-	 *
-	 * @param paths
 	 */
 	public final void AddSubject(Paths64 paths) {
 		paths.forEach(path -> AddPath(path, PathType.Subject));
@@ -701,8 +687,6 @@ abstract class ClipperBase {
 
 	/**
 	 * Adds one or more open subject paths (polylines) to the Clipper object.
-	 *
-	 * @param path
 	 */
 	public final void AddOpenSubject(Path64 path) {
 		AddPath(path, PathType.Subject, true);
@@ -714,8 +698,6 @@ abstract class ClipperBase {
 
 	/**
 	 * Adds one or more clip polygons to the Clipper object.
-	 *
-	 * @param path
 	 */
 	public final void AddClip(Path64 path) {
 		AddPath(path, PathType.Clip);
@@ -994,6 +976,8 @@ abstract class ClipperBase {
 			while (ae2.nextInAEL != null && IsValidAelOrder(ae2.nextInAEL, ae)) {
 				ae2 = ae2.nextInAEL;
 			}
+			//don't separate joined edges
+			if (ae2.joinWith == JoinWith.Right) ae2 = ae2.nextInAEL;
 			ae.nextInAEL = ae2.nextInAEL;
 			if (ae2.nextInAEL != null) {
 				ae2.nextInAEL.prevInAEL = ae;
@@ -1003,7 +987,7 @@ abstract class ClipperBase {
 		}
 	}
 
-	private static void InsertRightEdge(Active ae, Active ae2) {
+	private /*static*/ void InsertRightEdge(Active ae, Active ae2) {
 		ae2.nextInAEL = ae.nextInAEL;
 		if (ae.nextInAEL != null) {
 			ae.nextInAEL.prevInAEL = ae2;
@@ -1099,10 +1083,8 @@ abstract class ClipperBase {
 
 				if (contributing) {
 					AddLocalMinPoly(leftBound, rightBound, leftBound.bot, true);
-					if (!IsHorizontal(leftBound) && TestJoinWithPrev1(leftBound)) {
-						OutPt op = AddOutPt(leftBound.prevInAEL, leftBound.bot);
-						AddJoin(op, leftBound.outrec.pts);
-					}
+					if (!IsHorizontal(leftBound))
+						CheckJoinLeft(leftBound, leftBound.bot);
 				}
 
 				while (rightBound.nextInAEL != null && IsValidAelOrder(rightBound.nextInAEL, rightBound)) {
@@ -1110,15 +1092,11 @@ abstract class ClipperBase {
 					SwapPositionsInAEL(rightBound, rightBound.nextInAEL);
 				}
 
-				if (!IsHorizontal(rightBound) && TestJoinWithNext1(rightBound)) {
-					OutPt op = AddOutPt(rightBound.nextInAEL, rightBound.bot);
-					AddJoin(rightBound.outrec.pts, op);
-				}
-
-				if (IsHorizontal(rightBound)) {
+				if (IsHorizontal(rightBound))
 					PushHorz(rightBound);
-				} else {
-					scanlineSet.add(rightBound.top.y);
+				else {
+					CheckJoinRight(rightBound, rightBound.bot);
+					InsertScanline(rightBound.top.y);
 				}
 			} else if (contributing) {
 				StartOpenPath(leftBound, leftBound.bot);
@@ -1146,48 +1124,14 @@ abstract class ClipperBase {
 		return true;
 	}
 
-	private boolean TestJoinWithPrev1(Active e) {
-		// this is marginally quicker than TestJoinWithPrev2
-		// but can only be used when e.PrevInAEL.currX is accurate
-		return IsHotEdge(e) && !IsOpen(e) && (e.prevInAEL != null) && (e.prevInAEL.curX == e.curX) && IsHotEdge(e.prevInAEL)
-				&& !IsOpen(e.prevInAEL) && (InternalClipper.CrossProduct(e.prevInAEL.top, e.bot, e.top) == 0);
-	}
-
-	private boolean TestJoinWithPrev2(Active e, Point64 currPt) {
-		return IsHotEdge(e) && !IsOpen(e) && (e.prevInAEL != null) && !IsOpen(e.prevInAEL) && IsHotEdge(e.prevInAEL)
-				&& (e.prevInAEL.top.y < e.bot.y) && (Math.abs(TopX(e.prevInAEL, currPt.y) - currPt.x) < 2)
-				&& (InternalClipper.CrossProduct(e.prevInAEL.top, currPt, e.top) == 0);
-	}
-
-	private static boolean TestJoinWithNext1(Active e) {
-		// this is marginally quicker than TestJoinWithNext2
-		// but can only be used when e.NextInAEL.currX is accurate
-		return IsHotEdge(e) && !IsOpen(e) && (e.nextInAEL != null) && (e.nextInAEL.curX == e.curX) && IsHotEdge(e.nextInAEL)
-				&& !IsOpen(e.nextInAEL) && (InternalClipper.CrossProduct(e.nextInAEL.top, e.bot, e.top) == 0);
-	}
-
-	private static boolean TestJoinWithNext2(Active e, Point64 currPt) {
-		return IsHotEdge(e) && !IsOpen(e) && (e.nextInAEL != null) && !IsOpen(e.nextInAEL) && IsHotEdge(e.nextInAEL)
-				&& (e.nextInAEL.top.y < e.bot.y) && (Math.abs(TopX(e.nextInAEL, currPt.y) - currPt.x) < 2)
-				&& (InternalClipper.CrossProduct(e.nextInAEL.top, currPt, e.top) == 0);
-	}
-
 	private OutPt AddLocalMinPoly(Active ae1, Active ae2, Point64 pt) {
 		return AddLocalMinPoly(ae1, ae2, pt, false);
 	}
 
 	private OutPt AddLocalMinPoly(Active ae1, Active ae2, Point64 pt, boolean isNew) {
-		OutRec outrec = new OutRec();
-		outrecList.add(outrec);
-		outrec.idx = outrecList.size() - 1;
-		outrec.pts = null;
-		outrec.polypath = null;
+		OutRec outrec = NewOutRec();
 		ae1.outrec = outrec;
 		ae2.outrec = outrec;
-
-		// Setting the owner and inner/outer states (above) is an essential
-		// precursor to setting edge 'sides' (ie left and right sides of output
-		// polygons) and hence the orientation of output paths ...
 
 		if (IsOpen(ae1)) {
 			outrec.owner = null;
@@ -1205,6 +1149,8 @@ abstract class ClipperBase {
 			// Output orientation is determined by e.outrec.frontE which is
 			// the ascending edge (see AddLocalMinPoly).
 			if (prevHotEdge != null) {
+				if (usingPolytree)
+					SetOwner(outrec, prevHotEdge.outrec);
 				outrec.owner = prevHotEdge.outrec;
 				if (OutrecIsAscending(prevHotEdge) == isNew) {
 					SetSides(outrec, ae2, ae1);
@@ -1227,6 +1173,9 @@ abstract class ClipperBase {
 	}
 
 	private OutPt AddLocalMaxPoly(Active ae1, Active ae2, Point64 pt) {
+		if (IsJoined(ae1)) Split(ae1, pt);
+		if (IsJoined(ae2)) Split(ae2, pt);
+
 		if (IsFront(ae1) == IsFront(ae2)) {
 			if (IsOpenEnd(ae1)) {
 				SwapFrontBackSides(ae1.outrec);
@@ -1242,16 +1191,17 @@ abstract class ClipperBase {
 		if (ae1.outrec == ae2.outrec) {
 			OutRec outrec = ae1.outrec;
 			outrec.pts = result;
-			UncoupleOutRec(ae1);
-			if (!IsOpen(ae1)) {
-				CleanCollinear(outrec);
-			}
-			result = outrec.pts;
 
-			outrec.owner = GetRealOutRec(outrec.owner);
-			if (usingPolytree && outrec.owner != null && outrec.owner.frontEdge == null) {
-				outrec.owner = GetRealOutRec(outrec.owner.owner);
+			if (usingPolytree) {
+				Active e = GetPrevHotEdge(ae1);
+				if (e == null)
+					outrec.owner = null;
+				else
+					SetOwner(outrec, e.outrec);
+				// nb: outRec.owner here is likely NOT the real
+				// owner but this will be fixed in DeepCheckOwner()
 			}
+			UncoupleOutRec(ae1);
 		}
 		// and to preserve the winding orientation of outrec ...
 		else if (IsOpen(ae1)) {
@@ -1299,19 +1249,11 @@ abstract class ClipperBase {
 			}
 		}
 
-		// an owner must have a lower idx otherwise
-		// it won't be a valid owner
-		if (ae2.outrec.owner != null && ae2.outrec.owner.idx < ae1.outrec.idx) {
-			if (ae1.outrec.owner == null || ae2.outrec.owner.idx < ae1.outrec.owner.idx) {
-				ae1.outrec.owner = ae2.outrec.owner;
-			}
-		}
-
 		// after joining, the ae2.OutRec must contains no vertices ...
 		ae2.outrec.frontEdge = null;
 		ae2.outrec.backEdge = null;
 		ae2.outrec.pts = null;
-		ae2.outrec.owner = ae1.outrec; // this may be redundant
+		SetOwner(ae2.outrec, ae1.outrec);
 
 		if (IsOpenEnd(ae1)) {
 			ae2.outrec.pts = ae1.outrec.pts;
@@ -1324,7 +1266,6 @@ abstract class ClipperBase {
 	}
 
 	private static OutPt AddOutPt(Active ae, Point64 pt) {
-		OutPt newOp;
 
 		// Outrec.OutPts: a circular doubly-linked-list of POutPt where ...
 		// opFront[.Prev]* ~~~> opBack & opBack == opFront.Next
@@ -1334,30 +1275,32 @@ abstract class ClipperBase {
 		OutPt opBack = opFront.next;
 
 		if (toFront && (pt.opEquals(opFront.pt))) {
-			newOp = opFront;
+			return opFront;
 		} else if (!toFront && (pt.opEquals(opBack.pt))) {
-			newOp = opBack;
-		} else {
-			newOp = new OutPt(pt, outrec);
-			opBack.prev = newOp;
-			newOp.prev = opFront;
-			newOp.next = opBack;
-			opFront.next = newOp;
-			if (toFront) {
-				outrec.pts = newOp;
-			}
+			return opBack;
+		}
+
+		OutPt newOp = new OutPt(pt, outrec);
+		opBack.prev = newOp;
+		newOp.prev = opFront;
+		newOp.next = opBack;
+		opFront.next = newOp;
+		if (toFront) {
+			outrec.pts = newOp;
 		}
 		return newOp;
 	}
 
+	private OutRec NewOutRec() {
+		OutRec result = new OutRec();
+		result.idx = outrecList.size();
+		outrecList.add(result);
+		return result;
+	}
+
 	private OutPt StartOpenPath(Active ae, Point64 pt) {
-		OutRec outrec = new OutRec();
-		outrecList.add(outrec);
-		outrec.idx = outrecList.size() - 1;
-		outrec.owner = null;
+		OutRec outrec = NewOutRec();
 		outrec.isOpen = true;
-		outrec.pts = null;
-		outrec.polypath = null;
 		if (ae.windDx > 0) {
 			outrec.frontEdge = ae;
 			outrec.backEdge = null;
@@ -1378,15 +1321,14 @@ abstract class ClipperBase {
 		ae.top = ae.vertexTop.pt;
 		ae.curX = ae.bot.x;
 		SetDx(ae);
-		if (IsHorizontal(ae)) {
-			return;
-		}
-		scanlineSet.add(ae.top.y);
-		if (TestJoinWithPrev1(ae)) {
-			OutPt op1 = AddOutPt(ae.prevInAEL, ae.bot);
-			OutPt op2 = AddOutPt(ae, ae.bot);
-			AddJoin(op1, op2);
-		}
+
+		if (IsJoined(ae)) Split(ae, ae.bot);
+
+		if (IsHorizontal(ae)) return;
+		InsertScanline(ae.top.y);
+
+		CheckJoinLeft(ae, ae.bot);
+		CheckJoinRight(ae, ae.bot);
 	}
 
 	private static Active FindEdgeWithMatchingLocMin(Active e) {
@@ -1430,6 +1372,7 @@ abstract class ClipperBase {
 				ae2 = tempRefae2.argValue;
 				ae1 = tempRefae1.argValue;
 			}
+			if (IsJoined(ae2)) Split(ae2, pt); // needed for safety
 
 			if (cliptype == ClipType.Union) {
 				if (!IsHotEdge(ae2)) {
@@ -1492,6 +1435,8 @@ abstract class ClipperBase {
 		}
 
 		// MANAGING CLOSED PATHS FROM HERE ON
+		if (IsJoined(ae1)) Split(ae1, pt);
+		if (IsJoined(ae2)) Split(ae2, pt);
 
 		// UPDATE WINDING COUNTS...
 
@@ -1560,11 +1505,7 @@ abstract class ClipperBase {
 				// it's sensible to split polygons that ony touch at
 				// a common vertex (not at common edges).
 				resultOp = AddLocalMaxPoly(ae1, ae2, pt);
-				OutPt op2 = AddLocalMinPoly(ae1, ae2, pt);
-				if (resultOp != null && resultOp.pt.opEquals(op2.pt) && !IsHorizontal(ae1) && !IsHorizontal(ae2)
-						&& (InternalClipper.CrossProduct(ae1.bot, resultOp.pt, ae2.bot) == 0)) {
-					AddJoin(resultOp, op2);
-				}
+				AddLocalMinPoly(ae1, ae2, pt);
 			} else {
 				// can't treat as maxima & minima
 				resultOp = AddOutPt(ae1, pt);
@@ -1661,8 +1602,11 @@ abstract class ClipperBase {
 			ae.prevInSEL = ae.prevInAEL;
 			ae.nextInSEL = ae.nextInAEL;
 			ae.jump = ae.nextInSEL;
-			ae.curX = TopX(ae, topY);
-			// NB don't update ae.curr.Y yet (see AddNewIntersectNode)
+			if (ae.joinWith == JoinWith.Left)
+				ae.curX = ae.prevInAEL.curX; // this also avoids complications
+			else
+				ae.curX = TopX(ae, topY);
+			// NB don't update ae.curr.y yet (see AddNewIntersectNode)
 			ae = ae.nextInAEL;
 		}
 	}
@@ -1686,7 +1630,11 @@ abstract class ClipperBase {
 				ae = tempOutae.argValue;
 				DoHorizontal(ae);
 			}
-			ConvertHorzTrialsToJoins();
+			if (_horzSegList.size() > 0)
+			{
+				ConvertHorzSegsToJoins();
+				_horzSegList.clear();
+			}
 			currentBotY = y; // bottom of scanbeam
 			if (scanlineSet.isEmpty()) {
 				break; // y new top of scanbeam
@@ -1702,7 +1650,7 @@ abstract class ClipperBase {
 		}
 
 		if (succeeded) {
-			ProcessJoinList();
+			ProcessHorzJoins();
 		}
 	}
 
@@ -1718,32 +1666,34 @@ abstract class ClipperBase {
 	}
 
 	private void AddNewIntersectNode(Active ae1, Active ae2, long topY) {
-		Point64 pt = GetIntersectPoint(ae1, ae2);
+		Point64 ip = new Point64();
+		if (!InternalClipper.GetIntersectPt(ae1.bot, ae1.top, ae2.bot, ae2.top, ip))
+			ip = new Point64(ae1.curX, topY);
 
-		// rounding errors can occasionally place the calculated intersection
-		// point either below or above the scanbeam, so check and correct ...
-		if (pt.y > currentBotY) {
-			// ae.curr.y is still the bottom of scanbeam
-			// use the more vertical of the 2 edges to derive pt.x ...
-			if (Math.abs(ae1.dx) < Math.abs(ae2.dx)) {
-				pt = new Point64(TopX(ae1, currentBotY), currentBotY);
-			} else {
-				pt = new Point64(TopX(ae2, currentBotY), currentBotY);
+		if (ip.y > currentBotY || ip.y < topY)
+		{
+			double absDx1 = Math.abs(ae1.dx);
+			double absDx2 = Math.abs(ae2.dx);
+			if (absDx1 > 100 && absDx2 > 100)
+			{
+				if (absDx1 > absDx2)
+					ip = InternalClipper.GetClosestPtOnSegment(ip, ae1.bot, ae1.top);
+				else
+					ip = InternalClipper.GetClosestPtOnSegment(ip, ae2.bot, ae2.top);
 			}
-		} else if (pt.y < topY) {
-			// topY is at the top of the scanbeam
-			if (ae1.top.y == topY) {
-				pt = new Point64(ae1.top.x, topY);
-			} else if (ae2.top.y == topY) {
-				pt = new Point64(ae2.top.x, topY);
-			} else if (Math.abs(ae1.dx) < Math.abs(ae2.dx)) {
-				pt = new Point64(ae1.curX, topY);
-			} else {
-				pt = new Point64(ae2.curX, topY);
+			else if (absDx1 > 100)
+				ip = InternalClipper.GetClosestPtOnSegment(ip, ae1.bot, ae1.top);
+			else if (absDx2 > 100)
+				ip = InternalClipper.GetClosestPtOnSegment(ip, ae2.bot, ae2.top);
+			else
+			{
+				if (ip.y < topY) ip.y = topY;
+				else ip.y = currentBotY;
+				if (absDx1 < absDx2) ip.x = TopX(ae1, ip.y);
+				else ip.x = TopX(ae2, topY);
 			}
 		}
-
-		IntersectNode node = new IntersectNode(pt, ae1, ae2);
+		IntersectNode node = new IntersectNode(ip, ae1, ae2);
 		intersectList.add(node);
 	}
 
@@ -1860,19 +1810,10 @@ abstract class ClipperBase {
 			IntersectEdges(node.edge1, node.edge2, node.pt);
 			SwapPositionsInAEL(node.edge1, node.edge2);
 
-			if (TestJoinWithPrev2(node.edge2, node.pt)) {
-				OutPt op1 = AddOutPt(node.edge2.prevInAEL, node.pt);
-				OutPt op2 = AddOutPt(node.edge2, node.pt);
-				if (op1 != op2) {
-					AddJoin(op1, op2);
-				}
-			} else if (TestJoinWithNext2(node.edge1, node.pt)) {
-				OutPt op1 = AddOutPt(node.edge1, node.pt);
-				OutPt op2 = AddOutPt(node.edge1.nextInAEL, node.pt);
-				if (op1 != op2) {
-					AddJoin(op1, op2);
-				}
-			}
+			node.edge1.curX = node.pt.x;
+			node.edge2.curX = node.pt.x;
+			CheckJoinLeft(node.edge2, node.pt, true);
+			CheckJoinRight(node.edge1, node.pt, true);
 		}
 	}
 
@@ -1895,13 +1836,13 @@ abstract class ClipperBase {
 		}
 	}
 
-	private static boolean ResetHorzDirection(Active horz, Active maxPair, OutObject<Long> leftX, OutObject<Long> rightX) {
+	private static boolean ResetHorzDirection(Active horz, @Nullable Vertex vertexMax, OutObject<Long> leftX, OutObject<Long> rightX) {
 		if (horz.bot.x == horz.top.x) {
 			// the horizontal edge is going nowhere ...
 			leftX.argValue = horz.curX;
 			rightX.argValue = horz.curX;
 			Active ae = horz.nextInAEL;
-			while (ae != null && !maxPair.equals(ae)) {
+			while (ae != null && ae.vertexTop != vertexMax) {
 				ae = ae.nextInAEL;
 			}
 			return ae != null;
@@ -1946,6 +1887,17 @@ abstract class ClipperBase {
 		}
 	}
 
+	private void AddToHorzSegList(OutPt op) {
+		if (op.outrec.isOpen) return;
+		_horzSegList.add(new HorzSegment(op));
+	}
+
+	private OutPt GetLastOp(Active hotEdge) {
+		OutRec outrec = hotEdge.outrec;
+		return (hotEdge == outrec.frontEdge) ?
+				outrec.pts : outrec.pts.next;
+	}
+
 	private void DoHorizontal(Active horz)
 	/*-
 	 * Notes: Horizontal edges (HEs) at scanline intersections (i.e. at the top or  *
@@ -1966,63 +1918,51 @@ abstract class ClipperBase {
 		boolean horzIsOpen = IsOpen(horz);
 		long Y = horz.bot.y;
 
-		Vertex vertexmax = null;
-		Active maxPair = null;
+		@Nullable Vertex vertex_max = horzIsOpen ?
+				GetCurrYMaximaVertex_Open(horz) :
+				GetCurrYMaximaVertex(horz);
 
-		if (!horzIsOpen) {
-			vertexmax = GetCurrYMaximaVertex(horz);
-			if (vertexmax != null) {
-				maxPair = GetHorzMaximaPair(horz, vertexmax);
-				// remove 180 deg.spikes and also simplify
-				// consecutive horizontals when preserveCollinear = true
-				if (!vertexmax.equals(horz.vertexTop)) {
-					TrimHorz(horz, getPreserveCollinear());
-				}
-			}
+		// remove 180 deg.spikes and also simplify
+		// consecutive horizontals when PreserveCollinear = true
+		if (vertex_max != null &&
+				!horzIsOpen && vertex_max != horz.vertexTop) {
+			TrimHorz(horz, getPreserveCollinear());
 		}
 
 		long leftX;
 		OutObject<Long> tempOutleftX = new OutObject<>();
 		long rightX;
 		OutObject<Long> tempOutrightX = new OutObject<>();
-		boolean isLeftToRight = ResetHorzDirection(horz, maxPair, tempOutleftX, tempOutrightX);
+		boolean isLeftToRight = ResetHorzDirection(horz, vertex_max, tempOutleftX, tempOutrightX);
 		rightX = tempOutrightX.argValue;
 		leftX = tempOutleftX.argValue;
 
 		if (IsHotEdge(horz)) {
-			AddOutPt(horz, new Point64(horz.curX, Y));
+			OutPt op = AddOutPt(horz, new Point64(horz.curX, Y));
+			AddToHorzSegList(op);
 		}
+		@Nullable OutRec currOutrec = horz.outrec;
 
-		OutPt op = null;
-		for (;;) {
-			if (horzIsOpen && IsMaxima(horz) && !IsOpenEnd(horz)) {
-				vertexmax = GetCurrYMaximaVertex(horz);
-				if (vertexmax != null) {
-					maxPair = GetHorzMaximaPair(horz, vertexmax);
-				}
-			}
-
+		for (; ; ) {
 			// loops through consec. horizontal edges (if open)
-			Active ae = null;
-			if (isLeftToRight) {
-				ae = horz.nextInAEL;
-			} else {
-				ae = horz.prevInAEL;
-			}
+			@Nullable Active ae = isLeftToRight ? horz.nextInAEL : horz.prevInAEL;
 
 			while (ae != null) {
-				if (ae == maxPair) {
+				if (ae.vertexTop == vertex_max) {
+					// do this first!!
+					if (IsHotEdge(horz) && IsJoined(ae))
+						Split(ae, ae.top);
+
 					if (IsHotEdge(horz)) {
-						while (horz.vertexTop != ae.vertexTop) {
+						while (horz.vertexTop != vertex_max) {
 							AddOutPt(horz, horz.top);
 							UpdateEdgeIntoAEL(horz);
 						}
-						op = AddLocalMaxPoly(horz, ae, horz.top);
-						if (op != null && !IsOpen(horz) && op.pt.opEquals(horz.top)) {
-							AddTrialHorzJoin(op);
-						}
+						if (isLeftToRight)
+							AddLocalMaxPoly(horz, ae, horz.top);
+						else
+							AddLocalMaxPoly(ae, horz, horz.top);
 					}
-
 					DeleteFromAEL(ae);
 					DeleteFromAEL(horz);
 					return;
@@ -2030,7 +1970,7 @@ abstract class ClipperBase {
 
 				// if horzEdge is a maxima, keep going until we reach
 				// its maxima pair, otherwise check for break conditions
-				if (vertexmax != horz.vertexTop || IsOpenEnd(horz)) {
+				if (vertex_max != horz.vertexTop || IsOpenEnd(horz)) {
 					// otherwise stop when 'ae' is beyond the end of the horizontal line
 					if ((isLeftToRight && ae.curX > rightX) || (!isLeftToRight && ae.curX < leftX)) {
 						break;
@@ -2038,69 +1978,49 @@ abstract class ClipperBase {
 
 					if (ae.curX == horz.top.x && !IsHorizontal(ae)) {
 						pt = NextVertex(horz).pt;
-						if (isLeftToRight) {
-							// with open paths we'll only break once past horz's end
-							if (IsOpen(ae) && !IsSamePolyType(ae, horz) && !IsHotEdge(ae)) {
-								if (TopX(ae, pt.y) > pt.x) {
-									break;
-								}
-							}
-							// otherwise we'll only break when horz's outslope is greater than e's
-							else if (TopX(ae, pt.y) >= pt.x) {
-								break;
-							}
-						} else // with open paths we'll only break once past horz's end
+
+						// to maximize the possibility of putting open edges into
+						// solutions, we'll only break if it's past HorzEdge's end
 						if (IsOpen(ae) && !IsSamePolyType(ae, horz) && !IsHotEdge(ae)) {
-							if (TopX(ae, pt.y) < pt.x) {
+							if ((isLeftToRight && (TopX(ae, pt.y) > pt.x)) ||
+									(!isLeftToRight && (TopX(ae, pt.y) < pt.x))) {
 								break;
 							}
 						}
-						// otherwise we'll only break when horz's outslope is greater than e's
-						else if (TopX(ae, pt.y) <= pt.x) {
+						// otherwise for edges at horzEdge's end, only stop when horzEdge's
+						// outslope is greater than e's slope when heading right or when
+						// horzEdge's outslope is less than e's slope when heading left.
+						else if ((isLeftToRight && (TopX(ae, pt.y) >= pt.x)) ||
+								(!isLeftToRight && (TopX(ae, pt.y) <= pt.x)))
 							break;
-						}
 					}
 				}
 
 				pt = new Point64(ae.curX, Y);
 
 				if (isLeftToRight) {
-					op = IntersectEdges(horz, ae, pt);
+					IntersectEdges(horz, ae, pt);
 					SwapPositionsInAEL(horz, ae);
-
-					if (IsHotEdge(horz) && op != null && !IsOpen(horz) && op.pt.opEquals(pt)) {
-						AddTrialHorzJoin(op);
-					}
-
-					if (!IsHorizontal(ae) && TestJoinWithPrev1(ae)) {
-						op = AddOutPt(ae.prevInAEL, pt);
-						OutPt op2 = AddOutPt(ae, pt);
-						AddJoin(op, op2);
-					}
-
 					horz.curX = ae.curX;
 					ae = horz.nextInAEL;
 				} else {
-					op = IntersectEdges(ae, horz, pt);
+					IntersectEdges(ae, horz, pt);
 					SwapPositionsInAEL(ae, horz);
-
-					if (IsHotEdge(horz) && op != null && !IsOpen(horz) && op.pt.opEquals(pt)) {
-						AddTrialHorzJoin(op);
-					}
-
-					if (!IsHorizontal(ae) && TestJoinWithNext1(ae)) {
-						op = AddOutPt(ae, pt);
-						OutPt op2 = AddOutPt(ae.nextInAEL, pt);
-						AddJoin(op, op2);
-					}
-
 					horz.curX = ae.curX;
 					ae = horz.prevInAEL;
 				}
+
+				if (IsHotEdge(horz) && (horz.outrec != currOutrec)) {
+					currOutrec = horz.outrec;
+					AddToHorzSegList(GetLastOp(horz));
+				}
+
 			} // we've reached the end of this horizontal
 
-			// check if we've finished looping through consecutive horizontals
+			// check if we've finished looping
+			// through consecutive horizontals
 			if (horzIsOpen && IsOpenEnd(horz)) {
+				// ie open at top
 				if (IsHotEdge(horz)) {
 					AddOutPt(horz, horz.top);
 					if (IsFront(horz)) {
@@ -2108,9 +2028,9 @@ abstract class ClipperBase {
 					} else {
 						horz.outrec.backEdge = null;
 					}
+					horz.outrec = null;
 				}
-				horz.outrec = null;
-				DeleteFromAEL(horz); // ie open at top
+				DeleteFromAEL(horz);
 				return;
 			}
 
@@ -2118,52 +2038,28 @@ abstract class ClipperBase {
 				break;
 			}
 
-			// there must be a following (consecutive) horizontal
+			//still more horizontals in bound to process ...
 			if (IsHotEdge(horz)) {
 				AddOutPt(horz, horz.top);
 			}
 			UpdateEdgeIntoAEL(horz);
 
-			if (getPreserveCollinear() && HorzIsSpike(horz)) {
+			if (getPreserveCollinear() && !horzIsOpen && HorzIsSpike(horz)) {
 				TrimHorz(horz, true);
 			}
 
 			OutObject<Long> tempOutleftX2 = new OutObject<>();
 			OutObject<Long> tempOutrightX2 = new OutObject<>();
-			isLeftToRight = ResetHorzDirection(horz, maxPair, tempOutleftX2, tempOutrightX2);
+			isLeftToRight = ResetHorzDirection(horz, vertex_max, tempOutleftX2, tempOutrightX2);
 			rightX = tempOutrightX2.argValue;
 			leftX = tempOutleftX2.argValue;
 
 		} // end for loop and end of (possible consecutive) horizontals
 
 		if (IsHotEdge(horz)) {
-			op = AddOutPt(horz, horz.top);
-			if (!IsOpen(horz)) {
-				AddTrialHorzJoin(op);
-			}
-		} else {
-			op = null;
+			AddOutPt(horz, horz.top);
 		}
-
-		if ((horzIsOpen && !IsOpenEnd(horz)) || (!horzIsOpen && vertexmax != horz.vertexTop)) {
-			UpdateEdgeIntoAEL(horz); // this is the end of an intermediate horiz.
-			if (IsOpen(horz)) {
-				return;
-			}
-
-			if (isLeftToRight && TestJoinWithNext1(horz)) {
-				OutPt op2 = AddOutPt(horz.nextInAEL, horz.bot);
-				AddJoin(op, op2);
-			} else if (!isLeftToRight && TestJoinWithPrev1(horz)) {
-				OutPt op2 = AddOutPt(horz.prevInAEL, horz.bot);
-				AddJoin(op2, op);
-			}
-		} else if (IsHotEdge(horz)) {
-			AddLocalMaxPoly(horz, maxPair, horz.top);
-		} else {
-			DeleteFromAEL(maxPair);
-			DeleteFromAEL(horz);
-		}
+		UpdateEdgeIntoAEL(horz); // this is the end of an intermediate horiz.
 	}
 
 	private void DoTopOfScanbeam(long y) {
@@ -2223,6 +2119,9 @@ abstract class ClipperBase {
 			return nextE; // eMaxPair is horizontal
 		}
 
+		if (IsJoined(ae)) Split(ae, ae.top);
+		if (IsJoined(maxPair)) Split(maxPair, maxPair.top);
+
 		// only non-horizontal maxima here.
 		// process any edges between maxima pair ...
 		while (!nextE.equals(maxPair)) {
@@ -2250,762 +2149,422 @@ abstract class ClipperBase {
 		return (prevE != null ? prevE.nextInAEL : actives);
 	}
 
-	private static boolean IsValidPath(OutPt op) {
-		return (op.next != op);
+	private static boolean IsJoined(Active e)
+	{
+		return e.joinWith != JoinWith.None;
 	}
 
-	private static boolean AreReallyClose(Point64 pt1, Point64 pt2) {
-		return (Math.abs(pt1.x - pt2.x) < 2) && (Math.abs(pt1.y - pt2.y) < 2);
+	private void Split(Active e, Point64 currPt)
+	{
+		if (e.joinWith == JoinWith.Right)
+		{
+			e.joinWith = JoinWith.None;
+			e.nextInAEL.joinWith = JoinWith.None;
+			AddLocalMinPoly(e, e.nextInAEL, currPt, true);
+		}
+		else
+		{
+			e.joinWith = JoinWith.None;
+			e.prevInAEL.joinWith = JoinWith.None;
+			AddLocalMinPoly(e.prevInAEL, e, currPt, true);
+		}
 	}
 
-	private static boolean IsValidClosedPath(OutPt op) {
-		return (op != null && !op.equals(op.next) && op.next != op.prev
-				&& !(op.next.next == op.prev && (AreReallyClose(op.pt, op.next.pt) || AreReallyClose(op.pt, op.prev.pt))));
+	private void CheckJoinLeft(Active e, Point64 pt) {
+		CheckJoinLeft(e, pt, false);
 	}
 
-	private static boolean ValueBetween(long val, long end1, long end2) {
-		// NB accommodates axis aligned between where end1 == end2
-		return ((val != end1) == (val != end2)) && ((val > end1) == (val < end2));
-	}
-
-	private static boolean ValueEqualOrBetween(long val, long end1, long end2) {
-		return (val == end1) || (val == end2) || ((val > end1) == (val < end2));
-	}
-
-	private static boolean PointEqualOrBetween(Point64 pt, Point64 corner1, Point64 corner2) {
-		// NB points may not be collinear
-		return ValueEqualOrBetween(pt.x, corner1.x, corner2.x) && ValueEqualOrBetween(pt.y, corner1.y, corner2.y);
-	}
-
-	private static boolean PointBetween(Point64 pt, Point64 corner1, Point64 corner2) {
-		// NB points may not be collinear
-		return ValueBetween(pt.x, corner1.x, corner2.x) && ValueBetween(pt.y, corner1.y, corner2.y);
-	}
-
-	private static boolean CollinearSegsOverlap(Point64 seg1a, Point64 seg1b, Point64 seg2a, Point64 seg2b) {
-		// precondition: seg1 and seg2 are collinear
-		if (seg1a.x == seg1b.x) {
-			if (seg2a.x != seg1a.x || seg2a.x != seg2b.x) {
-				return false;
-			}
-		} else if (seg1a.x < seg1b.x) {
-			if (seg2a.x < seg2b.x) {
-				if (seg2a.x >= seg1b.x || seg2b.x <= seg1a.x) {
-					return false;
-				}
-			} else if (seg2b.x >= seg1b.x || seg2a.x <= seg1a.x) {
-				return false;
-			}
-		} else if (seg2a.x < seg2b.x) {
-			if (seg2a.x >= seg1a.x || seg2b.x <= seg1b.x) {
-				return false;
-			}
-		} else if (seg2b.x >= seg1a.x || seg2a.x <= seg1b.x) {
-			return false;
+	private void CheckJoinLeft(Active e, Point64 pt, boolean checkCurrX) {
+		@Nullable Active prev = e.prevInAEL;
+		if (prev == null || IsOpen(e) || IsOpen(prev) ||
+				!IsHotEdge(e) || !IsHotEdge(prev) ||
+				pt.y < e.top.y + 2 || pt.y < prev.top.y + 2) {
+			return;
 		}
 
-		if (seg1a.y == seg1b.y) {
-			if (seg2a.y != seg1a.y || seg2a.y != seg2b.y) {
-				return false;
-			}
-		} else if (seg1a.y < seg1b.y) {
-			if (seg2a.y < seg2b.y) {
-				if (seg2a.y >= seg1b.y || seg2b.y <= seg1a.y) {
-					return false;
-				}
-			} else if (seg2b.y >= seg1b.y || seg2a.y <= seg1a.y) {
-				return false;
-			}
-		} else if (seg2a.y < seg2b.y) {
-			if (seg2a.y >= seg1a.y || seg2b.y <= seg1b.y) {
-				return false;
-			}
-		} else if (seg2b.y >= seg1a.y || seg2a.y <= seg1b.y) {
-			return false;
+		if (checkCurrX) {
+			if (Clipper.PerpendicDistFromLineSqrd(pt, prev.bot, prev.top) > 0.25)
+				return;
+		} else if (e.curX != prev.curX)
+			return;
+		if (InternalClipper.CrossProduct(e.top, pt, prev.top) != 0)
+			return;
+
+		if (e.outrec.idx == prev.outrec.idx)
+			AddLocalMaxPoly(prev, e, pt);
+		else if (e.outrec.idx < prev.outrec.idx)
+			JoinOutrecPaths(e, prev);
+		else
+			JoinOutrecPaths(prev, e);
+		prev.joinWith = JoinWith.Right;
+		e.joinWith = JoinWith.Left;
+	}
+
+	private void CheckJoinRight(Active e, Point64 pt)
+	{
+		CheckJoinRight(e, pt, false);
+	}
+
+	private void CheckJoinRight(Active e, Point64 pt, boolean checkCurrX)
+	{
+		@Nullable Active next = e.nextInAEL;
+		if (IsOpen(e) || !IsHotEdge(e) || IsJoined(e) ||
+				next == null || IsOpen(next) || !IsHotEdge(next) ||
+				pt.y < e.top.y + 2 || pt.y < next.top.y + 2) // avoids trivial joins
+			return;
+
+		if (checkCurrX) {
+			if (Clipper.PerpendicDistFromLineSqrd(pt, next.bot, next.top) > 0.25)
+				return;
+		} else if (e.curX != next.curX)
+			return;
+		if (InternalClipper.CrossProduct(e.top, pt, next.top) != 0)
+			return;
+
+		if (e.outrec.idx == next.outrec.idx)
+			AddLocalMaxPoly(e, next, pt);
+		else if (e.outrec.idx < next.outrec.idx)
+			JoinOutrecPaths(e, next);
+		else
+			JoinOutrecPaths(next, e);
+		e.joinWith = JoinWith.Right;
+		next.joinWith = JoinWith.Left;
+	}
+
+	private static void FixOutRecPts(OutRec outrec)
+	{
+		OutPt op = outrec.pts;
+		do
+		{
+			op.outrec = outrec;
+			op = op.next;
+		} while (op != outrec.pts);
+	}
+
+
+	private static boolean SetHorzSegHeadingForward(HorzSegment hs, OutPt opP, OutPt opN)
+	{
+		if (opP.pt.x == opN.pt.x) return false;
+		if (opP.pt.x < opN.pt.x)
+		{
+			hs.leftOp = opP;
+			hs.rightOp = opN;
+			hs.leftToRight = true;
+		}
+		else
+		{
+			hs.leftOp = opN;
+			hs.rightOp = opP;
+			hs.leftToRight = false;
 		}
 		return true;
 	}
 
-	private static boolean HorzEdgesOverlap(long x1a, long x1b, long x2a, long x2b) {
-		final long minOverlap = 2;
-		if (x1a > x1b + minOverlap) {
-			if (x2a > x2b + minOverlap) {
-				return !((x1a <= x2b) || (x2a <= x1b));
-			}
-			return !((x1a <= x2a) || (x2b <= x1b));
+	private static boolean UpdateHorzSegment(HorzSegment hs)
+	{
+		OutPt op = hs.leftOp;
+		OutRec outrec = GetRealOutRec(op.outrec);
+		boolean outrecHasEdges = outrec.frontEdge != null;
+		long curr_y = op.pt.y;
+		OutPt opP = op, opN = op;
+		if (outrecHasEdges)
+		{
+			OutPt opA = outrec.pts, opZ = opA.next;
+			while (opP != opZ && opP.prev.pt.y == curr_y)
+				opP = opP.prev;
+			while (opN != opA && opN.next.pt.y == curr_y)
+				opN = opN.next;
 		}
-
-		if (x1b > x1a + minOverlap) {
-			if (x2a > x2b + minOverlap) {
-				return !((x1b <= x2b) || (x2a <= x1a));
-			}
-			return !((x1b <= x2a) || (x2b <= x1a));
+		else
+		{
+			while (opP.prev != opN && opP.prev.pt.y == curr_y)
+				opP = opP.prev;
+			while (opN.next != opP && opN.next.pt.y == curr_y)
+				opN = opN.next;
 		}
-		return false;
-	}
+		boolean result =
+				SetHorzSegHeadingForward(hs, opP, opN) &&
+						hs.leftOp.horz == null;
 
-	private static Joiner GetHorzTrialParent(OutPt op) {
-		Joiner joiner = op.joiner;
-		while (joiner != null) {
-			if (joiner.op1 == op) {
-				if (joiner.next1 != null && joiner.next1.idx < 0) {
-					return joiner;
-				}
-				joiner = joiner.next1;
-			} else {
-				if (joiner.next2 != null && joiner.next2.idx < 0) {
-					return joiner;
-				}
-				joiner = joiner.next1;
-			}
-		}
-		return joiner;
-	}
-
-	private boolean OutPtInTrialHorzList(OutPt op) {
-		return op.joiner != null && ((op.joiner.idx < 0) || GetHorzTrialParent(op) != null);
-	}
-
-	private boolean ValidateClosedPathEx(RefObject<OutPt> op) {
-		if (IsValidClosedPath(op.argValue)) {
-			return true;
-		}
-		if (op.argValue != null) {
-			SafeDisposeOutPts(op);
-		}
-		return false;
-	}
-
-	private static OutPt InsertOp(Point64 pt, OutPt insertAfter) {
-		OutPt result = new OutPt(pt, insertAfter.outrec);
-		result.next = insertAfter.next;
-		insertAfter.next.prev = result;
-		insertAfter.next = result;
-		result.prev = insertAfter;
+		if (result)
+			hs.leftOp.horz = hs;
+		else
+			hs.rightOp = null; // (for sorting)
 		return result;
 	}
 
-	private static OutPt DisposeOutPt(OutPt op) {
-		OutPt result = (op.next == op ? null : op.next);
+	private static OutPt DuplicateOp(OutPt op, boolean insert_after)
+	{
+		OutPt result = new OutPt(op.pt, op.outrec);
+		if (insert_after)
+		{
+			result.next = op.next;
+			result.next.prev = result;
+			result.prev = op;
+			op.next = result;
+		}
+		else
+		{
+			result.prev = op.prev;
+			result.prev.next = result;
+			result.next = op;
+			op.prev = result;
+		}
+		return result;
+	}
+
+	private void ConvertHorzSegsToJoins()
+	{
+		int k = 0;
+		for (HorzSegment hs : _horzSegList)
+			if (UpdateHorzSegment(hs))
+				k++;
+		if (k < 2)
+			return;
+		_horzSegList.sort(new HorzSegSorter());
+
+		for (int i = 0; i < k - 1; i++) {
+			HorzSegment hs1 = _horzSegList.get(i);
+			// for each HorzSegment, find others that overlap
+			for (int j = i + 1; j < k; j++) {
+				HorzSegment hs2 = _horzSegList.get(j);
+				if (hs2.leftOp.pt.x >= hs1.rightOp.pt.x)
+					break;
+				if (hs2.leftToRight == hs1.leftToRight ||
+						(hs2.rightOp.pt.x <= hs1.leftOp.pt.x))
+					continue;
+				long curr_y = hs1.leftOp.pt.y;
+				if ((hs1).leftToRight) {
+					while (hs1.leftOp.next.pt.y == curr_y &&
+							hs1.leftOp.next.pt.x <= hs2.leftOp.pt.x)
+						hs1.leftOp = hs1.leftOp.next;
+					while (hs2.leftOp.prev.pt.y == curr_y &&
+							hs2.leftOp.prev.pt.x <= hs1.leftOp.pt.x)
+						(hs2).leftOp = (hs2).leftOp.prev;
+					HorzJoin join = new HorzJoin(
+							DuplicateOp((hs1).leftOp, true),
+							DuplicateOp((hs2).leftOp, false));
+					_horzJoinList.add(join);
+				} else {
+					while (hs1.leftOp.prev.pt.y == curr_y &&
+							hs1.leftOp.prev.pt.x <= hs2.leftOp.pt.x)
+						hs1.leftOp = hs1.leftOp.prev;
+					while (hs2.leftOp.next.pt.y == curr_y &&
+							hs2.leftOp.next.pt.x <= (hs1).leftOp.pt.x)
+						hs2.leftOp = (hs2).leftOp.next;
+					HorzJoin join = new HorzJoin(
+							DuplicateOp((hs2).leftOp, true),
+							DuplicateOp((hs1).leftOp, false));
+					_horzJoinList.add(join);
+				}
+			}
+		}
+	}
+
+	private static Rect64 GetBounds(OutPt op)
+	{
+		Rect64 result = new Rect64(op.pt.x, op.pt.y, op.pt.x, op.pt.y);
+		OutPt op2 = op.next;
+		while (op2 != op)
+		{
+			if (op2.pt.x < result.left) result.left = op2.pt.x;
+			else if (op2.pt.x > result.right) result.right = op2.pt.x;
+			if (op2.pt.y < result.top) result.top = op2.pt.y;
+			else if (op2.pt.y > result.bottom) result.bottom = op2.pt.y;
+			op2 = op2.next;
+		}
+		return result;
+	}
+
+	private static PointInPolygonResult PointInOpPolygon(Point64 pt, OutPt op)
+	{
+		if (op == op.next || op.prev == op.next)
+			return PointInPolygonResult.IsOutside;
+		OutPt op2 = op;
+		do
+		{
+			if (op.pt.y != pt.y) break;
+			op = op.next;
+		} while (op != op2);
+		if (op.pt.y == pt.y) // not a proper polygon
+			return PointInPolygonResult.IsOutside;
+
+		// must be above or below to get here
+		boolean isAbove = op.pt.y < pt.y, startingAbove = isAbove;
+		int val = 0;
+
+		op2 = op.next;
+		while (op2 != op)
+		{
+			if (isAbove)
+				while (op2 != op && op2.pt.y < pt.y) op2 = op2.next;
+			else
+				while (op2 != op && op2.pt.y > pt.y) op2 = op2.next;
+			if (op2 == op) break;
+
+			// must have touched or crossed the pt.y horizonal
+			// and this must happen an even number of times
+
+			if (op2.pt.y == pt.y) // touching the horizontal
+			{
+				if (op2.pt.x == pt.x || (op2.pt.y == op2.prev.pt.y &&
+						(pt.x < op2.prev.pt.x) != (pt.x < op2.pt.x)))
+					return PointInPolygonResult.IsOn;
+				op2 = op2.next;
+				if (op2 == op) break;
+				continue;
+			}
+
+			if (op2.pt.x <= pt.x || op2.prev.pt.x <= pt.x)
+			{
+				if ((op2.prev.pt.x < pt.x && op2.pt.x < pt.x))
+					val = 1 - val; // toggle val
+				else
+				{
+					double d = InternalClipper.CrossProduct(op2.prev.pt, op2.pt, pt);
+					if (d == 0) return PointInPolygonResult.IsOn;
+					if ((d < 0) == isAbove) val = 1 - val;
+				}
+			}
+			isAbove = !isAbove;
+			op2 = op2.next;
+		}
+
+		if (isAbove != startingAbove)
+		{
+			double d = InternalClipper.CrossProduct(op2.prev.pt, op2.pt, pt);
+			if (d == 0) return PointInPolygonResult.IsOn;
+			if ((d < 0) == isAbove) val = 1 - val;
+		}
+
+		if (val == 0) return PointInPolygonResult.IsOutside;
+		else return PointInPolygonResult.IsInside;
+	}
+
+	private static boolean Path1InsidePath2(OutPt op1, OutPt op2)
+	{
+		// we need to make some accommodation for rounding errors
+		// so we won't jump if the first vertex is found outside
+		int outside_cnt = 0;
+		OutPt op = op1;
+		do
+		{
+			PointInPolygonResult result = PointInOpPolygon(op.pt, op2);
+			if (result == PointInPolygonResult.IsOutside) ++outside_cnt;
+			else if (result == PointInPolygonResult.IsInside) --outside_cnt;
+			op = op.next;
+		} while (op != op1 && Math.abs(outside_cnt) < 2);
+		if (Math.abs(outside_cnt) > 1) return (outside_cnt < 0);
+		// since path1's location is still equivocal, check its midpoint
+		Point64 mp = GetBounds(op).MidPoint();
+		return PointInOpPolygon(mp, op2) == PointInPolygonResult.IsInside;
+	}
+
+	private void ProcessHorzJoins()
+	{
+		for (HorzJoin j : _horzJoinList)
+		{
+			OutRec or1 = GetRealOutRec(j.op1.outrec);
+			OutRec or2 = GetRealOutRec(j.op2.outrec);
+
+			OutPt op1b = j.op1.next;
+			OutPt op2b = j.op2.prev;
+			j.op1.next = j.op2;
+			j.op2.prev = j.op1;
+			op1b.prev = op2b;
+			op2b.next = op1b;
+
+			if (or1 == or2)
+			{
+				or2 = new OutRec();
+				or2.pts = op1b;
+				FixOutRecPts(or2);
+				if (or1.pts.outrec == or2)
+				{
+					or1.pts = j.op1;
+					or1.pts.outrec = or1;
+				}
+
+				if (usingPolytree)
+				{
+					if (Path1InsidePath2(or2.pts, or1.pts))
+						SetOwner(or2, or1);
+					else if (Path1InsidePath2(or1.pts, or2.pts))
+						SetOwner(or1, or2);
+					else
+						or2.owner = or1;
+				}
+				else
+					or2.owner = or1;
+
+				outrecList.add(or2);
+			}
+			else
+			{
+				or2.pts = null;
+				if (usingPolytree)
+					SetOwner(or2, or1);
+				else
+					or2.owner = or1;
+			}
+		}
+	}
+
+
+	private static boolean PtsReallyClose(Point64 pt1, Point64 pt2)
+	{
+		return (Math.abs(pt1.x - pt2.x) < 2) && (Math.abs(pt1.y - pt2.y) < 2);
+	}
+
+	private static boolean IsVerySmallTriangle(OutPt op)
+	{
+		return op.next.next == op.prev &&
+			(PtsReallyClose(op.prev.pt, op.next.pt) ||
+					PtsReallyClose(op.pt, op.next.pt) ||
+					PtsReallyClose(op.pt, op.prev.pt));
+	}
+
+	private static boolean IsValidClosedPath(@Nullable OutPt op)
+	{
+		return (op != null && op.next != op &&
+				(op.next != op.prev || !IsVerySmallTriangle(op)));
+	}
+
+
+	private static @Nullable OutPt DisposeOutPt(OutPt op)
+	{
+		@Nullable OutPt result = (op.next == op ? null : op.next);
 		op.prev.next = op.next;
 		op.next.prev = op.prev;
 		// op == null;
 		return result;
 	}
 
-	private void SafeDisposeOutPts(RefObject<OutPt> op) {
-		OutRec outRec = GetRealOutRec(op.argValue.outrec);
-		if (outRec.frontEdge != null) {
-			outRec.frontEdge.outrec = null;
-		}
-		if (outRec.backEdge != null) {
-			outRec.backEdge.outrec = null;
-		}
-
-		op.argValue.prev.next = null;
-		OutPt op2 = op.argValue;
-		while (op2 != null) {
-			SafeDeleteOutPtJoiners(op2);
-			op2 = op2.next;
-		}
-		outRec.pts = null;
-	}
-
-	private void SafeDeleteOutPtJoiners(OutPt op) {
-		Joiner joiner = op.joiner;
-		if (joiner == null) {
-			return;
-		}
-
-		while (joiner != null) {
-			if (joiner.idx < 0) {
-				DeleteTrialHorzJoin(op);
-			} else if (horzJoiners != null) {
-				if (OutPtInTrialHorzList(joiner.op1)) {
-					DeleteTrialHorzJoin(joiner.op1);
-				}
-				if (OutPtInTrialHorzList(joiner.op2)) {
-					DeleteTrialHorzJoin(joiner.op2);
-				}
-				DeleteJoin(joiner);
-			} else {
-				DeleteJoin(joiner);
-			}
-			joiner = op.joiner;
-		}
-	}
-
-	private void AddTrialHorzJoin(OutPt op) {
-		// make sure 'op' isn't added more than once
-		if (!op.outrec.isOpen && !OutPtInTrialHorzList(op)) {
-			horzJoiners = new Joiner(op, null, horzJoiners);
-		}
-
-	}
-
-	private static Joiner FindTrialJoinParent(RefObject<Joiner> joiner, OutPt op) {
-		Joiner parent = joiner.argValue;
-		while (parent != null) {
-			if (op == parent.op1) {
-				if (parent.next1 != null && parent.next1.idx < 0) {
-					joiner.argValue = parent.next1;
-					return parent;
-				}
-				parent = parent.next1;
-			} else {
-				if (parent.next2 != null && parent.next2.idx < 0) {
-					joiner.argValue = parent.next2;
-					return parent;
-				}
-				parent = parent.next2;
-			}
-		}
-		return null;
-	}
-
-	private void DeleteTrialHorzJoin(OutPt op) {
-		if (horzJoiners == null) {
-			return;
-		}
-
-		Joiner joiner = op.joiner;
-		Joiner parentH, parentOp = null;
-		while (joiner != null) {
-			if (joiner.idx < 0) {
-				// first remove joiner from FHorzTrials
-				if (horzJoiners.equals(joiner)) {
-					horzJoiners = joiner.nextH;
-				} else {
-					parentH = horzJoiners;
-					while (!joiner.equals(parentH.nextH)) {
-						parentH = parentH.nextH;
-					}
-					parentH.nextH = joiner.nextH;
-				}
-
-				// now remove joiner from op's joiner list
-				if (parentOp == null) {
-					// joiner must be first one in list
-					op.joiner = joiner.next1;
-					// joiner == null;
-					joiner = op.joiner;
-				} else {
-					// the trial joiner isn't first
-					if (op == parentOp.op1) {
-						parentOp.next1 = joiner.next1;
-					} else {
-						parentOp.next2 = joiner.next1;
-					}
-					// joiner = null;
-					joiner = parentOp;
-				}
-			} else {
-				// not a trial join so look further along the linked list
-				RefObject<Joiner> tempRefjoiner = new RefObject<>(joiner);
-				parentOp = FindTrialJoinParent(tempRefjoiner, op);
-				joiner = tempRefjoiner.argValue;
-				if (parentOp == null) {
-					break;
-				}
-			}
-			// loop in case there's more than one trial join
-		}
-	}
-
-	private static boolean GetHorzExtendedHorzSeg(RefObject<OutPt> op, OutObject<OutPt> op2) {
-		OutRec outRec = GetRealOutRec(op.argValue.outrec);
-		op2.argValue = op.argValue;
-		if (outRec.frontEdge != null) {
-			while (op.argValue.prev != outRec.pts && op.argValue.prev.pt.y == op.argValue.pt.y) {
-				op.argValue = op.argValue.prev;
-			}
-			while (op2.argValue != outRec.pts && op2.argValue.next.pt.y == op2.argValue.pt.y) {
-				op2.argValue = op2.argValue.next;
-			}
-			return op2.argValue != op.argValue;
-		}
-
-		while (op.argValue.prev != op2.argValue && op.argValue.prev.pt.y == op.argValue.pt.y) {
-			op.argValue = op.argValue.prev;
-		}
-		while (op2.argValue.next != op.argValue && op2.argValue.next.pt.y == op2.argValue.pt.y) {
-			op2.argValue = op2.argValue.next;
-		}
-		return op2.argValue != op.argValue && op2.argValue.next != op.argValue;
-	}
-
-	private void ConvertHorzTrialsToJoins() {
-		while (horzJoiners != null) {
-			Joiner joiner = horzJoiners;
-			horzJoiners = horzJoiners.nextH;
-			OutPt op1a = joiner.op1;
-			if (joiner.equals(op1a.joiner)) {
-				op1a.joiner = joiner.next1;
-			} else {
-				Joiner joinerParent = FindJoinParent(joiner, op1a);
-				if (joinerParent.op1 == op1a) {
-					joinerParent.next1 = joiner.next1;
-				} else {
-					joinerParent.next2 = joiner.next1;
-				}
-			}
-
-			RefObject<OutPt> tempRefop1a = new RefObject<>(op1a);
-			OutPt op1b;
-			OutObject<OutPt> tempOutop1b = new OutObject<>();
-			if (!GetHorzExtendedHorzSeg(tempRefop1a, tempOutop1b)) {
-				op1a = tempRefop1a.argValue;
-				if (op1a.outrec.frontEdge == null) {
-					CleanCollinear(op1a.outrec);
-				}
-				continue;
-			} else {
-				op1b = tempOutop1b.argValue;
-				op1a = tempRefop1a.argValue;
-			}
-
-			OutPt op2a;
-			boolean joined = false;
-			joiner = horzJoiners;
-			while (joiner != null) {
-				op2a = joiner.op1;
-				RefObject<OutPt> tempRefop2a = new RefObject<>(op2a);
-				OutPt op2b;
-				OutObject<OutPt> tempOutop2b = new OutObject<>();
-				if (GetHorzExtendedHorzSeg(tempRefop2a, tempOutop2b)
-						&& HorzEdgesOverlap(op1a.pt.x, op1b.pt.x, op2a.pt.x, tempOutop2b.argValue.pt.x)) {
-					op2b = tempOutop2b.argValue;
-					op2a = tempRefop2a.argValue;
-					// overlap found so promote to a 'real' join
-					joined = true;
-					if (op1a.pt.opEquals(op2b.pt)) {
-						AddJoin(op1a, op2b);
-					} else if (op1b.pt.opEquals(op2a.pt)) {
-						AddJoin(op1b, op2a);
-					} else if (op1a.pt.opEquals(op2a.pt)) {
-						AddJoin(op1a, op2a);
-					} else if (op1b.pt.opEquals(op2b.pt)) {
-						AddJoin(op1b, op2b);
-					} else if (ValueBetween(op1a.pt.x, op2a.pt.x, op2b.pt.x)) {
-						AddJoin(op1a, InsertOp(op1a.pt, op2a));
-					} else if (ValueBetween(op1b.pt.x, op2a.pt.x, op2b.pt.x)) {
-						AddJoin(op1b, InsertOp(op1b.pt, op2a));
-					} else if (ValueBetween(op2a.pt.x, op1a.pt.x, op1b.pt.x)) {
-						AddJoin(op2a, InsertOp(op2a.pt, op1a));
-					} else if (ValueBetween(op2b.pt.x, op1a.pt.x, op1b.pt.x)) {
-						AddJoin(op2b, InsertOp(op2b.pt, op1a));
-					}
-					break;
-				}
-				joiner = joiner.nextH;
-			}
-			if (!joined) {
-				CleanCollinear(op1a.outrec);
-			}
-		}
-	}
-
-	private void AddJoin(OutPt op1, OutPt op2) {
-		if ((op1.outrec == op2.outrec) && ((op1 == op2) ||
-		// unless op1.next or op1.prev crosses the start-end divide
-		// don't waste time trying to join adjacent vertices
-				((op1.next == op2) && (op1 != op1.outrec.pts)) || ((op2.next == op1) && (op2 != op1.outrec.pts)))) {
-			return;
-		}
-
-		Joiner joiner = new Joiner(op1, op2, null);
-		joiner.idx = joinerList.size();
-		joinerList.add(joiner);
-	}
-
-	private static Joiner FindJoinParent(Joiner joiner, OutPt op) {
-		Joiner result = op.joiner;
-		for (;;) {
-			if (op == result.op1) {
-				if (result.next1 == joiner) {
-					return result;
-				}
-				result = result.next1;
-			} else {
-				if (result.next2 == joiner) {
-					return result;
-				}
-				result = result.next2;
-			}
-		}
-	}
-
-	private void DeleteJoin(Joiner joiner) {
-		// This method deletes a single join, and it doesn't check for or
-		// delete trial horz. joins. For that, use the following method.
-		OutPt op1 = joiner.op1, op2 = joiner.op2;
-
-		Joiner parentJnr;
-		if (op1.joiner != joiner) {
-			parentJnr = FindJoinParent(joiner, op1);
-			if (parentJnr.op1 == op1) {
-				parentJnr.next1 = joiner.next1;
-			} else {
-				parentJnr.next2 = joiner.next1;
-			}
-		} else {
-			op1.joiner = joiner.next1;
-		}
-
-		if (op2.joiner != joiner) {
-			parentJnr = FindJoinParent(joiner, op2);
-			if (parentJnr.op1 == op2) {
-				parentJnr.next1 = joiner.next2;
-			} else {
-				parentJnr.next2 = joiner.next2;
-			}
-		} else {
-			op2.joiner = joiner.next2;
-		}
-
-		joinerList.set(joiner.idx, null);
-	}
-
-	private void ProcessJoinList() {
-		// NB can't use foreach here because list may
-		// contain nulls which can't be enumerated
-		for (Joiner j : joinerList) {
-			if (j == null) {
-				continue;
-			}
-			OutRec outrec = ProcessJoin(j);
-			CleanCollinear(outrec);
-		}
-		joinerList.clear();
-	}
-
-	private static boolean CheckDisposeAdjacent(RefObject<OutPt> op, OutPt guard, OutRec outRec) {
-		boolean result = false;
-		while (op.argValue.prev != op.argValue) {
-			if (op.argValue.pt.opEquals(op.argValue.prev.pt) && op.argValue != guard && op.argValue.prev.joiner != null
-					&& op.argValue.joiner == null) {
-				if (op.argValue == outRec.pts) {
-					outRec.pts = op.argValue.prev;
-				}
-				op.argValue = DisposeOutPt(op.argValue);
-				op.argValue = op.argValue.prev;
-			} else {
-				break;
-			}
-		}
-
-		while (op.argValue.next != op.argValue) {
-			if (op.argValue.pt.opEquals(op.argValue.next.pt) && op.argValue != guard && op.argValue.next.joiner != null
-					&& op.argValue.joiner == null) {
-				if (op.argValue == outRec.pts) {
-					outRec.pts = op.argValue.prev;
-				}
-				op.argValue = DisposeOutPt(op.argValue);
-				op.argValue = op.argValue.prev;
-			} else {
-				break;
-			}
-		}
-		return result;
-	}
-
-	private static double DistanceFromLineSqrd(Point64 pt, Point64 linePt1, Point64 linePt2) {
-		// perpendicular distance of point (x0,y0) = (a*x0 + b*y0 + C)/Sqrt(a*a + b*b)
-		// where ax + by +c = 0 is the equation of the line
-		// see https://en.wikipedia.org/wiki/Distancefromapointtoaline
-		double a = (linePt1.y - linePt2.y);
-		double b = (linePt2.x - linePt1.x);
-		double c = a * linePt1.x + b * linePt1.y;
-		double q = a * pt.x + b * pt.y - c;
-		return (q * q) / (a * a + b * b);
-	}
-
-	private static double DistanceSqr(Point64 pt1, Point64 pt2) {
-		return (pt1.x - pt2.x) * (pt1.x - pt2.x) + (pt1.y - pt2.y) * (pt1.y - pt2.y);
-	}
-
-	private OutRec ProcessJoin(Joiner j) {
-		OutPt op1 = j.op1, op2 = j.op2;
-		OutRec or1 = GetRealOutRec(op1.outrec);
-		OutRec or2 = GetRealOutRec(op2.outrec);
-		DeleteJoin(j);
-
-		if (or2.pts == null) {
-			return or1;
-		}
-		if (!IsValidClosedPath(op2)) {
-			RefObject<OutPt> tempRefop2 = new RefObject<>(op2);
-			SafeDisposeOutPts(tempRefop2);
-			return or1;
-		}
-		if ((or1.pts == null) || !IsValidClosedPath(op1)) {
-			RefObject<OutPt> tempRefop1 = new RefObject<>(op1);
-			SafeDisposeOutPts(tempRefop1);
-			return or2;
-		}
-		if (or1 == or2 && ((op1 == op2) || (op1.next == op2) || (op1.prev == op2))) {
-			return or1;
-		}
-
-		RefObject<OutPt> tempRefop12 = new RefObject<>(op1);
-		CheckDisposeAdjacent(tempRefop12, op2, or1);
-		op1 = tempRefop12.argValue;
-		RefObject<OutPt> tempRefop22 = new RefObject<>(op2);
-		CheckDisposeAdjacent(tempRefop22, op1, or2);
-		op2 = tempRefop22.argValue;
-		if (op1.next == op2 || op2.next == op1) {
-			return or1;
-		}
-
-		OutRec result = or1;
-		for (;;) {
-			if (!IsValidPath(op1) || !IsValidPath(op2) || (or1 == or2 && (op1.prev == op2 || op1.next == op2))) {
-				return or1;
-			}
-
-			if (op1.prev.pt.opEquals(op2.next.pt) || ((InternalClipper.CrossProduct(op1.prev.pt, op1.pt, op2.next.pt) == 0)
-					&& CollinearSegsOverlap(op1.prev.pt, op1.pt, op2.pt, op2.next.pt))) {
-				if (or1 == or2) {
-					// SPLIT REQUIRED
-					// make sure op1.prev and op2.next match positions
-					// by inserting an extra vertex if needed
-					if (op1.prev.pt.opNotEquals(op2.next.pt)) {
-						if (PointEqualOrBetween(op1.prev.pt, op2.pt, op2.next.pt)) {
-							op2.next = InsertOp(op1.prev.pt, op2);
-						} else {
-							op1.prev = InsertOp(op2.next.pt, op1.prev);
-						}
-					}
-
-					// current to new
-					// op1.p[opA] >>> op1 ... opA \ / op1
-					// op2.n[opB] <<< op2 ... opB / \ op2
-					OutPt opA = op1.prev, opB = op2.next;
-					opA.next = opB;
-					opB.prev = opA;
-					op1.prev = op2;
-					op2.next = op1;
-					CompleteSplit(op1, opA, or1);
-				} else {
-					// JOIN, NOT SPLIT
-					OutPt opA = op1.prev, opB = op2.next;
-					opA.next = opB;
-					opB.prev = opA;
-					op1.prev = op2;
-					op2.next = op1;
-
-					// SafeDeleteOutPtJoiners(op2);
-					// DisposeOutPt(op2);
-
-					if (or1.idx < or2.idx) {
-						or1.pts = op1;
-						or2.pts = null;
-						if (or1.owner != null && (or2.owner == null || or2.owner.idx < or1.owner.idx)) {
-							or1.owner = or2.owner;
-						}
-						or2.owner = or1;
-					} else {
-						result = or2;
-						or2.pts = op1;
-						or1.pts = null;
-						if (or2.owner != null && (or1.owner == null || or1.owner.idx < or2.owner.idx)) {
-							or2.owner = or1.owner;
-						}
-						or1.owner = or2;
-					}
-				}
-				break;
-			}
-			if (op1.next.pt.opEquals(op2.prev.pt) || ((InternalClipper.CrossProduct(op1.next.pt, op2.pt, op2.prev.pt) == 0)
-					&& CollinearSegsOverlap(op1.next.pt, op1.pt, op2.pt, op2.prev.pt))) {
-				if (or1 == or2) {
-					// SPLIT REQUIRED
-					// make sure op2.prev and op1.next match positions
-					// by inserting an extra vertex if needed
-					if (op2.prev.pt.opNotEquals(op1.next.pt)) {
-						if (PointEqualOrBetween(op2.prev.pt, op1.pt, op1.next.pt)) {
-							op1.next = InsertOp(op2.prev.pt, op1);
-						} else {
-							op2.prev = InsertOp(op1.next.pt, op2.prev);
-						}
-					}
-
-					// current to new
-					// op2.p[opA] >>> op2 ... opA \ / op2
-					// op1.n[opB] <<< op1 ... opB / \ op1
-					OutPt opA = op2.prev, opB = op1.next;
-					opA.next = opB;
-					opB.prev = opA;
-					op2.prev = op1;
-					op1.next = op2;
-					CompleteSplit(op1, opA, or1);
-				} else {
-					// JOIN, NOT SPLIT
-					OutPt opA = op1.next, opB = op2.prev;
-					opA.prev = opB;
-					opB.next = opA;
-					op1.next = op2;
-					op2.prev = op1;
-
-					// SafeDeleteOutPtJoiners(op2);
-					// DisposeOutPt(op2);
-
-					if (or1.idx < or2.idx) {
-						or1.pts = op1;
-						or2.pts = null;
-						if (or1.owner != null && (or2.owner == null || or2.owner.idx < or1.owner.idx)) {
-							or1.owner = or2.owner;
-						}
-						or2.owner = or1;
-					} else {
-						result = or2;
-						or2.pts = op1;
-						or1.pts = null;
-						if (or2.owner != null && (or1.owner == null || or1.owner.idx < or2.owner.idx)) {
-							or2.owner = or1.owner;
-						}
-						or1.owner = or2;
-					}
-				}
-				break;
-			}
-
-			if (PointBetween(op1.next.pt, op2.pt, op2.prev.pt) && DistanceFromLineSqrd(op1.next.pt, op2.pt, op2.prev.pt) < 2.01) {
-				InsertOp(op1.next.pt, op2.prev);
-				continue;
-			}
-			if (PointBetween(op2.next.pt, op1.pt, op1.prev.pt) && DistanceFromLineSqrd(op2.next.pt, op1.pt, op1.prev.pt) < 2.01) {
-				InsertOp(op2.next.pt, op1.prev);
-				continue;
-			}
-			if (PointBetween(op1.prev.pt, op2.pt, op2.next.pt) && DistanceFromLineSqrd(op1.prev.pt, op2.pt, op2.next.pt) < 2.01) {
-				InsertOp(op1.prev.pt, op2);
-				continue;
-			}
-			if (PointBetween(op2.prev.pt, op1.pt, op1.next.pt) && DistanceFromLineSqrd(op2.prev.pt, op1.pt, op1.next.pt) < 2.01) {
-				InsertOp(op2.prev.pt, op1);
-				continue;
-			}
-
-			// something odd needs tidying up
-			RefObject<OutPt> tempRefop13 = new RefObject<>(op1);
-			if (CheckDisposeAdjacent(tempRefop13, op2, or1)) {
-				op1 = tempRefop13.argValue;
-				continue;
-			} else {
-				op1 = tempRefop13.argValue;
-			}
-			RefObject<OutPt> tempRefop23 = new RefObject<>(op2);
-			if (CheckDisposeAdjacent(tempRefop23, op1, or1)) {
-				op2 = tempRefop23.argValue;
-				continue;
-			} else {
-				op2 = tempRefop23.argValue;
-			}
-			if (op1.prev.pt.opNotEquals(op2.next.pt) && (DistanceSqr(op1.prev.pt, op2.next.pt) < 2.01)) {
-				op1.prev.pt = op2.next.pt;
-				continue;
-			}
-			if (op1.next.pt.opNotEquals(op2.prev.pt) && (DistanceSqr(op1.next.pt, op2.prev.pt) < 2.01)) {
-				op2.prev.pt = op1.next.pt;
-				continue;
-			}
-			// OK, there doesn't seem to be a way to join after all
-			// so just tidy up the polygons
-			or1.pts = op1;
-			if (or2 != or1) {
-				or2.pts = op2;
-				CleanCollinear(or2);
-			}
-			break;
-		}
-		return result;
-	}
-
-	private static void UpdateOutrecOwner(OutRec outrec) {
-		OutPt opCurr = outrec.pts;
-		for (;;) {
-			opCurr.outrec = outrec;
-			opCurr = opCurr.next;
-			if (opCurr == outrec.pts) {
-				return;
-			}
-		}
-	}
-
-	private void CompleteSplit(OutPt op1, OutPt op2, OutRec outrec) {
-		double area1 = Area(op1);
-		double area2 = Area(op2);
-		boolean signschange = (area1 > 0) == (area2 < 0);
-
-		// delete trivial splits (with zero or almost zero areas)
-		if (area1 == 0 || (signschange && Math.abs(area1) < 2)) {
-			RefObject<OutPt> tempRefObject = new RefObject<>(op1);
-			SafeDisposeOutPts(tempRefObject);
-			outrec.pts = op2;
-		} else if (area2 == 0 || (signschange && Math.abs(area2) < 2)) {
-			RefObject<OutPt> tempRefObject2 = new RefObject<>(op2);
-			SafeDisposeOutPts(tempRefObject2);
-			outrec.pts = op1;
-		} else {
-			OutRec newOr = new OutRec();
-			newOr.idx = outrecList.size();
-			outrecList.add(newOr);
-			newOr.polypath = null;
-
-			if (usingPolytree) {
-				if (outrec.splits == null) {
-					outrec.splits = new ArrayList<>();
-				}
-				outrec.splits.add(newOr);
-			}
-
-			if (Math.abs(area1) >= Math.abs(area2)) {
-				outrec.pts = op1;
-				newOr.pts = op2;
-			} else {
-				outrec.pts = op2;
-				newOr.pts = op1;
-			}
-
-			if ((area1 > 0) == (area2 > 0)) {
-				newOr.owner = outrec.owner;
-			} else {
-				newOr.owner = outrec;
-			}
-
-			UpdateOutrecOwner(newOr);
-			CleanCollinear(newOr);
-		}
-	}
-
 	private void CleanCollinear(OutRec outrec) {
 		outrec = GetRealOutRec(outrec);
-		RefObject<OutPt> tempRefpts = new RefObject<>(outrec.pts);
-		if (outrec == null || outrec.isOpen || outrec.frontEdge != null || !ValidateClosedPathEx(tempRefpts)) {
+
+		if (outrec == null || outrec.isOpen) return;
+
+		if(!IsValidClosedPath(outrec.pts))
+		{
+			outrec.pts = null;
 			return;
 		}
 
 		OutPt startOp = outrec.pts;
 		OutPt op2 = startOp;
-		for (;;) {
-			if (op2.joiner != null) {
-				return;
-			}
+		for (; ; ) {
 			// NB if preserveCollinear == true, then only remove 180 deg. spikes
 			if ((InternalClipper.CrossProduct(op2.prev.pt, op2.pt, op2.next.pt) == 0)
 					&& ((op2.pt.opEquals(op2.prev.pt)) || (op2.pt.opEquals(op2.next.pt)) || !getPreserveCollinear()
-							|| (InternalClipper.DotProduct(op2.prev.pt, op2.pt, op2.next.pt) < 0))) {
+					|| (InternalClipper.DotProduct(op2.prev.pt, op2.pt, op2.next.pt) < 0))) {
 				if (op2.equals(outrec.pts)) {
 					outrec.pts = op2.prev;
 				}
 				op2 = DisposeOutPt(op2);
-				RefObject<OutPt> tempRefop2 = new RefObject<>(op2);
-				if (!ValidateClosedPathEx(tempRefop2)) {
+				if (!IsValidClosedPath(op2)) {
 					outrec.pts = null;
 					return;
-				} else {
-					op2 = tempRefop2.argValue;
 				}
 				startOp = op2;
 				continue;
@@ -3015,43 +2574,61 @@ abstract class ClipperBase {
 				break;
 			}
 		}
-		RefObject<OutPt> tempRefObject = new RefObject<>(outrec.pts);
-		FixSelfIntersects(tempRefObject);
-		outrec.pts = tempRefObject.argValue;
+		FixSelfIntersects(outrec);
 	}
 
-	private OutPt DoSplitOp(RefObject<OutPt> outRecOp, OutPt splitOp) {
-		OutPt prevOp = splitOp.prev, nextNextOp = splitOp.next.next;
+	private void DoSplitOp(OutRec outrec, OutPt splitOp) {
+		// splitOp.prev <=> splitOp &&
+		// splitOp.next <=> splitOp.next.next are intersecting
+		OutPt prevOp = splitOp.prev;
+		OutPt nextNextOp = splitOp.next.next;
+		outrec.pts = prevOp;
 		OutPt result = prevOp;
-		PointD ipD = new PointD();
-		InternalClipper.GetIntersectPoint(prevOp.pt, splitOp.pt, splitOp.next.pt, nextNextOp.pt, ipD);
-		Point64 ip = new Point64(ipD);
 
-		double area1 = Area(outRecOp.argValue);
+		PointD tmp = new PointD();
+		InternalClipper.GetIntersectPoint(
+				prevOp.pt, splitOp.pt, splitOp.next.pt, nextNextOp.pt, tmp);
+		Point64 ip = new Point64(tmp);
+
+		double area1 = Area(prevOp);
+		double absArea1 = Math.abs(area1);
+
+		if (absArea1 < 2) {
+			outrec.pts = null;
+			return;
+		}
+
+		// nb: area1 is the path's area *before* splitting, whereas area2 is
+		// the area of the triangle containing splitOp & splitOp.next.
+		// So the only way for these areas to have the same sign is if
+		// the split triangle is larger than the path containing prevOp or
+		// if there's more than one self=intersection.
 		double area2 = AreaTriangle(ip, splitOp.pt, splitOp.next.pt);
+		double absArea2 = Math.abs(area2);
 
+		// de-link splitOp and splitOp.next from the path
+		// while inserting the intersection point
 		if (ip.opEquals(prevOp.pt) || ip.opEquals(nextNextOp.pt)) {
 			nextNextOp.prev = prevOp;
 			prevOp.next = nextNextOp;
 		} else {
-			OutPt newOp2 = new OutPt(ip, prevOp.outrec);
+			OutPt newOp2 = new OutPt(ip, outrec);
 			newOp2.prev = prevOp;
 			newOp2.next = nextNextOp;
 			nextNextOp.prev = newOp2;
 			prevOp.next = newOp2;
 		}
 
-		SafeDeleteOutPtJoiners(splitOp.next);
-		SafeDeleteOutPtJoiners(splitOp);
-
-		if ((Math.abs(area2) >= 1) && ((Math.abs(area2) > Math.abs(area1)) || ((area2 > 0) == (area1 > 0)))) {
-			OutRec newOutRec = new OutRec();
-			newOutRec.idx = outrecList.size();
-			outrecList.add(newOutRec);
-			newOutRec.owner = prevOp.outrec.owner;
-			newOutRec.polypath = null;
+		if (absArea2 > 1 && (absArea2 > absArea1 || ((area2 > 0) == (area1 > 0)))) {
+			OutRec newOutRec = NewOutRec();
+			newOutRec.owner = outrec.owner;
 			splitOp.outrec = newOutRec;
 			splitOp.next.outrec = newOutRec;
+
+			if (usingPolytree) {
+				if (outrec.splits == null) outrec.splits = new ArrayList<>();
+				outrec.splits.add(newOutRec.idx);
+			}
 
 			OutPt newOp = new OutPt(ip, newOutRec);
 			newOp.prev = splitOp.next;
@@ -3060,38 +2637,33 @@ abstract class ClipperBase {
 			splitOp.prev = newOp;
 			splitOp.next.next = newOp;
 		}
-		return result;
+		//else { splitOp = null; splitOp.next = null; }
 	}
 
-	private void FixSelfIntersects(RefObject<OutPt> op) {
-		if (!IsValidClosedPath(op.argValue)) {
-			return;
-		}
-		OutPt op2 = op.argValue;
-		for (;;) {
+	private void FixSelfIntersects(OutRec outrec) {
+		OutPt op2 = outrec.pts;
+		for (; ; ) {
 			// triangles can't self-intersect
 			if (op2.prev == op2.next.next) {
 				break;
 			}
-			if (InternalClipper.SegmentsIntersect(op2.prev.pt, op2.pt, op2.next.pt, op2.next.next.pt)) {
-				if (op2 == op.argValue || op2.next == op.argValue) {
-					op.argValue = op2.prev;
-				}
-				op2 = DoSplitOp(op, op2);
-				op.argValue = op2;
+			if (InternalClipper.SegsIntersect(op2.prev.pt, op2.pt, op2.next.pt, op2.next.next.pt)) {
+				DoSplitOp(outrec, op2);
+				if (outrec.pts == null)
+					return;
+				op2 = outrec.pts;
 				continue;
+			} else {
+				op2 = op2.next;
 			}
-
-			op2 = op2.next;
-
-			if (op2 == op.argValue) {
+			if (op2 == outrec.pts) {
 				break;
 			}
 		}
 	}
 
-	public static final boolean BuildPath(OutPt op, boolean reverse, boolean isOpen, Path64 path) {
-		if (op.next == op || (!isOpen && op.next == op.prev)) {
+	public static boolean BuildPath(@Nullable OutPt op, boolean reverse, boolean isOpen, Path64 path) {
+		if (op == null || op.next == op || (!isOpen && op.next == op.prev)) {
 			return false;
 		}
 		path.clear();
@@ -3119,53 +2691,42 @@ abstract class ClipperBase {
 				op2 = op2.next;
 			}
 		}
-		return true;
+
+		if (path.size() == 3 && IsVerySmallTriangle(op2)) return false;
+		else return true;
 	}
 
 	protected final boolean BuildPaths(Paths64 solutionClosed, Paths64 solutionOpen) {
 		solutionClosed.clear();
 		solutionOpen.clear();
 
-		for (OutRec outrec : outrecList) {
-			if (outrec.pts == null) {
-				continue;
-			}
+		int i = 0;
+		// _outrecList.Count is not static here because
+		// CleanCollinear can indirectly add additional OutRec
+		while (i < outrecList.size()) {
+			OutRec outrec = outrecList.get(i++);
+			if (outrec.pts == null) continue;
 
 			Path64 path = new Path64();
 			if (outrec.isOpen) {
-				if (BuildPath(outrec.pts, getReverseSolution(), true, path)) {
+				if (BuildPath(outrec.pts, getReverseSolution(), true, path))
 					solutionOpen.add(path);
-				}
-			} else // closed paths should always return a Positive orientation
-			// except when reverseSolution == true
-			if (BuildPath(outrec.pts, getReverseSolution(), false, path)) {
-				solutionClosed.add(path);
+			} else {
+				CleanCollinear(outrec);
+				// closed paths should always return a Positive orientation
+				// except when reverseSolution == true
+				if (BuildPath(outrec.pts, getReverseSolution(), false, path))
+					solutionClosed.add(path);
 			}
 		}
 		return true;
-	}
-
-	private boolean Path1InsidePath2(OutRec or1, OutRec or2) {
-		PointInPolygonResult result;
-		OutPt op = or1.pts;
-		do {
-			result = InternalClipper.PointInPolygon(op.pt, or2.path);
-			if (result != PointInPolygonResult.IsOn) {
-				break;
-			}
-			op = op.next;
-		} while (op != or1.pts);
-		if (result == PointInPolygonResult.IsOn) {
-			return Area(op) < Area(or2.pts);
-		}
-		return result == PointInPolygonResult.IsInside;
 	}
 
 	public static Rect64 GetBounds(Path64 path) {
 		if (path.isEmpty()) {
 			return new Rect64();
 		}
-		Rect64 result = new Rect64(Long.MAX_VALUE, Long.MAX_VALUE, -Long.MAX_VALUE, -Long.MAX_VALUE);
+		Rect64 result = Clipper.InvalidRect64;
 		for (Point64 pt : path) {
 			if (pt.x < result.left) {
 				result.left = pt.x;
@@ -3183,118 +2744,95 @@ abstract class ClipperBase {
 		return result;
 	}
 
-	private boolean DeepCheckOwner(OutRec outrec, OutRec owner) {
-		if (owner.bounds.IsEmpty()) {
-			owner.bounds = GetBounds(owner.path);
-		}
-		boolean isInsideOwnerBounds = owner.bounds.Contains(outrec.bounds);
-
-		// while looking for the correct owner, check the owner's
-		// splits **before** checking the owner itself because
-		// splits can occur internally, and checking the owner
-		// first would miss the inner split's true ownership
-		if (owner.splits != null) {
-			for (OutRec asplit : owner.splits) {
-				OutRec split = GetRealOutRec(asplit);
-				if (split == null || split.idx <= owner.idx || split.equals(outrec)) {
-					continue;
-				}
-				if (split.splits != null && DeepCheckOwner(outrec, split)) {
-					return true;
-				}
-
-				if (split.path.isEmpty()) {
-					BuildPath(split.pts, getReverseSolution(), false, split.path);
-				}
-				if (split.bounds.IsEmpty()) {
-					split.bounds = GetBounds(split.path);
-				}
-
-				if (split.bounds.Contains(outrec.bounds) && Path1InsidePath2(outrec, split)) {
-					outrec.owner = split;
-					return true;
-				}
-			}
-		}
-
-		// only continue when not inside recursion
-		if (owner != outrec.owner) {
+	private boolean CheckBounds(OutRec outrec)
+	{
+		if (outrec.pts == null) return false;
+		if (!outrec.bounds.IsEmpty()) return true;
+		CleanCollinear(outrec);
+		if (outrec.pts == null ||
+				!BuildPath(outrec.pts, getReverseSolution(), false, outrec.path))
 			return false;
-		}
-
-		for (;;) {
-			if (isInsideOwnerBounds && Path1InsidePath2(outrec, outrec.owner)) {
-				return true;
-			}
-
-			outrec.owner = outrec.owner.owner;
-			if (outrec.owner == null) {
-				return false;
-			}
-			isInsideOwnerBounds = outrec.owner.bounds.Contains(outrec.bounds);
-		}
-	}
-
-	protected final boolean BuildTree(PolyPathNode polytree, Paths64 solutionOpen) {
-		polytree.Clear();
-		solutionOpen.clear();
-
-		for (int i = 0; i < outrecList.size(); i++) {
-			OutRec outrec = outrecList.get(i);
-			if (outrec.pts == null) {
-				continue;
-			}
-
-			if (outrec.isOpen) {
-				Path64 openpath = new Path64();
-				if (BuildPath(outrec.pts, getReverseSolution(), true, openpath)) {
-					solutionOpen.add(openpath);
-				}
-				continue;
-			}
-
-			if (!BuildPath(outrec.pts, getReverseSolution(), false, outrec.path)) {
-				continue;
-			}
-			if (outrec.bounds.IsEmpty()) {
-				outrec.bounds = GetBounds(outrec.path);
-			}
-			outrec.owner = GetRealOutRec(outrec.owner);
-			if (outrec.owner != null) {
-				DeepCheckOwner(outrec, outrec.owner);
-			}
-
-			// swap order if outer/owner paths are preceeded by their inner paths
-			if (outrec.owner != null && outrec.owner.idx > outrec.idx) {
-				int j = outrec.owner.idx;
-				outrec.owner.idx = i;
-				outrec.idx = j;
-				outrecList.set(i, outrecList.get(j));
-				outrecList.set(j, outrec);
-				outrec = outrecList.get(i);
-				outrec.owner = GetRealOutRec(outrec.owner);
-				BuildPath(outrec.pts, getReverseSolution(), false, outrec.path);
-				if (outrec.bounds.IsEmpty()) {
-					outrec.bounds = GetBounds(outrec.path);
-				}
-				if (outrec.owner != null) {
-					DeepCheckOwner(outrec, outrec.owner);
-				}
-			}
-
-			PolyPathNode ownerPP;
-			if (outrec.owner != null && outrec.owner.polypath != null) {
-				ownerPP = outrec.owner.polypath;
-			} else {
-				ownerPP = polytree;
-			}
-			outrec.polypath = ownerPP.AddChild(outrec.path);
-		}
+		outrec.bounds = GetBounds(outrec.path);
 		return true;
 	}
 
+	private void RecursiveCheckOwners(OutRec outrec, PolyPathBase polypath)
+	{
+		// pre-condition: outrec will have valid bounds
+		// post-condition: if a valid path, outrec will have a polypath
+
+		if (outrec.polypath != null || outrec.bounds.IsEmpty()) return;
+
+		while (outrec.owner != null &&
+				(outrec.owner.pts == null || !CheckBounds(outrec.owner)))
+			outrec.owner = outrec.owner.owner;
+
+		if (outrec.owner != null && outrec.owner.polypath == null)
+			RecursiveCheckOwners(outrec.owner, polypath);
+
+		while (outrec.owner != null)
+			if (outrec.owner.bounds.Contains(outrec.bounds) &&
+					Path1InsidePath2(outrec.pts, outrec.owner.pts))
+				break; // found - owner contain outrec!
+			else
+				outrec.owner = outrec.owner.owner;
+
+		if (outrec.owner != null)
+			outrec.polypath = outrec.owner.polypath.AddChild(outrec.path);
+		else
+			outrec.polypath = polypath.AddChild(outrec.path);
+	}
+
+	private void DeepCheckOwners(OutRec outrec, PolyPathBase polypath)
+	{
+		RecursiveCheckOwners(outrec, polypath);
+
+		while (outrec.owner != null && outrec.owner.splits != null)
+		{
+			@Nullable OutRec split = null;
+			for (int i : outrec.owner.splits)
+			{
+				split = GetRealOutRec(outrecList.get(i));
+				if (split != null && split != outrec &&
+						split != outrec.owner && CheckBounds(split) &&
+						split.bounds.Contains(outrec.bounds) &&
+						Path1InsidePath2(outrec.pts, split.pts))
+				{
+					RecursiveCheckOwners(split, polypath);
+					outrec.owner = split; //found in split
+					break; // inner 'for' loop
+				}
+				else split = null;
+			}
+			if (split == null) break;
+		}
+	}
+
+	protected void BuildTree(PolyPathBase polytree, Paths64 solutionOpen) {
+		polytree.Clear();
+		solutionOpen.clear();
+
+		int i = 0;
+		// _outrecList.Count is not static here because
+		// CheckBounds below can indirectly add additional
+		// OutRec (via FixOutRecPts & CleanCollinear)
+		while (i < outrecList.size()) {
+			OutRec outrec = outrecList.get(i++);
+			if (outrec.pts == null) continue;
+
+			if (outrec.isOpen) {
+				Path64 open_path = new Path64();
+				if (BuildPath(outrec.pts, getReverseSolution(), true, open_path))
+					solutionOpen.add(open_path);
+				continue;
+			}
+			if (CheckBounds(outrec))
+				DeepCheckOwners(outrec, polytree);
+		}
+	}
+
 	public final Rect64 GetBounds() {
-		Rect64 bounds = Clipper.MaxInvalidRect64;
+		Rect64 bounds = Clipper.InvalidRect64;
 		for (Vertex t : vertexList) {
 			Vertex v = t;
 			do {

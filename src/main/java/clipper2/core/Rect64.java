@@ -6,15 +6,32 @@ public final class Rect64 {
 	public long top;
 	public long right;
 	public long bottom;
+	private static final String InvalidRect = "Invalid Rect64 assignment";
 
 	public Rect64() {
 	}
 
 	public Rect64(long l, long t, long r, long b) {
+		if (r < l || b < t)
+			throw new IllegalArgumentException(InvalidRect);
 		left = l;
 		top = t;
 		right = r;
 		bottom = b;
+	}
+
+	public Rect64(boolean isValid) {
+		if (isValid) {
+			left = 0;
+			top = 0;
+			right = 0;
+			bottom = 0;
+		} else {
+			left = Long.MAX_VALUE;
+			top = Long.MAX_VALUE;
+			right = Long.MIN_VALUE;
+			bottom = Long.MIN_VALUE;
+		}
 	}
 
 	public Rect64(Rect64 rec) {
@@ -62,7 +79,8 @@ public final class Rect64 {
 	}
 
 	public boolean Intersects(Rect64 rec) {
-		return (Math.max(left, rec.left) < Math.min(right, rec.right)) && (Math.max(top, rec.top) < Math.min(bottom, rec.bottom));
+		return (Math.max(left, rec.left) <= Math.min(right, rec.right)) &&
+				(Math.max(top, rec.top) <= Math.min(bottom, rec.bottom));
 	}
 
 	public boolean Contains(Rect64 rec) {
