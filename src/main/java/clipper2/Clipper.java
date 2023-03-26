@@ -1,10 +1,5 @@
 package clipper2;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
 import clipper2.core.ClipType;
 import clipper2.core.FillRule;
 import clipper2.core.InternalClipper;
@@ -30,6 +25,11 @@ import clipper2.offset.EndType;
 import clipper2.offset.JoinType;
 import clipper2.rectclip.RectClip;
 import clipper2.rectclip.RectClipLines;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 public final class Clipper {
 
@@ -203,7 +203,9 @@ public final class Clipper {
 	public static Paths64 InflatePaths(Paths64 paths, double delta, JoinType joinType, EndType endType, double miterLimit) {
 		ClipperOffset co = new ClipperOffset(miterLimit);
 		co.AddPaths(paths, joinType, endType);
-		return co.Execute(delta);
+		Paths64 solution = new Paths64();
+		co.Execute(delta, solution);
+		return solution;
 	}
 
 	public static PathsD InflatePaths(PathsD paths, double delta, JoinType joinType, EndType endType, double miterLimit) {
@@ -220,15 +222,15 @@ public final class Clipper {
 		Paths64 tmp = ScalePaths64(paths, scale);
 		ClipperOffset co = new ClipperOffset(miterLimit);
 		co.AddPaths(tmp, joinType, endType);
-		tmp = co.Execute(delta * scale);
+		co.Execute(delta * scale, tmp); // reuse 'tmp' to receive (scaled) solution
 		return ScalePathsD(tmp, 1 / scale);
 	}
 
-	public static Paths64 RectClip(Rect64 rect, Paths64 paths) {
-		return RectClip(rect, paths, false);
+	public static Paths64 ExecuteRectClip(Rect64 rect, Paths64 paths) {
+		return ExecuteRectClip(rect, paths, false);
 	}
 
-	public static Paths64 RectClip(Rect64 rect, Paths64 paths, boolean convexOnly) {
+	public static Paths64 ExecuteRectClip(Rect64 rect, Paths64 paths, boolean convexOnly) {
 		if (rect.IsEmpty() || paths.size() == 0) {
 			return new Paths64();
 		}
@@ -236,24 +238,24 @@ public final class Clipper {
 		return rc.Execute(paths, convexOnly);
 	}
 
-	public static Paths64 RectClip(Rect64 rect, Path64 path) {
-		return RectClip(rect, path, false);
+	public static Paths64 ExecuteRectClip(Rect64 rect, Path64 path) {
+		return ExecuteRectClip(rect, path, false);
 	}
 
-	public static Paths64 RectClip(Rect64 rect, Path64 path, boolean convexOnly) {
+	public static Paths64 ExecuteRectClip(Rect64 rect, Path64 path, boolean convexOnly) {
 		if (rect.IsEmpty() || path.size() == 0) {
 			return new Paths64();
 		}
 		Paths64 tmp = new Paths64();
 		tmp.add(path);
-		return RectClip(rect, tmp, convexOnly);
+		return ExecuteRectClip(rect, tmp, convexOnly);
 	}
 
-	public static PathsD RectClip(RectD rect, PathsD paths) {
-		return RectClip(rect, paths, 2, false);
+	public static PathsD ExecuteRectClip(RectD rect, PathsD paths) {
+		return ExecuteRectClip(rect, paths, 2, false);
 	}
 
-	public static PathsD RectClip(RectD rect, PathsD paths, int precision, boolean convexOnly) {
+	public static PathsD ExecuteRectClip(RectD rect, PathsD paths, int precision, boolean convexOnly) {
 		InternalClipper.CheckPrecision(precision);
 		if (rect.IsEmpty() || paths.size() == 0) {
 			return new PathsD();
@@ -266,20 +268,20 @@ public final class Clipper {
 		return ScalePathsD(tmpPath, 1 / scale);
 	}
 
-	public static PathsD RectClip(RectD rect, PathD path) {
-		return RectClip(rect, path, 2, false);
+	public static PathsD ExecuteRectClip(RectD rect, PathD path) {
+		return ExecuteRectClip(rect, path, 2, false);
 	}
 
-	public static PathsD RectClip(RectD rect, PathD path, int precision, boolean convexOnly) {
+	public static PathsD ExecuteRectClip(RectD rect, PathD path, int precision, boolean convexOnly) {
 		if (rect.IsEmpty() || path.size() == 0) {
 			return new PathsD();
 		}
 		PathsD tmp = new PathsD();
 		tmp.add(path);
-		return RectClip(rect, tmp, precision, convexOnly);
+		return ExecuteRectClip(rect, tmp, precision, convexOnly);
 	}
 
-	public static Paths64 RectClipLines(Rect64 rect, Paths64 paths) {
+	public static Paths64 ExecuteRectClipLines(Rect64 rect, Paths64 paths) {
 		if (rect.IsEmpty() || paths.size() == 0) {
 			return new Paths64();
 		}
@@ -287,20 +289,20 @@ public final class Clipper {
 		return rc.Execute(paths);
 	}
 
-	public static Paths64 RectClipLines(Rect64 rect, Path64 path) {
+	public static Paths64 ExecuteRectClipLines(Rect64 rect, Path64 path) {
 		if (rect.IsEmpty() || path.size() == 0) {
 			return new Paths64();
 		}
 		Paths64 tmp = new Paths64();
 		tmp.add(path);
-		return RectClipLines(rect, tmp);
+		return ExecuteRectClipLines(rect, tmp);
 	}
 
-	public static PathsD RectClipLines(RectD rect, PathsD paths) {
-		return RectClipLines(rect, paths, 2);
+	public static PathsD ExecuteRectClipLines(RectD rect, PathsD paths) {
+		return ExecuteRectClipLines(rect, paths, 2);
 	}
 
-	public static PathsD RectClipLines(RectD rect, PathsD paths, int precision) {
+	public static PathsD ExecuteRectClipLines(RectD rect, PathsD paths, int precision) {
 		InternalClipper.CheckPrecision(precision);
 		if (rect.IsEmpty() || paths.size() == 0) {
 			return new PathsD();
@@ -313,17 +315,17 @@ public final class Clipper {
 		return ScalePathsD(tmpPath, 1 / scale);
 	}
 
-	public static PathsD RectClipLines(RectD rect, PathD path) {
-		return RectClipLines(rect, path, 2);
+	public static PathsD ExecuteRectClipLines(RectD rect, PathD path) {
+		return ExecuteRectClipLines(rect, path, 2);
 	}
 
-	public static PathsD RectClipLines(RectD rect, PathD path, int precision) {
+	public static PathsD ExecuteRectClipLines(RectD rect, PathD path, int precision) {
 		if (rect.IsEmpty() || path.size() == 0) {
 			return new PathsD();
 		}
 		PathsD tmp = new PathsD();
 		tmp.add(path);
-		return RectClipLines(rect, tmp, precision);
+		return ExecuteRectClipLines(rect, tmp, precision);
 	}
 
 	public static Paths64 MinkowskiSum(Path64 pattern, Path64 path, boolean isClosed) {
