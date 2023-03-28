@@ -2,6 +2,10 @@ package clipper2.offset;
 
 import static clipper2.core.InternalClipper.DEFAULT_ARC_TOLERANCE;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 import clipper2.Clipper;
 import clipper2.core.ClipType;
 import clipper2.core.FillRule;
@@ -16,10 +20,6 @@ import clipper2.engine.Clipper64;
 import clipper2.engine.PolyTree64;
 import tangible.OutObject;
 import tangible.RefObject;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 /**
  * Geometric offsetting refers to the process of creating parallel curves that
@@ -41,12 +41,12 @@ import java.util.List;
  */
 public class ClipperOffset {
 
-	private final List<Group> _groupList = new ArrayList<>();
+	private final List<Group> groupList = new ArrayList<>();
 	private final PathD normals = new PathD();
 	private final Paths64 solution = new Paths64();
-	private double group_delta; // *0.5 for open paths; *-1.0 for negative areas
+	private double groupDelta; // *0.5 for open paths; *-1.0 for negative areas
 	private double delta;
-	private double abs_group_delta;
+	private double absGroupDelta;
 	private double mitLimSqr;
 	private double stepsPerRad;
 	private double stepSin;
@@ -93,13 +93,13 @@ public class ClipperOffset {
 	 * Creates a ClipperOffset object, using the supplied parameters.
 	 *
 	 * @param miterLimit        This property sets the maximum distance in multiples
-	 *                          of group_delta that vertices can be offset from
+	 *                          of groupDelta that vertices can be offset from
 	 *                          their original positions before squaring is applied.
 	 *                          (Squaring truncates a miter by 'cutting it off' at 1
-	 *                          × group_delta distance from the original vertex.)
+	 *                          × groupDelta distance from the original vertex.)
 	 *                          <p>
 	 *                          The default value for <code>miterLimit</code> is 2
-	 *                          (i.e. twice group_delta). This is also the smallest
+	 *                          (i.e. twice groupDelta). This is also the smallest
 	 *                          MiterLimit that's allowed. If mitering was
 	 *                          unrestricted (ie without any squaring), then offsets
 	 *                          at very acute angles would generate unacceptably
@@ -110,8 +110,8 @@ public class ClipperOffset {
 	 *                          during offsetting.
 	 *                          <p>
 	 *                          It's important to make arcTolerance a sensible
-	 *                          fraction of the offset group_delta (arc radius).
-	 *                          Large tolerances relative to the offset group_delta
+	 *                          fraction of the offset groupDelta (arc radius).
+	 *                          Large tolerances relative to the offset groupDelta
 	 *                          will produce poor arc approximations but, just as
 	 *                          importantly, very small tolerances will slow
 	 *                          offsetting performance without noticeably improving
@@ -145,7 +145,7 @@ public class ClipperOffset {
 	}
 
 	public final void Clear() {
-		_groupList.clear();
+		groupList.clear();
 	}
 
 	public final void AddPath(Path64 path, JoinType joinType, EndType endType) {
@@ -162,17 +162,17 @@ public class ClipperOffset {
 		if (cnt == 0) {
 			return;
 		}
-		_groupList.add(new Group(paths, joinType, endType));
+		groupList.add(new Group(paths, joinType, endType));
 	}
 
 	private void ExecuteInternal(double delta) {
 		solution.clear();
-		if (_groupList.isEmpty()) {
+		if (groupList.isEmpty()) {
 			return;
 		}
 
 		if (Math.abs(delta) < 0.5) {
-			for (Group group : _groupList) {
+			for (Group group : groupList) {
 				for (Path64 path : group.inPaths) {
 					solution.add(path);
 				}
@@ -181,7 +181,7 @@ public class ClipperOffset {
 			this.delta = delta;
 			this.mitLimSqr = (getMiterLimit() <= 1 ? 2.0 : 2.0 / Clipper.Sqr(getMiterLimit()));
 
-			for (Group group : _groupList) {
+			for (Group group : groupList) {
 				DoGroupOffset(group);
 			}
 		}
@@ -194,9 +194,9 @@ public class ClipperOffset {
 		// clean up self-intersections ...
 		Clipper64 c = new Clipper64();
 		c.setPreserveCollinear(getPreserveCollinear());
-		c.setReverseSolution(getReverseSolution() != _groupList.get(0).pathsReversed);
+		c.setReverseSolution(getReverseSolution() != groupList.get(0).pathsReversed);
 		c.AddSubject(solution);
-		if (_groupList.get(0).pathsReversed) {
+		if (groupList.get(0).pathsReversed) {
 			c.Execute(ClipType.Union, FillRule.Negative, solution);
 		} else {
 			c.Execute(ClipType.Union, FillRule.Positive, solution);
@@ -211,9 +211,9 @@ public class ClipperOffset {
 		Clipper64 c = new Clipper64();
 		c.setPreserveCollinear(getPreserveCollinear());
 		// the solution should retain the orientation of the input
-		c.setReverseSolution(getReverseSolution() != _groupList.get(0).pathsReversed);
+		c.setReverseSolution(getReverseSolution() != groupList.get(0).pathsReversed);
 		c.AddSubject(solution);
-		if (_groupList.get(0).pathsReversed) {
+		if (groupList.get(0).pathsReversed) {
 			c.Execute(ClipType.Union, FillRule.Negative, polytree);
 		} else {
 			c.Execute(ClipType.Union, FillRule.Positive, polytree);
@@ -360,11 +360,11 @@ public class ClipperOffset {
 	}
 
 	private Point64 GetPerpendic(Point64 pt, PointD norm) {
-		return new Point64(pt.x + norm.x * group_delta, pt.y + norm.y * group_delta);
+		return new Point64(pt.x + norm.x * groupDelta, pt.y + norm.y * groupDelta);
 	}
 
 	private PointD GetPerpendicD(Point64 pt, PointD norm) {
-		return new PointD(pt.x + norm.x * group_delta, pt.y + norm.y * group_delta);
+		return new PointD(pt.x + norm.x * groupDelta, pt.y + norm.y * groupDelta);
 	}
 
 	private void DoSquare(Group group, Path64 path, int j, int k) {
@@ -377,16 +377,16 @@ public class ClipperOffset {
 
 		// now offset the original vertex delta units along unit vector
 		PointD ptQ = new PointD(path.get(j));
-		ptQ = TranslatePoint(ptQ, abs_group_delta * vec.x, abs_group_delta * vec.y);
+		ptQ = TranslatePoint(ptQ, absGroupDelta * vec.x, absGroupDelta * vec.y);
 
 		// get perpendicular vertices
-		PointD pt1 = TranslatePoint(ptQ, group_delta * vec.y, group_delta * -vec.x);
-		PointD pt2 = TranslatePoint(ptQ, group_delta * -vec.y, group_delta * vec.x);
+		PointD pt1 = TranslatePoint(ptQ, groupDelta * vec.y, groupDelta * -vec.x);
+		PointD pt2 = TranslatePoint(ptQ, groupDelta * -vec.y, groupDelta * vec.x);
 		// get 2 vertices along one edge offset
 		PointD pt3 = GetPerpendicD(path.get(k), normals.get(k));
 
 		if (j == k) {
-			PointD pt4 = new PointD(pt3.x + vec.x * group_delta, pt3.y + vec.y * group_delta);
+			PointD pt4 = new PointD(pt3.x + vec.x * groupDelta, pt3.y + vec.y * groupDelta);
 			PointD pt = IntersectPoint(pt1, pt2, pt3, pt4);
 			// get the second intersect point through reflecion
 			group.outPath.add(new Point64(ReflectPoint(pt, ptQ)));
@@ -401,14 +401,14 @@ public class ClipperOffset {
 	}
 
 	private void DoMiter(Group group, Path64 path, int j, int k, double cosA) {
-		double q = group_delta / (cosA + 1);
+		double q = groupDelta / (cosA + 1);
 		group.outPath.add(new Point64(path.get(j).x + (normals.get(k).x + normals.get(j).x) * q,
 				path.get(j).y + (normals.get(k).y + normals.get(j).y) * q));
 	}
 
 	private void DoRound(Group group, Path64 path, int j, int k, double angle) {
 		Point64 pt = path.get(j);
-		PointD offsetVec = new PointD(normals.get(k).x * group_delta, normals.get(k).y * group_delta);
+		PointD offsetVec = new PointD(normals.get(k).x * groupDelta, normals.get(k).y * groupDelta);
 		if (j == k) {
 			offsetVec.Negate();
 		}
@@ -418,10 +418,7 @@ public class ClipperOffset {
 			int steps = (int) Math.ceil(stepsPerRad * Math.abs(angle));
 			for (int i = 1; i < steps; i++) // ie 1 less than steps
 			{
-				offsetVec = new PointD(
-						offsetVec.x * stepCos - stepSin * offsetVec.y,
-						offsetVec.x * stepSin + offsetVec.y * stepCos
-				);
+				offsetVec = new PointD(offsetVec.x * stepCos - stepSin * offsetVec.y, offsetVec.x * stepSin + offsetVec.y * stepCos);
 				group.outPath.add(new Point64(pt.x + offsetVec.x, pt.y + offsetVec.y));
 			}
 		}
@@ -455,9 +452,10 @@ public class ClipperOffset {
 		if (cosA > 0.99) // almost straight - less than 8 degrees
 		{
 			group.outPath.add(GetPerpendic(path.get(j), normals.get(k.argValue)));
-			if (cosA < 0.9998) // greater than 1 degree (#424)
+			if (cosA < 0.9998) { // greater than 1 degree (#424)
 				group.outPath.add(GetPerpendic(path.get(j), normals.get(j))); // (#418)
-		} else if (cosA > -0.99 && (sinA * group_delta < 0)) // is concave
+			}
+		} else if (cosA > -0.99 && (sinA * groupDelta < 0)) // is concave
 		{
 			group.outPath.add(GetPerpendic(path.get(j), normals.get(k.argValue)));
 			// this extra point is the only (simple) way to ensure that
@@ -508,10 +506,8 @@ public class ClipperOffset {
 		// do the line start cap
 		switch (this.endType) {
 			case Butt :
-				group.outPath.add(new Point64(
-						path.get(0).x - normals.get(0).x * group_delta,
-						path.get(0).y - normals.get(0).y * group_delta
-				));
+				group.outPath
+						.add(new Point64(path.get(0).x - normals.get(0).x * groupDelta, path.get(0).y - normals.get(0).y * groupDelta));
 				group.outPath.add(GetPerpendic(path.get(0), normals.get(0)));
 				break;
 			case Round :
@@ -537,8 +533,8 @@ public class ClipperOffset {
 		// do the line end cap
 		switch (this.endType) {
 			case Butt :
-				group.outPath.add(new Point64(path.get(highI).x - normals.get(highI).x * group_delta,
-						path.get(highI).y - normals.get(highI).y * group_delta));
+				group.outPath.add(new Point64(path.get(highI).x - normals.get(highI).x * groupDelta,
+						path.get(highI).y - normals.get(highI).y * groupDelta));
 				group.outPath.add(GetPerpendic(path.get(highI), normals.get(highI)));
 				break;
 			case Round :
@@ -569,18 +565,18 @@ public class ClipperOffset {
 				return;
 			}
 			double area = Clipper.Area(group.inPaths.get(lowestIdx.argValue));
-			//if (area == 0) return; // this is probably unhelpful (#430)
+			// if (area == 0) return; // this is probably unhelpful (#430)
 			group.pathsReversed = (area < 0);
 			if (group.pathsReversed) {
-				this.group_delta = -this.delta;
+				this.groupDelta = -this.delta;
 			} else {
-				this.group_delta = this.delta;
+				this.groupDelta = this.delta;
 			}
 		} else {
 			group.pathsReversed = false;
-			this.group_delta = Math.abs(this.delta) * 0.5;
+			this.groupDelta = Math.abs(this.delta) * 0.5;
 		}
-		this.abs_group_delta = Math.abs(this.group_delta);
+		this.absGroupDelta = Math.abs(this.groupDelta);
 		this.joinType = group.joinType;
 		this.endType = group.endType;
 
@@ -590,11 +586,13 @@ public class ClipperOffset {
 			// curve imprecision that's allowed is based on the size of the
 			// offset (delta). Obviously very large offsets will almost always
 			// require much less precision. See also offset_triginometry2.svg
-			double arcTol = arcTolerance > 0.01 ? arcTolerance : Math.log10(2 + this.abs_group_delta) * DEFAULT_ARC_TOLERANCE;
-			double stepsPer360 = Math.PI / Math.acos(1 - arcTol / abs_group_delta);
+			double arcTol = arcTolerance > 0.01 ? arcTolerance : Math.log10(2 + this.absGroupDelta) * DEFAULT_ARC_TOLERANCE;
+			double stepsPer360 = Math.PI / Math.acos(1 - arcTol / absGroupDelta);
 			stepSin = Math.sin((2 * Math.PI) / stepsPer360);
 			stepCos = Math.cos((2 * Math.PI) / stepsPer360);
-			if (group_delta < 0.0) stepSin = -stepSin;
+			if (groupDelta < 0.0) {
+				stepSin = -stepSin;
+			}
 			stepsPerRad = stepsPer360 / (2 * Math.PI);
 		}
 
@@ -611,10 +609,10 @@ public class ClipperOffset {
 				group.outPath = new Path64();
 				// single vertex so build a circle or square ...
 				if (group.endType == EndType.Round) {
-					double r = this.abs_group_delta;
+					double r = this.absGroupDelta;
 					group.outPath = Clipper.Ellipse(path.get(0), r, r);
 				} else {
-					int d = (int) Math.ceil(this.group_delta);
+					int d = (int) Math.ceil(this.groupDelta);
 					Rect64 r = new Rect64(path.get(0).x - d, path.get(0).y - d, path.get(0).x - d, path.get(0).y - d);
 					group.outPath = r.AsPath();
 				}

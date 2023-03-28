@@ -9,12 +9,12 @@ import clipper2.core.Rect64;
 import tangible.RefObject;
 
 /**
- * ExecuteRectClipLines intersects subject open paths (polylines) with the specified
+ * RectClipLines intersects subject open paths (polylines) with the specified
  * rectangular clipping region.
  * <p>
  * This function is extremely fast when compared to the Library's general
  * purpose Intersect clipper. Where Intersect has roughly O(n³) performance,
- * ExecuteRectClipLines has O(n) performance.
+ * RectClipLines has O(n) performance.
  * 
  * @since 1.0.6
  */

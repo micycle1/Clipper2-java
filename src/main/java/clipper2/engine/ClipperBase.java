@@ -1,5 +1,12 @@
 package clipper2.engine;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.NavigableSet;
+import java.util.TreeSet;
+
 import clipper2.Clipper;
 import clipper2.Nullable;
 import clipper2.core.ClipType;
@@ -13,13 +20,6 @@ import clipper2.core.PointD;
 import clipper2.core.Rect64;
 import tangible.OutObject;
 import tangible.RefObject;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.NavigableSet;
-import java.util.TreeSet;
 
 /**
  * Subject and Clip paths are passed to a Clipper object via AddSubject,
@@ -39,7 +39,7 @@ abstract class ClipperBase {
 	private List<OutRec> outrecList;
 	private NavigableSet<Long> scanlineSet;
 	private List<HorzSegment> horzSegList;
-	private List<HorzJoin> _horzJoinList;
+	private List<HorzJoin> horzJoinList;
 	private int currentLocMin;
 	private long currentBotY;
 	private boolean isSortedMinimaList;
@@ -89,7 +89,7 @@ abstract class ClipperBase {
 	}
 
 	private static class HorzSegment {
-		
+
 		public @Nullable OutPt leftOp;
 		public @Nullable OutPt rightOp;
 		public boolean leftToRight;
@@ -102,7 +102,7 @@ abstract class ClipperBase {
 	}
 
 	private static class HorzJoin {
-		
+
 		public @Nullable OutPt op1;
 		public @Nullable OutPt op2;
 
@@ -236,7 +236,7 @@ abstract class ClipperBase {
 		outrecList = new ArrayList<>();
 		scanlineSet = new TreeSet<>();
 		horzSegList = new ArrayList<>();
-		_horzJoinList = new ArrayList<>();
+		horzJoinList = new ArrayList<>();
 		setPreserveCollinear(true);
 	}
 
@@ -458,7 +458,7 @@ abstract class ClipperBase {
 	}
 
 	private static void SetOwner(OutRec outrec, OutRec newOwner) {
-		// precondition1: new_owner is never null
+		// precondition1: newOwner is never null
 		while (newOwner.owner != null && newOwner.owner.pts == null) {
 			newOwner.owner = newOwner.owner.owner;
 		}
@@ -533,7 +533,7 @@ abstract class ClipperBase {
 		DisposeIntersectNodes();
 		outrecList.clear();
 		horzSegList.clear();
-		_horzJoinList.clear();
+		horzJoinList.clear();
 	}
 
 	public final void Clear() {
@@ -1954,11 +1954,11 @@ abstract class ClipperBase {
 		long Y = horz.bot.y;
 
 		@Nullable
-		Vertex vertex_max = horzIsOpen ? GetCurrYMaximaVertex_Open(horz) : GetCurrYMaximaVertex(horz);
+		Vertex vertexMax = horzIsOpen ? GetCurrYMaximaVertex_Open(horz) : GetCurrYMaximaVertex(horz);
 
 		// remove 180 deg.spikes and also simplify
 		// consecutive horizontals when PreserveCollinear = true
-		if (vertex_max != null && !horzIsOpen && vertex_max != horz.vertexTop) {
+		if (vertexMax != null && !horzIsOpen && vertexMax != horz.vertexTop) {
 			TrimHorz(horz, getPreserveCollinear());
 		}
 
@@ -1966,7 +1966,7 @@ abstract class ClipperBase {
 		OutObject<Long> tempOutleftX = new OutObject<>();
 		long rightX;
 		OutObject<Long> tempOutrightX = new OutObject<>();
-		boolean isLeftToRight = ResetHorzDirection(horz, vertex_max, tempOutleftX, tempOutrightX);
+		boolean isLeftToRight = ResetHorzDirection(horz, vertexMax, tempOutleftX, tempOutrightX);
 		rightX = tempOutrightX.argValue;
 		leftX = tempOutleftX.argValue;
 
@@ -1983,14 +1983,14 @@ abstract class ClipperBase {
 			Active ae = isLeftToRight ? horz.nextInAEL : horz.prevInAEL;
 
 			while (ae != null) {
-				if (ae.vertexTop == vertex_max) {
+				if (ae.vertexTop == vertexMax) {
 					// do this first!!
 					if (IsHotEdge(horz) && IsJoined(ae)) {
 						Split(ae, ae.top);
 					}
 
 					if (IsHotEdge(horz)) {
-						while (horz.vertexTop != vertex_max) {
+						while (horz.vertexTop != vertexMax) {
 							AddOutPt(horz, horz.top);
 							UpdateEdgeIntoAEL(horz);
 						}
@@ -2007,7 +2007,7 @@ abstract class ClipperBase {
 
 				// if horzEdge is a maxima, keep going until we reach
 				// its maxima pair, otherwise check for break conditions
-				if (vertex_max != horz.vertexTop || IsOpenEnd(horz)) {
+				if (vertexMax != horz.vertexTop || IsOpenEnd(horz)) {
 					// otherwise stop when 'ae' is beyond the end of the horizontal line
 					if ((isLeftToRight && ae.curX > rightX) || (!isLeftToRight && ae.curX < leftX)) {
 						break;
@@ -2086,7 +2086,7 @@ abstract class ClipperBase {
 
 			OutObject<Long> tempOutleftX2 = new OutObject<>();
 			OutObject<Long> tempOutrightX2 = new OutObject<>();
-			isLeftToRight = ResetHorzDirection(horz, vertex_max, tempOutleftX2, tempOutrightX2);
+			isLeftToRight = ResetHorzDirection(horz, vertexMax, tempOutleftX2, tempOutrightX2);
 			rightX = tempOutrightX2.argValue;
 			leftX = tempOutleftX2.argValue;
 
@@ -2300,21 +2300,21 @@ abstract class ClipperBase {
 		OutPt op = hs.leftOp;
 		OutRec outrec = GetRealOutRec(op.outrec);
 		boolean outrecHasEdges = outrec.frontEdge != null;
-		long curr_y = op.pt.y;
+		long currY = op.pt.y;
 		OutPt opP = op, opN = op;
 		if (outrecHasEdges) {
 			OutPt opA = outrec.pts, opZ = opA.next;
-			while (opP != opZ && opP.prev.pt.y == curr_y) {
+			while (opP != opZ && opP.prev.pt.y == currY) {
 				opP = opP.prev;
 			}
-			while (opN != opA && opN.next.pt.y == curr_y) {
+			while (opN != opA && opN.next.pt.y == currY) {
 				opN = opN.next;
 			}
 		} else {
-			while (opP.prev != opN && opP.prev.pt.y == curr_y) {
+			while (opP.prev != opN && opP.prev.pt.y == currY) {
 				opP = opP.prev;
 			}
-			while (opN.next != opP && opN.next.pt.y == curr_y) {
+			while (opN.next != opP && opN.next.pt.y == currY) {
 				opN = opN.next;
 			}
 		}
@@ -2328,9 +2328,9 @@ abstract class ClipperBase {
 		return result;
 	}
 
-	private static OutPt DuplicateOp(OutPt op, boolean insert_after) {
+	private static OutPt DuplicateOp(OutPt op, boolean insertAfter) {
 		OutPt result = new OutPt(op.pt, op.outrec);
-		if (insert_after) {
+		if (insertAfter) {
 			result.next = op.next;
 			result.next.prev = result;
 			result.prev = op;
@@ -2367,25 +2367,25 @@ abstract class ClipperBase {
 				if (hs2.leftToRight == hs1.leftToRight || (hs2.rightOp.pt.x <= hs1.leftOp.pt.x)) {
 					continue;
 				}
-				long curr_y = hs1.leftOp.pt.y;
+				long currY = hs1.leftOp.pt.y;
 				if ((hs1).leftToRight) {
-					while (hs1.leftOp.next.pt.y == curr_y && hs1.leftOp.next.pt.x <= hs2.leftOp.pt.x) {
+					while (hs1.leftOp.next.pt.y == currY && hs1.leftOp.next.pt.x <= hs2.leftOp.pt.x) {
 						hs1.leftOp = hs1.leftOp.next;
 					}
-					while (hs2.leftOp.prev.pt.y == curr_y && hs2.leftOp.prev.pt.x <= hs1.leftOp.pt.x) {
+					while (hs2.leftOp.prev.pt.y == currY && hs2.leftOp.prev.pt.x <= hs1.leftOp.pt.x) {
 						(hs2).leftOp = (hs2).leftOp.prev;
 					}
 					HorzJoin join = new HorzJoin(DuplicateOp((hs1).leftOp, true), DuplicateOp((hs2).leftOp, false));
-					_horzJoinList.add(join);
+					horzJoinList.add(join);
 				} else {
-					while (hs1.leftOp.prev.pt.y == curr_y && hs1.leftOp.prev.pt.x <= hs2.leftOp.pt.x) {
+					while (hs1.leftOp.prev.pt.y == currY && hs1.leftOp.prev.pt.x <= hs2.leftOp.pt.x) {
 						hs1.leftOp = hs1.leftOp.prev;
 					}
-					while (hs2.leftOp.next.pt.y == curr_y && hs2.leftOp.next.pt.x <= (hs1).leftOp.pt.x) {
+					while (hs2.leftOp.next.pt.y == currY && hs2.leftOp.next.pt.x <= (hs1).leftOp.pt.x) {
 						hs2.leftOp = (hs2).leftOp.next;
 					}
 					HorzJoin join = new HorzJoin(DuplicateOp((hs2).leftOp, true), DuplicateOp((hs1).leftOp, false));
-					_horzJoinList.add(join);
+					horzJoinList.add(join);
 				}
 			}
 		}
@@ -2496,19 +2496,19 @@ abstract class ClipperBase {
 	private static boolean Path1InsidePath2(OutPt op1, OutPt op2) {
 		// we need to make some accommodation for rounding errors
 		// so we won't jump if the first vertex is found outside
-		int outside_cnt = 0;
+		int outsideCnt = 0;
 		OutPt op = op1;
 		do {
 			PointInPolygonResult result = PointInOpPolygon(op.pt, op2);
 			if (result == PointInPolygonResult.IsOutside) {
-				++outside_cnt;
+				++outsideCnt;
 			} else if (result == PointInPolygonResult.IsInside) {
-				--outside_cnt;
+				--outsideCnt;
 			}
 			op = op.next;
-		} while (op != op1 && Math.abs(outside_cnt) < 2);
-		if (Math.abs(outside_cnt) > 1) {
-			return (outside_cnt < 0);
+		} while (op != op1 && Math.abs(outsideCnt) < 2);
+		if (Math.abs(outsideCnt) > 1) {
+			return (outsideCnt < 0);
 		}
 		// since path1's location is still equivocal, check its midpoint
 		Point64 mp = GetBounds(op).MidPoint();
@@ -2516,7 +2516,7 @@ abstract class ClipperBase {
 	}
 
 	private void ProcessHorzJoins() {
-		for (HorzJoin j : _horzJoinList) {
+		for (HorzJoin j : horzJoinList) {
 			OutRec or1 = GetRealOutRec(j.op1.outrec);
 			OutRec or2 = GetRealOutRec(j.op2.outrec);
 
@@ -2749,7 +2749,7 @@ abstract class ClipperBase {
 		solutionOpen.clear();
 
 		int i = 0;
-		// _outrecList.Count is not static here because
+		// outrecList.Count is not static here because
 		// CleanCollinear can indirectly add additional OutRec
 		while (i < outrecList.size()) {
 			OutRec outrec = outrecList.get(i++);
@@ -2870,7 +2870,7 @@ abstract class ClipperBase {
 		solutionOpen.clear();
 
 		int i = 0;
-		// _outrecList.Count is not static here because
+		// outrecList.Count is not static here because
 		// CheckBounds below can indirectly add additional
 		// OutRec (via FixOutRecPts & CleanCollinear)
 		while (i < outrecList.size()) {
@@ -2880,9 +2880,9 @@ abstract class ClipperBase {
 			}
 
 			if (outrec.isOpen) {
-				Path64 open_path = new Path64();
-				if (BuildPath(outrec.pts, getReverseSolution(), true, open_path)) {
-					solutionOpen.add(open_path);
+				Path64 openPath = new Path64();
+				if (BuildPath(outrec.pts, getReverseSolution(), true, openPath)) {
+					solutionOpen.add(openPath);
 				}
 				continue;
 			}

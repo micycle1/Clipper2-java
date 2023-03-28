@@ -1,5 +1,10 @@
 package clipper2;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
 import clipper2.core.ClipType;
 import clipper2.core.FillRule;
 import clipper2.core.InternalClipper;
@@ -25,11 +30,6 @@ import clipper2.offset.EndType;
 import clipper2.offset.JoinType;
 import clipper2.rectclip.RectClip;
 import clipper2.rectclip.RectClipLines;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 
 public final class Clipper {
 
@@ -887,20 +887,20 @@ public final class Clipper {
 
 	public static void RDP(Path64 path, int begin, int end, double epsSqrd, List<Boolean> flags) {
 		int idx = 0;
-		double max_d = 0;
+		double maxD = 0;
 		while (end > begin && path.get(begin).equals(path.get(end))) {
 			flags.set(end--, false);
 		}
 		for (int i = begin + 1; i < end; ++i) {
 			// PerpendicDistFromLineSqrd - avoids expensive Sqrt()
 			double d = PerpendicDistFromLineSqrd(path.get(i), path.get(begin), path.get(end));
-			if (d <= max_d) {
+			if (d <= maxD) {
 				continue;
 			}
-			max_d = d;
+			maxD = d;
 			idx = i;
 		}
-		if (max_d <= epsSqrd) {
+		if (maxD <= epsSqrd) {
 			return;
 		}
 		flags.set(idx, true);
@@ -976,20 +976,20 @@ public final class Clipper {
 
 	public static void RDP(PathD path, int begin, int end, double epsSqrd, List<Boolean> flags) {
 		int idx = 0;
-		double max_d = 0;
+		double maxD = 0;
 		while (end > begin && path.get(begin).equals(path.get(end))) {
 			flags.set(end--, false);
 		}
 		for (int i = begin + 1; i < end; ++i) {
 			// PerpendicDistFromLineSqrd - avoids expensive Sqrt()
 			double d = PerpendicDistFromLineSqrd(path.get(i), path.get(begin), path.get(end));
-			if (d <= max_d) {
+			if (d <= maxD) {
 				continue;
 			}
-			max_d = d;
+			maxD = d;
 			idx = i;
 		}
-		if (max_d <= epsSqrd) {
+		if (maxD <= epsSqrd) {
 			return;
 		}
 		flags.set(idx, true);

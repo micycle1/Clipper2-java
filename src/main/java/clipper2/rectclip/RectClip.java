@@ -1,5 +1,8 @@
 package clipper2.rectclip;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import clipper2.Clipper;
 import clipper2.Nullable;
 import clipper2.core.InternalClipper;
@@ -11,16 +14,13 @@ import clipper2.engine.PointInPolygonResult;
 import tangible.OutObject;
 import tangible.RefObject;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
- * ExecuteRectClipLines intersects subject polygons with the specified rectangular clipping
+ * RectClip intersects subject polygons with the specified rectangular clipping
  * region. Polygons may be simple or complex (self-intersecting).
  * <p>
  * This function is extremely fast when compared to the Library's general
  * purpose Intersect clipper. Where Intersect has roughly O(n³) performance,
- * ExecuteRectClipLines has O(n) performance.
+ * RectClip has O(n) performance.
  *
  * @since 1.0.6
  */
@@ -31,7 +31,7 @@ public class RectClip {
 		OutPt2 next;
 		@Nullable
 		OutPt2 prev;
-		
+
 		Point64 pt;
 		int ownerIdx;
 		@Nullable
@@ -775,9 +775,9 @@ public class RectClip {
 			}
 
 			if (!isRejoining) {
-				int new_idx = results.size();
+				int newIdx = results.size();
 				results.add(p1a);
-				SetNewOwner(p1a, new_idx);
+				SetNewOwner(p1a, newIdx);
 			}
 
 			if (cwIsTowardLarger) {
