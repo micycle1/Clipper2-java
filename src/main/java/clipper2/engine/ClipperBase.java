@@ -1,12 +1,5 @@
 package clipper2.engine;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.NavigableSet;
-import java.util.TreeSet;
-
 import clipper2.Clipper;
 import clipper2.Nullable;
 import clipper2.core.ClipType;
@@ -20,6 +13,13 @@ import clipper2.core.PointD;
 import clipper2.core.Rect64;
 import tangible.OutObject;
 import tangible.RefObject;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.NavigableSet;
+import java.util.TreeSet;
 
 /**
  * Subject and Clip paths are passed to a Clipper object via AddSubject,
@@ -1723,7 +1723,7 @@ abstract class ClipperBase {
 				if (absDx1 < absDx2) {
 					ip.x = TopX(ae1, ip.y);
 				} else {
-					ip.x = TopX(ae2, topY);
+					ip.x = TopX(ae2, ip.y);
 				}
 			}
 		}
