@@ -2,10 +2,6 @@ package clipper2.offset;
 
 import static clipper2.core.InternalClipper.DEFAULT_ARC_TOLERANCE;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
 import clipper2.Clipper;
 import clipper2.core.ClipType;
 import clipper2.core.FillRule;
@@ -20,6 +16,10 @@ import clipper2.engine.Clipper64;
 import clipper2.engine.PolyTree64;
 import tangible.OutObject;
 import tangible.RefObject;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Geometric offsetting refers to the process of creating parallel curves that
@@ -195,7 +195,7 @@ public class ClipperOffset {
 		Clipper64 c = new Clipper64();
 		c.setPreserveCollinear(getPreserveCollinear());
 		c.setReverseSolution(getReverseSolution() != groupList.get(0).pathsReversed);
-		c.AddSubject(solution);
+		c.AddSubject(this.solution);
 		if (groupList.get(0).pathsReversed) {
 			c.Execute(ClipType.Union, FillRule.Negative, solution);
 		} else {
@@ -212,7 +212,7 @@ public class ClipperOffset {
 		c.setPreserveCollinear(getPreserveCollinear());
 		// the solution should retain the orientation of the input
 		c.setReverseSolution(getReverseSolution() != groupList.get(0).pathsReversed);
-		c.AddSubject(solution);
+		c.AddSubject(this.solution);
 		if (groupList.get(0).pathsReversed) {
 			c.Execute(ClipType.Union, FillRule.Negative, polytree);
 		} else {
