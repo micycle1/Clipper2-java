@@ -2778,7 +2778,7 @@ abstract class ClipperBase {
 		if (path.isEmpty()) {
 			return new Rect64();
 		}
-		Rect64 result = Clipper.InvalidRect64;
+		Rect64 result = Clipper.InvalidRect64.clone();
 		for (Point64 pt : path) {
 			if (pt.x < result.left) {
 				result.left = pt.x;
@@ -2893,7 +2893,7 @@ abstract class ClipperBase {
 	}
 
 	public final Rect64 GetBounds() {
-		Rect64 bounds = Clipper.InvalidRect64;
+		Rect64 bounds = Clipper.InvalidRect64.clone();
 		for (Vertex t : vertexList) {
 			Vertex v = t;
 			do {
