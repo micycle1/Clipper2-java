@@ -148,6 +148,126 @@ abstract class ClipperBase {
 
 	}
 
+	private static class ClipperEngine {
+
+		private static void AddLocMin(Vertex vert, PathType polytype, boolean isOpen, List<LocalMinima> minimaList) {
+			// make sure the vertex is added only once ...
+			if ((vert.flags & VertexFlags.LocalMin) != VertexFlags.None) {
+				return;
+			}
+			vert.flags |= VertexFlags.LocalMin;
+
+			LocalMinima lm = new LocalMinima(vert, polytype, isOpen);
+			minimaList.add(lm);
+		}
+
+		private static void AddPathsToVertexList(Paths64 paths, PathType polytype, boolean isOpen, List<LocalMinima> minimaList,
+				List<Vertex> vertexList) {
+			for (Path64 path : paths) {
+				Vertex v0 = null, prevV = null, currV;
+				for (Point64 pt : path) {
+					if (v0 == null) {
+						v0 = new Vertex(pt, VertexFlags.None, null);
+						vertexList.add(v0);
+						prevV = v0;
+					} else if (prevV.pt.opNotEquals(pt)) { // ie skips duplicates
+						currV = new Vertex(pt, VertexFlags.None, prevV);
+						vertexList.add(currV);
+						prevV.next = currV;
+						prevV = currV;
+					}
+				}
+				if (prevV == null || prevV.prev == null) {
+					continue;
+				}
+				if (!isOpen && v0.pt.opEquals(prevV.pt)) {
+					prevV = prevV.prev;
+				}
+				prevV.next = v0;
+				v0.prev = prevV;
+				if (!isOpen && prevV == prevV.next) {
+					continue;
+				}
+
+				// OK, we have a valid path
+				boolean goingup, goingup0;
+				if (isOpen) {
+					currV = v0.next;
+					while (v0 != currV && currV.pt.y == v0.pt.y) {
+						currV = currV.next;
+					}
+					goingup = currV.pt.y <= v0.pt.y;
+					if (goingup) {
+						v0.flags = VertexFlags.OpenStart;
+						AddLocMin(v0, polytype, true, minimaList);
+					} else {
+						v0.flags = VertexFlags.OpenStart | VertexFlags.LocalMax;
+					}
+				} else { // closed path
+					prevV = v0.prev;
+					while (!v0.equals(prevV) && prevV.pt.y == v0.pt.y) {
+						prevV = prevV.prev;
+					}
+					if (v0.equals(prevV)) {
+						continue; // only open paths can be completely flat
+					}
+					goingup = prevV.pt.y > v0.pt.y;
+				}
+
+				goingup0 = goingup;
+				prevV = v0;
+				currV = v0.next;
+				while (!v0.equals(currV)) {
+					if (currV.pt.y > prevV.pt.y && goingup) {
+						prevV.flags |= VertexFlags.LocalMax;
+						goingup = false;
+					} else if (currV.pt.y < prevV.pt.y && !goingup) {
+						goingup = true;
+						AddLocMin(prevV, polytype, isOpen, minimaList);
+					}
+					prevV = currV;
+					currV = currV.next;
+				}
+
+				if (isOpen) {
+					prevV.flags |= VertexFlags.OpenEnd;
+					if (goingup) {
+						prevV.flags |= VertexFlags.LocalMax;
+					} else {
+						AddLocMin(prevV, polytype, isOpen, minimaList);
+					}
+				} else if (goingup != goingup0) {
+					if (goingup0) {
+						AddLocMin(prevV, polytype, false, minimaList);
+					} else {
+						prevV.flags = prevV.flags | VertexFlags.LocalMax;
+					}
+				}
+			}
+		}
+
+	}
+
+	public class ReuseableDataContainer64 {
+
+		private final List<LocalMinima> minimaList;
+		private final List<Vertex> vertexList;
+
+		public ReuseableDataContainer64() {
+			minimaList = new ArrayList<>();
+			vertexList = new ArrayList<>();
+		}
+
+		public void Clear() {
+			minimaList.clear();
+			vertexList.clear();
+		}
+
+		public void AddPaths(Paths64 paths, PathType pt, boolean isOpen) {
+			ClipperEngine.AddPathsToVertexList(paths, pt, isOpen, minimaList, vertexList);
+		}
+	}
+
 	/**
 	 * Vertex data structure for clipping solutions
 	 */
@@ -202,7 +322,7 @@ abstract class ClipperBase {
 	 * ascending and descending 'bounds' (or sides) that start at local minima and
 	 * ascend to a local maxima, before descending again.
 	 */
-	class Vertex {
+	static class Vertex {
 
 		Point64 pt = new Point64();
 		@Nullable
@@ -219,7 +339,7 @@ abstract class ClipperBase {
 		}
 	}
 
-	class VertexFlags {
+	static class VertexFlags {
 
 		static final int None = 0;
 		static final int OpenStart = 1;
@@ -602,90 +722,6 @@ abstract class ClipperBase {
 		minimaList.add(lm);
 	}
 
-	protected final void AddPathsToVertexList(Paths64 paths, PathType polytype, boolean isOpen) {
-		for (Path64 path : paths) {
-			Vertex v0 = null, prevV = null, currV;
-			for (Point64 pt : path) {
-				if (v0 == null) {
-					v0 = new Vertex(pt, VertexFlags.None, null);
-					vertexList.add(v0);
-					prevV = v0;
-				} else if (prevV.pt.opNotEquals(pt)) { // ie skips duplicates
-					currV = new Vertex(pt, VertexFlags.None, prevV);
-					vertexList.add(currV);
-					prevV.next = currV;
-					prevV = currV;
-				}
-			}
-			if (prevV == null || prevV.prev == null) {
-				continue;
-			}
-			if (!isOpen && v0.pt.opEquals(prevV.pt)) {
-				prevV = prevV.prev;
-			}
-			prevV.next = v0;
-			v0.prev = prevV;
-			if (!isOpen && prevV == prevV.next) {
-				continue;
-			}
-
-			// OK, we have a valid path
-			boolean goingup, goingup0;
-			if (isOpen) {
-				currV = v0.next;
-				while (v0 != currV && currV.pt.y == v0.pt.y) {
-					currV = currV.next;
-				}
-				goingup = currV.pt.y <= v0.pt.y;
-				if (goingup) {
-					v0.flags = VertexFlags.OpenStart;
-					AddLocMin(v0, polytype, true);
-				} else {
-					v0.flags = VertexFlags.OpenStart | VertexFlags.LocalMax;
-				}
-			} else { // closed path
-				prevV = v0.prev;
-				while (!v0.equals(prevV) && prevV.pt.y == v0.pt.y) {
-					prevV = prevV.prev;
-				}
-				if (v0.equals(prevV)) {
-					continue; // only open paths can be completely flat
-				}
-				goingup = prevV.pt.y > v0.pt.y;
-			}
-
-			goingup0 = goingup;
-			prevV = v0;
-			currV = v0.next;
-			while (!v0.equals(currV)) {
-				if (currV.pt.y > prevV.pt.y && goingup) {
-					prevV.flags |= VertexFlags.LocalMax;
-					goingup = false;
-				} else if (currV.pt.y < prevV.pt.y && !goingup) {
-					goingup = true;
-					AddLocMin(prevV, polytype, isOpen);
-				}
-				prevV = currV;
-				currV = currV.next;
-			}
-
-			if (isOpen) {
-				prevV.flags |= VertexFlags.OpenEnd;
-				if (goingup) {
-					prevV.flags |= VertexFlags.LocalMax;
-				} else {
-					AddLocMin(prevV, polytype, isOpen);
-				}
-			} else if (goingup != goingup0) {
-				if (goingup0) {
-					AddLocMin(prevV, polytype, false);
-				} else {
-					prevV.flags = prevV.flags | VertexFlags.LocalMax;
-				}
-			}
-		}
-	}
-
 	public final void AddSubject(Path64 path) {
 		AddPath(path, PathType.Subject);
 	}
@@ -738,7 +774,23 @@ abstract class ClipperBase {
 			hasOpenPaths = true;
 		}
 		isSortedMinimaList = false;
-		AddPathsToVertexList(paths, polytype, isOpen);
+		ClipperEngine.AddPathsToVertexList(paths, polytype, isOpen, minimaList, vertexList);
+	}
+
+	protected void AddReuseableData(ReuseableDataContainer64 reuseableData) {
+		if (reuseableData.minimaList.isEmpty()) {
+			return;
+		}
+		// nb: reuseableData will continue to own the vertices, so it's important
+		// that the reuseableData object isn't destroyed before the Clipper object
+		// that's using the data.
+		isSortedMinimaList = false;
+		for (LocalMinima lm : reuseableData.minimaList) {
+			minimaList.add(new LocalMinima(lm.vertex, lm.polytype, lm.isOpen));
+			if (lm.isOpen) {
+				hasOpenPaths = true;
+			}
+		}
 	}
 
 	private boolean IsContributingClosed(Active ae) {
@@ -2551,7 +2603,7 @@ abstract class ClipperBase {
 						SetOwner(or1, or2);
 					} else {
 						if (or1.splits == null) {
-							or1.splits = new ArrayList<Integer>();
+							or1.splits = new ArrayList<>();
 						}
 						or1.splits.add(or2.idx); // (#498)
 						or2.owner = or1;
@@ -2846,20 +2898,24 @@ abstract class ClipperBase {
 		// pre-condition: outrec will have valid bounds
 		// post-condition: if a valid path, outrec will have a polypath
 
-		if (outrec.polypath != null || outrec.bounds.IsEmpty())
+		if (outrec.polypath != null || outrec.bounds.IsEmpty()) {
 			return;
+		}
 
 		while (outrec.owner != null) {
-			if (outrec.owner.splits != null && CheckSplitOwner(outrec, outrec.owner.splits))
+			if (outrec.owner.splits != null && CheckSplitOwner(outrec, outrec.owner.splits)) {
 				break;
-			if (outrec.owner.pts != null && CheckBounds(outrec.owner) && Path1InsidePath2(outrec.pts, outrec.owner.pts))
+			}
+			if (outrec.owner.pts != null && CheckBounds(outrec.owner) && Path1InsidePath2(outrec.pts, outrec.owner.pts)) {
 				break;
+			}
 			outrec.owner = outrec.owner.owner;
 		}
 
 		if (outrec.owner != null) {
-			if (outrec.owner.polypath == null)
+			if (outrec.owner.polypath == null) {
 				RecursiveCheckOwners(outrec.owner, polypath);
+			}
 			outrec.polypath = outrec.owner.polypath.AddChild(outrec.path);
 		} else {
 			outrec.polypath = polypath.AddChild(outrec.path);
