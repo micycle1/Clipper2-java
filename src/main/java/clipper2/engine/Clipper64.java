@@ -96,4 +96,9 @@ public class Clipper64 extends ClipperBase {
 		return Execute(clipType, fillRule, polytree, new Paths64());
 	}
 
+	@Override
+	public void AddReuseableData(ReuseableDataContainer64 reuseableData) {
+		this.AddReuseableData(reuseableData);
+	}
+
 }
