@@ -2823,14 +2823,18 @@ abstract class ClipperBase {
 		return true;
 	}
 
-	private boolean checkSplitOwner(OutRec outrec) {
+	private boolean CheckSplitOwner(OutRec outrec, List<Integer> splits) {
 		if (outrec.owner == null || outrec.owner.splits == null) {
 			return false;
 		}
 		for (int i : outrec.owner.splits) {
-			OutRec split = GetRealOutRec(outrecList.get(i));
-			if (split != null && split != outrec && split != outrec.owner && CheckBounds(split) && split.bounds.Contains(outrec.bounds)
-					&& Path1InsidePath2(outrec.pts, split.pts)) {
+			OutRec split = outrecList.get(i);
+			if (split == outrec || split == outrec.owner) {
+				continue;
+			} else if (split.splits != null && CheckSplitOwner(outrec, split.splits)) {
+				return true;
+			}
+			if (CheckBounds(split) && split.bounds.Contains(outrec.bounds) && Path1InsidePath2(outrec.pts, split.pts)) {
 				outrec.owner = split; // found in split
 				return true;
 			}
@@ -2846,7 +2850,7 @@ abstract class ClipperBase {
 			return;
 
 		while (outrec.owner != null) {
-			if (outrec.owner.splits != null && checkSplitOwner(outrec))
+			if (outrec.owner.splits != null && CheckSplitOwner(outrec, outrec.owner.splits))
 				break;
 			if (outrec.owner.pts != null && CheckBounds(outrec.owner) && Path1InsidePath2(outrec.pts, outrec.owner.pts))
 				break;
