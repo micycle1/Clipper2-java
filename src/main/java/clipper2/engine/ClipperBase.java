@@ -2212,8 +2212,13 @@ abstract class ClipperBase {
 	private void CheckJoinLeft(Active e, Point64 pt, boolean checkCurrX) {
 		@Nullable
 		Active prev = e.prevInAEL;
-		if (prev == null || IsOpen(e) || IsOpen(prev) || !IsHotEdge(e) || !IsHotEdge(prev) || pt.y < e.top.y + 2 || pt.y < prev.top.y + 2) {
+		if (prev == null || IsOpen(e) || IsOpen(prev) || !IsHotEdge(e) || !IsHotEdge(prev)) {
 			return;
+		}
+
+		if ((pt.y < e.top.y + 2 || pt.y < prev.top.y + 2) && // avoid trivial joins
+				((e.bot.y > pt.y) || (prev.bot.y > pt.y))) {
+			return; // (#490)
 		}
 
 		if (checkCurrX) {
@@ -2245,9 +2250,12 @@ abstract class ClipperBase {
 	private void CheckJoinRight(Active e, Point64 pt, boolean checkCurrX) {
 		@Nullable
 		Active next = e.nextInAEL;
-		if (IsOpen(e) || !IsHotEdge(e) || IsJoined(e) || next == null || IsOpen(next) || !IsHotEdge(next) || pt.y < e.top.y + 2
-				|| pt.y < next.top.y + 2) {
+		if (IsOpen(e) || !IsHotEdge(e) || IsJoined(e) || next == null || IsOpen(next) || !IsHotEdge(next)) {
 			return;
+		}
+		if ((pt.y < e.top.y + 2 || pt.y < next.top.y + 2) && // avoid trivial joins
+				((e.bot.y > pt.y) || (next.bot.y > pt.y))) {
+			return; // (#490)
 		}
 
 		if (checkCurrX) {
@@ -2542,6 +2550,10 @@ abstract class ClipperBase {
 					} else if (Path1InsidePath2(or1.pts, or2.pts)) {
 						SetOwner(or1, or2);
 					} else {
+						if (or1.splits == null) {
+							or1.splits = new ArrayList<Integer>();
+						}
+						or1.splits.add(or2.idx); // (#498)
 						or2.owner = or1;
 					}
 				} else {
@@ -2811,31 +2823,39 @@ abstract class ClipperBase {
 		return true;
 	}
 
+	private boolean checkSplitOwner(OutRec outrec) {
+		if (outrec.owner == null || outrec.owner.splits == null) {
+			return false;
+		}
+		for (int i : outrec.owner.splits) {
+			OutRec split = GetRealOutRec(outrecList.get(i));
+			if (split != null && split != outrec && split != outrec.owner && CheckBounds(split) && split.bounds.Contains(outrec.bounds)
+					&& Path1InsidePath2(outrec.pts, split.pts)) {
+				outrec.owner = split; // found in split
+				return true;
+			}
+		}
+		return false;
+	}
+
 	private void RecursiveCheckOwners(OutRec outrec, PolyPathBase polypath) {
 		// pre-condition: outrec will have valid bounds
 		// post-condition: if a valid path, outrec will have a polypath
 
-		if (outrec.polypath != null || outrec.bounds.IsEmpty()) {
+		if (outrec.polypath != null || outrec.bounds.IsEmpty())
 			return;
-		}
 
-		while (outrec.owner != null && (outrec.owner.pts == null || !CheckBounds(outrec.owner))) {
+		while (outrec.owner != null) {
+			if (outrec.owner.splits != null && checkSplitOwner(outrec))
+				break;
+			if (outrec.owner.pts != null && CheckBounds(outrec.owner) && Path1InsidePath2(outrec.pts, outrec.owner.pts))
+				break;
 			outrec.owner = outrec.owner.owner;
 		}
 
-		if (outrec.owner != null && outrec.owner.polypath == null) {
-			RecursiveCheckOwners(outrec.owner, polypath);
-		}
-
-		while (outrec.owner != null) {
-			if (outrec.owner.bounds.Contains(outrec.bounds) && Path1InsidePath2(outrec.pts, outrec.owner.pts)) {
-				break; // found - owner contain outrec!
-			} else {
-				outrec.owner = outrec.owner.owner;
-			}
-		}
-
 		if (outrec.owner != null) {
+			if (outrec.owner.polypath == null)
+				RecursiveCheckOwners(outrec.owner, polypath);
 			outrec.polypath = outrec.owner.polypath.AddChild(outrec.path);
 		} else {
 			outrec.polypath = polypath.AddChild(outrec.path);
@@ -2887,7 +2907,7 @@ abstract class ClipperBase {
 				continue;
 			}
 			if (CheckBounds(outrec)) {
-				DeepCheckOwners(outrec, polytree);
+				RecursiveCheckOwners(outrec, polytree);
 			}
 		}
 	}
