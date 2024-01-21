@@ -1352,7 +1352,7 @@ abstract class ClipperBase {
 		scanlineSet.add(ae.top.y);
 
 		CheckJoinLeft(ae, ae.bot);
-		CheckJoinRight(ae, ae.bot);
+		CheckJoinRight(ae, ae.bot, true); // (#500)
 	}
 
 	private static Active FindEdgeWithMatchingLocMin(Active e) {
