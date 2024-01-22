@@ -28,8 +28,8 @@ import clipper2.engine.PolyTreeD;
 import clipper2.offset.ClipperOffset;
 import clipper2.offset.EndType;
 import clipper2.offset.JoinType;
-import clipper2.rectclip.RectClip;
-import clipper2.rectclip.RectClipLines;
+import clipper2.rectclip.RectClip64;
+import clipper2.rectclip.RectClipLines64;
 
 public final class Clipper {
 
@@ -234,7 +234,7 @@ public final class Clipper {
 		if (rect.IsEmpty() || paths.size() == 0) {
 			return new Paths64();
 		}
-		RectClip rc = new RectClip(rect);
+		RectClip64 rc = new RectClip64(rect);
 		return rc.Execute(paths, convexOnly);
 	}
 
@@ -263,7 +263,7 @@ public final class Clipper {
 		double scale = Math.pow(10, precision);
 		Rect64 r = ScaleRect(rect, scale);
 		Paths64 tmpPath = ScalePaths64(paths, scale);
-		RectClip rc = new RectClip(r);
+		RectClip64 rc = new RectClip64(r);
 		tmpPath = rc.Execute(tmpPath, convexOnly);
 		return ScalePathsD(tmpPath, 1 / scale);
 	}
@@ -285,7 +285,7 @@ public final class Clipper {
 		if (rect.IsEmpty() || paths.size() == 0) {
 			return new Paths64();
 		}
-		RectClipLines rc = new RectClipLines(rect);
+		RectClipLines64 rc = new RectClipLines64(rect);
 		return rc.Execute(paths);
 	}
 
@@ -310,7 +310,7 @@ public final class Clipper {
 		double scale = Math.pow(10, precision);
 		Rect64 r = ScaleRect(rect, scale);
 		Paths64 tmpPath = ScalePaths64(paths, scale);
-		RectClipLines rc = new RectClipLines(r);
+		RectClipLines64 rc = new RectClipLines64(r);
 		tmpPath = rc.Execute(tmpPath);
 		return ScalePathsD(tmpPath, 1 / scale);
 	}
