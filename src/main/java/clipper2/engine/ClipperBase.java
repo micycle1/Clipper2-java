@@ -2130,6 +2130,7 @@ abstract class ClipperBase {
 			if (IsHotEdge(horz)) {
 				AddOutPt(horz, horz.top);
 			}
+
 			UpdateEdgeIntoAEL(horz);
 
 			if (getPreserveCollinear() && !horzIsOpen && HorzIsSpike(horz)) {
@@ -2145,7 +2146,8 @@ abstract class ClipperBase {
 		} // end for loop and end of (possible consecutive) horizontals
 
 		if (IsHotEdge(horz)) {
-			AddOutPt(horz, horz.top);
+			OutPt op = AddOutPt(horz, horz.top);
+			AddToHorzSegList(op);
 		}
 		UpdateEdgeIntoAEL(horz); // this is the end of an intermediate horiz.
 	}
@@ -2421,10 +2423,8 @@ abstract class ClipperBase {
 			// for each HorzSegment, find others that overlap
 			for (int j = i + 1; j < k; j++) {
 				HorzSegment hs2 = horzSegList.get(j);
-				if (hs2.leftOp.pt.x >= hs1.rightOp.pt.x) {
-					break;
-				}
-				if (hs2.leftToRight == hs1.leftToRight || (hs2.rightOp.pt.x <= hs1.leftOp.pt.x)) {
+				if ((hs2.leftOp.pt.x >= hs1.rightOp.pt.x) || (hs2.leftToRight == hs1.leftToRight)
+						|| (hs2.rightOp.pt.x <= hs1.leftOp.pt.x)) {
 					continue;
 				}
 				long currY = hs1.leftOp.pt.y;
@@ -2612,8 +2612,7 @@ abstract class ClipperBase {
 						or1.splits.add(or2.idx); // (#498)
 						or2.owner = or1;
 					}
-				} 
-				else {
+				} else {
 					or2.owner = or1;
 				}
 				outrecList.add(or2); // NOTE removed in 6e15ba0, but then fails tests
@@ -2883,11 +2882,12 @@ abstract class ClipperBase {
 		if (outrec.owner == null || outrec.owner.splits == null) {
 			return false;
 		}
-		for (int i : outrec.owner.splits) {
+		for (int i : splits) {
 			OutRec split = outrecList.get(i);
 			if (split == outrec || split == outrec.owner) {
 				continue;
-			} else if (split.splits != null && CheckSplitOwner(outrec, split.splits)) {
+			}
+			if (split.splits != null && CheckSplitOwner(outrec, split.splits)) {
 				return true;
 			}
 			if (CheckBounds(split) && split.bounds.Contains(outrec.bounds) && Path1InsidePath2(outrec.pts, split.pts)) {
