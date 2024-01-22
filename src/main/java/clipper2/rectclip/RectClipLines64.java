@@ -9,18 +9,18 @@ import clipper2.core.Rect64;
 import tangible.RefObject;
 
 /**
- * RectClipLines intersects subject open paths (polylines) with the specified
+ * RectClipLines64 intersects subject open paths (polylines) with the specified
  * rectangular clipping region.
  * <p>
  * This function is extremely fast when compared to the Library's general
  * purpose Intersect clipper. Where Intersect has roughly O(n³) performance,
- * RectClipLines has O(n) performance.
+ * RectClipLines64 has O(n) performance.
  * 
  * @since 1.0.6
  */
-public class RectClipLines extends RectClip {
+public class RectClipLines64 extends RectClip64 {
 
-	public RectClipLines(Rect64 rect) {
+	public RectClipLines64(Rect64 rect) {
 		super(rect);
 	}
 
@@ -123,9 +123,8 @@ public class RectClipLines extends RectClip {
 			// we must be crossing the rect boundary to get here
 			////////////////////////////////////////////////////
 
-			if (loc.argValue == Location.INSIDE) // path must be entering rect
-			{
-				Add(ip);
+			if (loc.argValue == Location.INSIDE) { // path must be entering rect
+				Add(ip, true);
 			} else if (prev.argValue != Location.INSIDE) {
 				// passing right through rect. 'ip' here will be the second
 				// intersect pt but we'll also need the first intersect pt (ip2)

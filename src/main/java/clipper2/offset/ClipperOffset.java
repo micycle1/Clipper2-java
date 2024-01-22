@@ -385,7 +385,7 @@ public class ClipperOffset {
 	private void DoSquare(Group group, Path64 path, int j, int k) {
 		PointD vec;
 		if (j == k) {
-			vec = new PointD(normals.get(0).y, -normals.get(0).x);
+			vec = new PointD(normals.get(j).y, -normals.get(j).x);
 		} else {
 			vec = GetAvgUnitVector(new PointD(-normals.get(k).y, normals.get(k).x), new PointD(normals.get(j).y, -normals.get(j).x));
 		}
@@ -486,7 +486,7 @@ public class ClipperOffset {
 			return;
 		}
 
-		if (cosA > 0.99) {
+		if (cosA > 0.999) {
 			DoMiter(group, path, j, k.argValue, cosA);
 		} else if (cosA > -0.99 && (sinA * groupDelta < 0)) {
 			// is concave
@@ -502,7 +502,7 @@ public class ClipperOffset {
 			} else {
 				DoSquare(group, path, j, k.argValue);
 			}
-		} else if (joinType == JoinType.Square) {
+		} else if (cosA > 0.99 || joinType == JoinType.Square) {
 			// angle less than 8 degrees or a squared join
 			DoSquare(group, path, j, k.argValue);
 		} else {

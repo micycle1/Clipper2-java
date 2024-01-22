@@ -15,16 +15,16 @@ import tangible.OutObject;
 import tangible.RefObject;
 
 /**
- * RectClip intersects subject polygons with the specified rectangular clipping
- * region. Polygons may be simple or complex (self-intersecting).
+ * RectClip64 intersects subject polygons with the specified rectangular
+ * clipping region. Polygons may be simple or complex (self-intersecting).
  * <p>
  * This function is extremely fast when compared to the Library's general
  * purpose Intersect clipper. Where Intersect has roughly O(n³) performance,
- * RectClip has O(n) performance.
+ * RectClip64 has O(n) performance.
  *
  * @since 1.0.6
  */
-public class RectClip {
+public class RectClip64 {
 
 	protected static class OutPt2 {
 		@Nullable
@@ -55,7 +55,7 @@ public class RectClip {
 	protected int currIdx = -1;
 
 	@SuppressWarnings("unchecked")
-	public RectClip(Rect64 rect) {
+	public RectClip64(Rect64 rect) {
 		currIdx = -1;
 		this.rect = rect;
 		mp = rect.MidPoint();
