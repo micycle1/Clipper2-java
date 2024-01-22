@@ -226,85 +226,77 @@ public final class Clipper {
 		return ScalePathsD(tmp, 1 / scale);
 	}
 
-	public static Paths64 ExecuteRectClip(Rect64 rect, Paths64 paths) {
-		return ExecuteRectClip(rect, paths, false);
-	}
-
-	public static Paths64 ExecuteRectClip(Rect64 rect, Paths64 paths, boolean convexOnly) {
-		if (rect.IsEmpty() || paths.size() == 0) {
+	public static Paths64 RectClip(Rect64 rect, Paths64 paths) {
+		if (rect.IsEmpty() || paths.isEmpty()) {
 			return new Paths64();
 		}
 		RectClip64 rc = new RectClip64(rect);
-		return rc.Execute(paths, convexOnly);
+		return rc.Execute(paths);
 	}
 
-	public static Paths64 ExecuteRectClip(Rect64 rect, Path64 path) {
-		return ExecuteRectClip(rect, path, false);
-	}
-
-	public static Paths64 ExecuteRectClip(Rect64 rect, Path64 path, boolean convexOnly) {
-		if (rect.IsEmpty() || path.size() == 0) {
+	public static Paths64 RectClip(Rect64 rect, Path64 path) {
+		if (rect.IsEmpty() || path.isEmpty()) {
 			return new Paths64();
 		}
 		Paths64 tmp = new Paths64();
 		tmp.add(path);
-		return ExecuteRectClip(rect, tmp, convexOnly);
+		return RectClip(rect, tmp);
 	}
 
-	public static PathsD ExecuteRectClip(RectD rect, PathsD paths) {
-		return ExecuteRectClip(rect, paths, 2, false);
+	public static PathsD RectClip(RectD rect, PathsD paths) {
+		return RectClip(rect, paths, 2);
 	}
 
-	public static PathsD ExecuteRectClip(RectD rect, PathsD paths, int precision, boolean convexOnly) {
+	public static PathsD RectClip(RectD rect, PathsD paths, int precision) {
 		InternalClipper.CheckPrecision(precision);
-		if (rect.IsEmpty() || paths.size() == 0) {
+		if (rect.IsEmpty() || paths.isEmpty()) {
 			return new PathsD();
 		}
 		double scale = Math.pow(10, precision);
 		Rect64 r = ScaleRect(rect, scale);
 		Paths64 tmpPath = ScalePaths64(paths, scale);
 		RectClip64 rc = new RectClip64(r);
-		tmpPath = rc.Execute(tmpPath, convexOnly);
+		tmpPath = rc.Execute(tmpPath);
 		return ScalePathsD(tmpPath, 1 / scale);
 	}
 
-	public static PathsD ExecuteRectClip(RectD rect, PathD path) {
-		return ExecuteRectClip(rect, path, 2, false);
+	public static PathsD RectClip(RectD rect, PathD path) {
+		return RectClip(rect, path, 2);
 	}
 
-	public static PathsD ExecuteRectClip(RectD rect, PathD path, int precision, boolean convexOnly) {
-		if (rect.IsEmpty() || path.size() == 0) {
+	public static PathsD RectClip(RectD rect, PathD path, int precision) {
+		if (rect.IsEmpty() || path.isEmpty()) {
 			return new PathsD();
 		}
 		PathsD tmp = new PathsD();
 		tmp.add(path);
-		return ExecuteRectClip(rect, tmp, precision, convexOnly);
+		return RectClip(rect, tmp, precision);
 	}
 
-	public static Paths64 ExecuteRectClipLines(Rect64 rect, Paths64 paths) {
-		if (rect.IsEmpty() || paths.size() == 0) {
+	public static Paths64 RectClipLines(Rect64 rect, Paths64 paths) {
+		if (rect.IsEmpty() || paths.isEmpty()) {
 			return new Paths64();
 		}
 		RectClipLines64 rc = new RectClipLines64(rect);
 		return rc.Execute(paths);
 	}
 
-	public static Paths64 ExecuteRectClipLines(Rect64 rect, Path64 path) {
-		if (rect.IsEmpty() || path.size() == 0) {
+	public static Paths64 RectClipLines(Rect64 rect, Path64 path) {
+		if (rect.IsEmpty() || path.isEmpty()) {
 			return new Paths64();
 		}
 		Paths64 tmp = new Paths64();
 		tmp.add(path);
-		return ExecuteRectClipLines(rect, tmp);
+		return RectClipLines(rect, tmp);
 	}
 
-	public static PathsD ExecuteRectClipLines(RectD rect, PathsD paths) {
-		return ExecuteRectClipLines(rect, paths, 2);
+	public static PathsD RectClipLines(RectD rect, PathsD paths) {
+		return RectClipLines(rect, paths, 2);
 	}
 
-	public static PathsD ExecuteRectClipLines(RectD rect, PathsD paths, int precision) {
+	public static PathsD RectClipLines(RectD rect, PathsD paths, int precision) {
 		InternalClipper.CheckPrecision(precision);
-		if (rect.IsEmpty() || paths.size() == 0) {
+		if (rect.IsEmpty() || paths.isEmpty()) {
 			return new PathsD();
 		}
 		double scale = Math.pow(10, precision);
@@ -315,17 +307,17 @@ public final class Clipper {
 		return ScalePathsD(tmpPath, 1 / scale);
 	}
 
-	public static PathsD ExecuteRectClipLines(RectD rect, PathD path) {
-		return ExecuteRectClipLines(rect, path, 2);
+	public static PathsD RectClipLines(RectD rect, PathD path) {
+		return RectClipLines(rect, path, 2);
 	}
 
-	public static PathsD ExecuteRectClipLines(RectD rect, PathD path, int precision) {
-		if (rect.IsEmpty() || path.size() == 0) {
+	public static PathsD RectClipLines(RectD rect, PathD path, int precision) {
+		if (rect.IsEmpty() || path.isEmpty()) {
 			return new PathsD();
 		}
 		PathsD tmp = new PathsD();
 		tmp.add(path);
-		return ExecuteRectClipLines(rect, tmp, precision);
+		return RectClipLines(rect, tmp, precision);
 	}
 
 	public static Paths64 MinkowskiSum(Path64 pattern, Path64 path, boolean isClosed) {
