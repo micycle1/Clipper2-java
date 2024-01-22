@@ -2601,6 +2601,10 @@ abstract class ClipperBase {
 						SetOwner(or2, or1);
 					} else if (Path1InsidePath2(or1.pts, or2.pts)) {
 						SetOwner(or1, or2);
+						if (or1.splits == null) {
+							or1.splits = new ArrayList<>();
+						}
+						or1.splits.add(or2.idx); // (#520)
 					} else {
 						if (or1.splits == null) {
 							or1.splits = new ArrayList<>();
@@ -2608,11 +2612,11 @@ abstract class ClipperBase {
 						or1.splits.add(or2.idx); // (#498)
 						or2.owner = or1;
 					}
-				} else {
+				} 
+				else {
 					or2.owner = or1;
 				}
-
-				outrecList.add(or2);
+				outrecList.add(or2); // NOTE removed in 6e15ba0, but then fails tests
 			} else {
 				or2.pts = null;
 				if (usingPolytree) {

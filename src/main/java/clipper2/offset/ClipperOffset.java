@@ -2,6 +2,10 @@ package clipper2.offset;
 
 import static clipper2.core.InternalClipper.DEFAULT_ARC_TOLERANCE;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 import clipper2.Clipper;
 import clipper2.core.ClipType;
 import clipper2.core.FillRule;
@@ -16,10 +20,6 @@ import clipper2.engine.Clipper64;
 import clipper2.engine.PolyTree64;
 import tangible.OutObject;
 import tangible.RefObject;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 /**
  * Geometric offsetting refers to the process of creating parallel curves that
@@ -41,12 +41,13 @@ import java.util.List;
  */
 public class ClipperOffset {
 
+	private static double TOLERANCE = 1.0E-12;
+
 	private final List<Group> groupList = new ArrayList<>();
 	private final PathD normals = new PathD();
 	private final Paths64 solution = new Paths64();
 	private double groupDelta; // *0.5 for open paths; *-1.0 for negative areas
 	private double delta;
-	private double absGroupDelta;
 	private double mitLimSqr;
 	private double stepsPerRad;
 	private double stepSin;
@@ -58,6 +59,7 @@ public class ClipperOffset {
 	private double miterLimit;
 	private boolean preserveCollinear;
 	private boolean reverseSolution;
+	private DeltaCallback64 deltaCallback;
 
 	/**
 	 * @see #ClipperOffset(double, double, boolean, boolean)
@@ -93,8 +95,8 @@ public class ClipperOffset {
 	 * Creates a ClipperOffset object, using the supplied parameters.
 	 *
 	 * @param miterLimit        This property sets the maximum distance in multiples
-	 *                          of groupDelta that vertices can be offset from
-	 *                          their original positions before squaring is applied.
+	 *                          of groupDelta that vertices can be offset from their
+	 *                          original positions before squaring is applied.
 	 *                          (Squaring truncates a miter by 'cutting it off' at 1
 	 *                          × groupDelta distance from the original vertex.)
 	 *                          <p>
@@ -203,6 +205,11 @@ public class ClipperOffset {
 		}
 	}
 
+	public void Execute(DeltaCallback64 deltaCallback64, Paths64 solution) {
+		deltaCallback = deltaCallback64;
+		Execute(1.0, solution);
+	}
+
 	public void Execute(double delta, PolyTree64 polytree) {
 		polytree.Clear();
 		ExecuteInternal(delta);
@@ -258,6 +265,14 @@ public class ClipperOffset {
 
 	public final void setReverseSolution(boolean value) {
 		reverseSolution = value;
+	}
+
+	public final void setDeltaCallBack64(DeltaCallback64 callback) {
+		deltaCallback = callback;
+	}
+
+	public final DeltaCallback64 getDeltaCallBack64() {
+		return deltaCallback;
 	}
 
 	private static PointD GetUnitNormal(Point64 pt1, Point64 pt2) {
@@ -374,10 +389,10 @@ public class ClipperOffset {
 		} else {
 			vec = GetAvgUnitVector(new PointD(-normals.get(k).y, normals.get(k).x), new PointD(normals.get(j).y, -normals.get(j).x));
 		}
-
+		double absDelta = Math.abs(groupDelta);
 		// now offset the original vertex delta units along unit vector
 		PointD ptQ = new PointD(path.get(j));
-		ptQ = TranslatePoint(ptQ, absGroupDelta * vec.x, absGroupDelta * vec.y);
+		ptQ = TranslatePoint(ptQ, absDelta * vec.x, absDelta * vec.y);
 
 		// get perpendicular vertices
 		PointD pt1 = TranslatePoint(ptQ, groupDelta * vec.y, groupDelta * -vec.x);
@@ -401,12 +416,26 @@ public class ClipperOffset {
 	}
 
 	private void DoMiter(Group group, Path64 path, int j, int k, double cosA) {
-		double q = groupDelta / (cosA + 1);
+		final double q = groupDelta / (cosA + 1);
 		group.outPath.add(new Point64(path.get(j).x + (normals.get(k).x + normals.get(j).x) * q,
 				path.get(j).y + (normals.get(k).y + normals.get(j).y) * q));
 	}
 
 	private void DoRound(Group group, Path64 path, int j, int k, double angle) {
+		if (deltaCallback != null) {
+			// when deltaCallback is assigned, groupDelta won't be constant,
+			// so we'll need to do the following calculations for *every* vertex.
+			double absDelta = Math.abs(groupDelta);
+			double arcTol = arcTolerance > 0.01 ? arcTolerance : Math.log10(2 + absDelta) * DEFAULT_ARC_TOLERANCE;
+			double stepsPer360 = Math.PI / Math.acos(1 - arcTol / absDelta);
+			stepSin = Math.sin((2 * Math.PI) / stepsPer360);
+			stepCos = Math.cos((2 * Math.PI) / stepsPer360);
+			if (groupDelta < 0.0) {
+				stepSin = -stepSin;
+			}
+			stepsPerRad = stepsPer360 / (2 * Math.PI);
+		}
+
 		Point64 pt = path.get(j);
 		PointD offsetVec = new PointD(normals.get(k).x * groupDelta, normals.get(k).y * groupDelta);
 		if (j == k) {
@@ -449,21 +478,23 @@ public class ClipperOffset {
 			sinA = -1.0;
 		}
 
-		if (cosA > 0.99) // almost straight - less than 8 degrees
-		{
-			group.outPath.add(GetPerpendic(path.get(j), normals.get(k.argValue)));
-			if (cosA < 0.9998) { // greater than 1 degree (#424)
-				group.outPath.add(GetPerpendic(path.get(j), normals.get(j))); // (#418)
-			}
-		} else if (cosA > -0.99 && (sinA * groupDelta < 0)) // is concave
-		{
+		if (deltaCallback != null) {
+			groupDelta = deltaCallback.calculate(path, normals, j, k.argValue);
+		}
+		if (Math.abs(groupDelta) < TOLERANCE) {
+			group.outPath.add(path.get(j));
+			return;
+		}
+
+		if (cosA > 0.99) {
+			DoMiter(group, path, j, k.argValue, cosA);
+		} else if (cosA > -0.99 && (sinA * groupDelta < 0)) {
+			// is concave
 			group.outPath.add(GetPerpendic(path.get(j), normals.get(k.argValue)));
 			// this extra point is the only (simple) way to ensure that
 			// path reversals are fully cleaned with the trailing clipper
 			group.outPath.add(path.get(j)); // (#405)
 			group.outPath.add(GetPerpendic(path.get(j), normals.get(j)));
-		} else if (joinType == JoinType.Round) {
-			DoRound(group, path, j, k.argValue, Math.atan2(sinA, cosA));
 		} else if (joinType == JoinType.Miter) {
 			// miter unless the angle is so acute the miter would exceeds ML
 			if (cosA > mitLimSqr - 1) {
@@ -471,14 +502,13 @@ public class ClipperOffset {
 			} else {
 				DoSquare(group, path, j, k.argValue);
 			}
-		}
-		// don't bother squaring angles that deviate < ~20 degrees because
-		// squaring will be indistinguishable from mitering and just be a lot slower
-		else if (cosA > 0.9) {
-			DoMiter(group, path, j, k.argValue, cosA);
-		} else {
+		} else if (joinType == JoinType.Square) {
+			// angle less than 8 degrees or a squared join
 			DoSquare(group, path, j, k.argValue);
+		} else {
+			DoRound(group, path, j, k.argValue, Math.atan2(sinA, cosA));
 		}
+
 		k.argValue = j;
 	}
 
@@ -503,19 +533,28 @@ public class ClipperOffset {
 		group.outPath = new Path64();
 		int highI = path.size() - 1;
 
+		if (deltaCallback != null) {
+			groupDelta = deltaCallback.calculate(path, normals, 0, 0);
+		}
+
 		// do the line start cap
-		switch (this.endType) {
-			case Butt :
-				group.outPath
-						.add(new Point64(path.get(0).x - normals.get(0).x * groupDelta, path.get(0).y - normals.get(0).y * groupDelta));
-				group.outPath.add(GetPerpendic(path.get(0), normals.get(0)));
-				break;
-			case Round :
-				DoRound(group, path, 0, 0, Math.PI);
-				break;
-			default :
-				DoSquare(group, path, 0, 0);
-				break;
+		if (Math.abs(groupDelta) < TOLERANCE) {
+			group.outPath.add(path.get(0));
+		} else {
+			// do the line start cap
+			switch (this.endType) {
+				case Butt :
+					group.outPath
+							.add(new Point64(path.get(0).x - normals.get(0).x * groupDelta, path.get(0).y - normals.get(0).y * groupDelta));
+					group.outPath.add(GetPerpendic(path.get(0), normals.get(0)));
+					break;
+				case Round :
+					DoRound(group, path, 0, 0, Math.PI);
+					break;
+				default :
+					DoSquare(group, path, 0, 0);
+					break;
+			}
 		}
 
 		// offset the left side going forward
@@ -530,19 +569,26 @@ public class ClipperOffset {
 		}
 		normals.set(0, normals.get(highI));
 
+		if (deltaCallback != null) {
+			groupDelta = deltaCallback.calculate(path, normals, highI, highI);
+		}
 		// do the line end cap
-		switch (this.endType) {
-			case Butt :
-				group.outPath.add(new Point64(path.get(highI).x - normals.get(highI).x * groupDelta,
-						path.get(highI).y - normals.get(highI).y * groupDelta));
-				group.outPath.add(GetPerpendic(path.get(highI), normals.get(highI)));
-				break;
-			case Round :
-				DoRound(group, path, highI, highI, Math.PI);
-				break;
-			default :
-				DoSquare(group, path, highI, highI);
-				break;
+		if (Math.abs(groupDelta) < TOLERANCE) {
+			group.outPath.add(path.get(highI));
+		} else {
+			switch (this.endType) {
+				case Butt :
+					group.outPath.add(new Point64(path.get(highI).x - normals.get(highI).x * groupDelta,
+							path.get(highI).y - normals.get(highI).y * groupDelta));
+					group.outPath.add(GetPerpendic(path.get(highI), normals.get(highI)));
+					break;
+				case Round :
+					DoRound(group, path, highI, highI, Math.PI);
+					break;
+				default :
+					DoSquare(group, path, highI, highI);
+					break;
+			}
 		}
 
 		// offset the left side going back
@@ -556,8 +602,10 @@ public class ClipperOffset {
 
 	private void DoGroupOffset(Group group) {
 		if (group.endType == EndType.Polygon) {
-			// the lowermost polygon must be an outer polygon. So we can use that as the
-			// designated orientation for outer polygons (needed for tidy-up clipping)
+			/*
+			 * The lowermost polygon must be an outer polygon. So we can use that as the
+			 * designated orientation for outer polygons (needed for tidy-up clipping)
+			 */
 			OutObject<Integer> lowestIdx = new OutObject<>();
 			OutObject<Rect64> grpBounds = new OutObject<>();
 			GetBoundsAndLowestPolyIdx(group.inPaths, lowestIdx, grpBounds);
@@ -576,18 +624,20 @@ public class ClipperOffset {
 			group.pathsReversed = false;
 			this.groupDelta = Math.abs(this.delta) * 0.5;
 		}
-		this.absGroupDelta = Math.abs(this.groupDelta);
+		double absDelta = Math.abs(this.groupDelta);
 		this.joinType = group.joinType;
 		this.endType = group.endType;
 
 		// calculate a sensible number of steps (for 360 deg for the given offset
-		if (group.joinType == JoinType.Round || group.endType == EndType.Round) {
-			// arcTol - when fArcTolerance is undefined (0), the amount of
-			// curve imprecision that's allowed is based on the size of the
-			// offset (delta). Obviously very large offsets will almost always
-			// require much less precision. See also offset_triginometry2.svg
-			double arcTol = arcTolerance > 0.01 ? arcTolerance : Math.log10(2 + this.absGroupDelta) * DEFAULT_ARC_TOLERANCE;
-			double stepsPer360 = Math.PI / Math.acos(1 - arcTol / absGroupDelta);
+		if (deltaCallback == null && (group.joinType == JoinType.Round || group.endType == EndType.Round)) {
+			/*
+			 * arcTol - when fArcTolerance is undefined (0), the amount of curve imprecision
+			 * that's allowed is based on the size of the offset (delta). Obviously very
+			 * large offsets will almost always require much less precision. See also
+			 * offset_triginometry2.svg
+			 */
+			double arcTol = arcTolerance > 0.01 ? arcTolerance : Math.log10(2 + absDelta) * DEFAULT_ARC_TOLERANCE;
+			double stepsPer360 = Math.PI / Math.acos(1 - arcTol / absDelta);
 			stepSin = Math.sin((2 * Math.PI) / stepsPer360);
 			stepCos = Math.cos((2 * Math.PI) / stepsPer360);
 			if (groupDelta < 0.0) {
@@ -609,7 +659,7 @@ public class ClipperOffset {
 				group.outPath = new Path64();
 				// single vertex so build a circle or square ...
 				if (group.endType == EndType.Round) {
-					double r = this.absGroupDelta;
+					double r = absDelta;
 					group.outPath = Clipper.Ellipse(path.get(0), r, r);
 				} else {
 					int d = (int) Math.ceil(this.groupDelta);
