@@ -148,6 +148,126 @@ abstract class ClipperBase {
 
 	}
 
+	private static class ClipperEngine {
+
+		private static void AddLocMin(Vertex vert, PathType polytype, boolean isOpen, List<LocalMinima> minimaList) {
+			// make sure the vertex is added only once ...
+			if ((vert.flags & VertexFlags.LocalMin) != VertexFlags.None) {
+				return;
+			}
+			vert.flags |= VertexFlags.LocalMin;
+
+			LocalMinima lm = new LocalMinima(vert, polytype, isOpen);
+			minimaList.add(lm);
+		}
+
+		private static void AddPathsToVertexList(Paths64 paths, PathType polytype, boolean isOpen, List<LocalMinima> minimaList,
+				List<Vertex> vertexList) {
+			for (Path64 path : paths) {
+				Vertex v0 = null, prevV = null, currV;
+				for (Point64 pt : path) {
+					if (v0 == null) {
+						v0 = new Vertex(pt, VertexFlags.None, null);
+						vertexList.add(v0);
+						prevV = v0;
+					} else if (prevV.pt.opNotEquals(pt)) { // ie skips duplicates
+						currV = new Vertex(pt, VertexFlags.None, prevV);
+						vertexList.add(currV);
+						prevV.next = currV;
+						prevV = currV;
+					}
+				}
+				if (prevV == null || prevV.prev == null) {
+					continue;
+				}
+				if (!isOpen && v0.pt.opEquals(prevV.pt)) {
+					prevV = prevV.prev;
+				}
+				prevV.next = v0;
+				v0.prev = prevV;
+				if (!isOpen && prevV == prevV.next) {
+					continue;
+				}
+
+				// OK, we have a valid path
+				boolean goingup, goingup0;
+				if (isOpen) {
+					currV = v0.next;
+					while (v0 != currV && currV.pt.y == v0.pt.y) {
+						currV = currV.next;
+					}
+					goingup = currV.pt.y <= v0.pt.y;
+					if (goingup) {
+						v0.flags = VertexFlags.OpenStart;
+						AddLocMin(v0, polytype, true, minimaList);
+					} else {
+						v0.flags = VertexFlags.OpenStart | VertexFlags.LocalMax;
+					}
+				} else { // closed path
+					prevV = v0.prev;
+					while (!v0.equals(prevV) && prevV.pt.y == v0.pt.y) {
+						prevV = prevV.prev;
+					}
+					if (v0.equals(prevV)) {
+						continue; // only open paths can be completely flat
+					}
+					goingup = prevV.pt.y > v0.pt.y;
+				}
+
+				goingup0 = goingup;
+				prevV = v0;
+				currV = v0.next;
+				while (!v0.equals(currV)) {
+					if (currV.pt.y > prevV.pt.y && goingup) {
+						prevV.flags |= VertexFlags.LocalMax;
+						goingup = false;
+					} else if (currV.pt.y < prevV.pt.y && !goingup) {
+						goingup = true;
+						AddLocMin(prevV, polytype, isOpen, minimaList);
+					}
+					prevV = currV;
+					currV = currV.next;
+				}
+
+				if (isOpen) {
+					prevV.flags |= VertexFlags.OpenEnd;
+					if (goingup) {
+						prevV.flags |= VertexFlags.LocalMax;
+					} else {
+						AddLocMin(prevV, polytype, isOpen, minimaList);
+					}
+				} else if (goingup != goingup0) {
+					if (goingup0) {
+						AddLocMin(prevV, polytype, false, minimaList);
+					} else {
+						prevV.flags = prevV.flags | VertexFlags.LocalMax;
+					}
+				}
+			}
+		}
+
+	}
+
+	public class ReuseableDataContainer64 {
+
+		private final List<LocalMinima> minimaList;
+		private final List<Vertex> vertexList;
+
+		public ReuseableDataContainer64() {
+			minimaList = new ArrayList<>();
+			vertexList = new ArrayList<>();
+		}
+
+		public void Clear() {
+			minimaList.clear();
+			vertexList.clear();
+		}
+
+		public void AddPaths(Paths64 paths, PathType pt, boolean isOpen) {
+			ClipperEngine.AddPathsToVertexList(paths, pt, isOpen, minimaList, vertexList);
+		}
+	}
+
 	/**
 	 * Vertex data structure for clipping solutions
 	 */
@@ -202,7 +322,7 @@ abstract class ClipperBase {
 	 * ascending and descending 'bounds' (or sides) that start at local minima and
 	 * ascend to a local maxima, before descending again.
 	 */
-	class Vertex {
+	static class Vertex {
 
 		Point64 pt = new Point64();
 		@Nullable
@@ -219,7 +339,7 @@ abstract class ClipperBase {
 		}
 	}
 
-	class VertexFlags {
+	static class VertexFlags {
 
 		static final int None = 0;
 		static final int OpenStart = 1;
@@ -602,90 +722,6 @@ abstract class ClipperBase {
 		minimaList.add(lm);
 	}
 
-	protected final void AddPathsToVertexList(Paths64 paths, PathType polytype, boolean isOpen) {
-		for (Path64 path : paths) {
-			Vertex v0 = null, prevV = null, currV;
-			for (Point64 pt : path) {
-				if (v0 == null) {
-					v0 = new Vertex(pt, VertexFlags.None, null);
-					vertexList.add(v0);
-					prevV = v0;
-				} else if (prevV.pt.opNotEquals(pt)) { // ie skips duplicates
-					currV = new Vertex(pt, VertexFlags.None, prevV);
-					vertexList.add(currV);
-					prevV.next = currV;
-					prevV = currV;
-				}
-			}
-			if (prevV == null || prevV.prev == null) {
-				continue;
-			}
-			if (!isOpen && v0.pt.opEquals(prevV.pt)) {
-				prevV = prevV.prev;
-			}
-			prevV.next = v0;
-			v0.prev = prevV;
-			if (!isOpen && prevV == prevV.next) {
-				continue;
-			}
-
-			// OK, we have a valid path
-			boolean goingup, goingup0;
-			if (isOpen) {
-				currV = v0.next;
-				while (v0 != currV && currV.pt.y == v0.pt.y) {
-					currV = currV.next;
-				}
-				goingup = currV.pt.y <= v0.pt.y;
-				if (goingup) {
-					v0.flags = VertexFlags.OpenStart;
-					AddLocMin(v0, polytype, true);
-				} else {
-					v0.flags = VertexFlags.OpenStart | VertexFlags.LocalMax;
-				}
-			} else { // closed path
-				prevV = v0.prev;
-				while (!v0.equals(prevV) && prevV.pt.y == v0.pt.y) {
-					prevV = prevV.prev;
-				}
-				if (v0.equals(prevV)) {
-					continue; // only open paths can be completely flat
-				}
-				goingup = prevV.pt.y > v0.pt.y;
-			}
-
-			goingup0 = goingup;
-			prevV = v0;
-			currV = v0.next;
-			while (!v0.equals(currV)) {
-				if (currV.pt.y > prevV.pt.y && goingup) {
-					prevV.flags |= VertexFlags.LocalMax;
-					goingup = false;
-				} else if (currV.pt.y < prevV.pt.y && !goingup) {
-					goingup = true;
-					AddLocMin(prevV, polytype, isOpen);
-				}
-				prevV = currV;
-				currV = currV.next;
-			}
-
-			if (isOpen) {
-				prevV.flags |= VertexFlags.OpenEnd;
-				if (goingup) {
-					prevV.flags |= VertexFlags.LocalMax;
-				} else {
-					AddLocMin(prevV, polytype, isOpen);
-				}
-			} else if (goingup != goingup0) {
-				if (goingup0) {
-					AddLocMin(prevV, polytype, false);
-				} else {
-					prevV.flags = prevV.flags | VertexFlags.LocalMax;
-				}
-			}
-		}
-	}
-
 	public final void AddSubject(Path64 path) {
 		AddPath(path, PathType.Subject);
 	}
@@ -738,7 +774,23 @@ abstract class ClipperBase {
 			hasOpenPaths = true;
 		}
 		isSortedMinimaList = false;
-		AddPathsToVertexList(paths, polytype, isOpen);
+		ClipperEngine.AddPathsToVertexList(paths, polytype, isOpen, minimaList, vertexList);
+	}
+
+	protected void AddReuseableData(ReuseableDataContainer64 reuseableData) {
+		if (reuseableData.minimaList.isEmpty()) {
+			return;
+		}
+		// nb: reuseableData will continue to own the vertices, so it's important
+		// that the reuseableData object isn't destroyed before the Clipper object
+		// that's using the data.
+		isSortedMinimaList = false;
+		for (LocalMinima lm : reuseableData.minimaList) {
+			minimaList.add(new LocalMinima(lm.vertex, lm.polytype, lm.isOpen));
+			if (lm.isOpen) {
+				hasOpenPaths = true;
+			}
+		}
 	}
 
 	private boolean IsContributingClosed(Active ae) {
@@ -1352,7 +1404,7 @@ abstract class ClipperBase {
 		scanlineSet.add(ae.top.y);
 
 		CheckJoinLeft(ae, ae.bot);
-		CheckJoinRight(ae, ae.bot);
+		CheckJoinRight(ae, ae.bot, true); // (#500)
 	}
 
 	private static Active FindEdgeWithMatchingLocMin(Active e) {
@@ -2078,6 +2130,7 @@ abstract class ClipperBase {
 			if (IsHotEdge(horz)) {
 				AddOutPt(horz, horz.top);
 			}
+
 			UpdateEdgeIntoAEL(horz);
 
 			if (getPreserveCollinear() && !horzIsOpen && HorzIsSpike(horz)) {
@@ -2093,7 +2146,8 @@ abstract class ClipperBase {
 		} // end for loop and end of (possible consecutive) horizontals
 
 		if (IsHotEdge(horz)) {
-			AddOutPt(horz, horz.top);
+			OutPt op = AddOutPt(horz, horz.top);
+			AddToHorzSegList(op);
 		}
 		UpdateEdgeIntoAEL(horz); // this is the end of an intermediate horiz.
 	}
@@ -2212,8 +2266,13 @@ abstract class ClipperBase {
 	private void CheckJoinLeft(Active e, Point64 pt, boolean checkCurrX) {
 		@Nullable
 		Active prev = e.prevInAEL;
-		if (prev == null || IsOpen(e) || IsOpen(prev) || !IsHotEdge(e) || !IsHotEdge(prev) || pt.y < e.top.y + 2 || pt.y < prev.top.y + 2) {
+		if (prev == null || IsOpen(e) || IsOpen(prev) || !IsHotEdge(e) || !IsHotEdge(prev)) {
 			return;
+		}
+
+		if ((pt.y < e.top.y + 2 || pt.y < prev.top.y + 2) && // avoid trivial joins
+				((e.bot.y > pt.y) || (prev.bot.y > pt.y))) {
+			return; // (#490)
 		}
 
 		if (checkCurrX) {
@@ -2245,9 +2304,12 @@ abstract class ClipperBase {
 	private void CheckJoinRight(Active e, Point64 pt, boolean checkCurrX) {
 		@Nullable
 		Active next = e.nextInAEL;
-		if (IsOpen(e) || !IsHotEdge(e) || IsJoined(e) || next == null || IsOpen(next) || !IsHotEdge(next) || pt.y < e.top.y + 2
-				|| pt.y < next.top.y + 2) {
+		if (IsOpen(e) || !IsHotEdge(e) || IsJoined(e) || next == null || IsOpen(next) || !IsHotEdge(next)) {
 			return;
+		}
+		if ((pt.y < e.top.y + 2 || pt.y < next.top.y + 2) && // avoid trivial joins
+				((e.bot.y > pt.y) || (next.bot.y > pt.y))) {
+			return; // (#490)
 		}
 
 		if (checkCurrX) {
@@ -2361,10 +2423,8 @@ abstract class ClipperBase {
 			// for each HorzSegment, find others that overlap
 			for (int j = i + 1; j < k; j++) {
 				HorzSegment hs2 = horzSegList.get(j);
-				if (hs2.leftOp.pt.x >= hs1.rightOp.pt.x) {
-					break;
-				}
-				if (hs2.leftToRight == hs1.leftToRight || (hs2.rightOp.pt.x <= hs1.leftOp.pt.x)) {
+				if ((hs2.leftOp.pt.x >= hs1.rightOp.pt.x) || (hs2.leftToRight == hs1.leftToRight)
+						|| (hs2.rightOp.pt.x <= hs1.leftOp.pt.x)) {
 					continue;
 				}
 				long currY = hs1.leftOp.pt.y;
@@ -2541,14 +2601,21 @@ abstract class ClipperBase {
 						SetOwner(or2, or1);
 					} else if (Path1InsidePath2(or1.pts, or2.pts)) {
 						SetOwner(or1, or2);
+						if (or1.splits == null) {
+							or1.splits = new ArrayList<>();
+						}
+						or1.splits.add(or2.idx); // (#520)
 					} else {
+						if (or1.splits == null) {
+							or1.splits = new ArrayList<>();
+						}
+						or1.splits.add(or2.idx); // (#498)
 						or2.owner = or1;
 					}
 				} else {
 					or2.owner = or1;
 				}
-
-				outrecList.add(or2);
+				outrecList.add(or2); // NOTE removed in 6e15ba0, but then fails tests
 			} else {
 				or2.pts = null;
 				if (usingPolytree) {
@@ -2811,6 +2878,26 @@ abstract class ClipperBase {
 		return true;
 	}
 
+	private boolean CheckSplitOwner(OutRec outrec, List<Integer> splits) {
+		if (outrec.owner == null || outrec.owner.splits == null) {
+			return false;
+		}
+		for (int i : splits) {
+			OutRec split = outrecList.get(i);
+			if (split == outrec || split == outrec.owner) {
+				continue;
+			}
+			if (split.splits != null && CheckSplitOwner(outrec, split.splits)) {
+				return true;
+			}
+			if (CheckBounds(split) && split.bounds.Contains(outrec.bounds) && Path1InsidePath2(outrec.pts, split.pts)) {
+				outrec.owner = split; // found in split
+				return true;
+			}
+		}
+		return false;
+	}
+
 	private void RecursiveCheckOwners(OutRec outrec, PolyPathBase polypath) {
 		// pre-condition: outrec will have valid bounds
 		// post-condition: if a valid path, outrec will have a polypath
@@ -2819,23 +2906,20 @@ abstract class ClipperBase {
 			return;
 		}
 
-		while (outrec.owner != null && (outrec.owner.pts == null || !CheckBounds(outrec.owner))) {
+		while (outrec.owner != null) {
+			if (outrec.owner.splits != null && CheckSplitOwner(outrec, outrec.owner.splits)) {
+				break;
+			}
+			if (outrec.owner.pts != null && CheckBounds(outrec.owner) && Path1InsidePath2(outrec.pts, outrec.owner.pts)) {
+				break;
+			}
 			outrec.owner = outrec.owner.owner;
 		}
 
-		if (outrec.owner != null && outrec.owner.polypath == null) {
-			RecursiveCheckOwners(outrec.owner, polypath);
-		}
-
-		while (outrec.owner != null) {
-			if (outrec.owner.bounds.Contains(outrec.bounds) && Path1InsidePath2(outrec.pts, outrec.owner.pts)) {
-				break; // found - owner contain outrec!
-			} else {
-				outrec.owner = outrec.owner.owner;
-			}
-		}
-
 		if (outrec.owner != null) {
+			if (outrec.owner.polypath == null) {
+				RecursiveCheckOwners(outrec.owner, polypath);
+			}
 			outrec.polypath = outrec.owner.polypath.AddChild(outrec.path);
 		} else {
 			outrec.polypath = polypath.AddChild(outrec.path);
@@ -2887,7 +2971,7 @@ abstract class ClipperBase {
 				continue;
 			}
 			if (CheckBounds(outrec)) {
-				DeepCheckOwners(outrec, polytree);
+				RecursiveCheckOwners(outrec, polytree);
 			}
 		}
 	}

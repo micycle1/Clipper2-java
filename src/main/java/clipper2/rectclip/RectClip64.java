@@ -15,16 +15,16 @@ import tangible.OutObject;
 import tangible.RefObject;
 
 /**
- * RectClip intersects subject polygons with the specified rectangular clipping
- * region. Polygons may be simple or complex (self-intersecting).
+ * RectClip64 intersects subject polygons with the specified rectangular
+ * clipping region. Polygons may be simple or complex (self-intersecting).
  * <p>
  * This function is extremely fast when compared to the Library's general
  * purpose Intersect clipper. Where Intersect has roughly O(n³) performance,
- * RectClip has O(n) performance.
+ * RectClip64 has O(n) performance.
  *
  * @since 1.0.6
  */
-public class RectClip {
+public class RectClip64 {
 
 	protected static class OutPt2 {
 		@Nullable
@@ -55,7 +55,7 @@ public class RectClip {
 	protected int currIdx = -1;
 
 	@SuppressWarnings("unchecked")
-	public RectClip(Rect64 rect) {
+	public RectClip64(Rect64 rect) {
 		currIdx = -1;
 		this.rect = rect;
 		mp = rect.MidPoint();
@@ -586,7 +586,7 @@ public class RectClip {
 				}
 			}
 		} else if (loc.argValue != Location.INSIDE && (loc.argValue != firstCross || startLocs.size() > 2)) {
-			if (startLocs.size() > 0) {
+			if (!startLocs.isEmpty()) {
 				prev.argValue = loc.argValue;
 				for (Location loc2 : startLocs) {
 					if (prev.argValue == loc2) {
@@ -603,7 +603,7 @@ public class RectClip {
 		}
 	}
 
-	public Paths64 Execute(Paths64 paths, boolean convexOnly) {
+	public Paths64 Execute(Paths64 paths) {
 		Paths64 result = new Paths64();
 		if (rect.IsEmpty()) {
 			return result;
@@ -621,11 +621,9 @@ public class RectClip {
 				continue;
 			}
 			ExecuteInternal(path);
-			if (!convexOnly) {
-				CheckEdges();
-				for (int i = 0; i < 4; ++i) {
-					TidyEdgePair(i, edges[i * 2], edges[i * 2 + 1]);
-				}
+			CheckEdges();
+			for (int i = 0; i < 4; ++i) {
+				TidyEdgePair(i, edges[i * 2], edges[i * 2 + 1]);
 			}
 
 			for (@Nullable
