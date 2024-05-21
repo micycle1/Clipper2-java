@@ -480,6 +480,9 @@ public class ClipperOffset {
 
 		if (deltaCallback != null) {
 			groupDelta = deltaCallback.calculate(path, normals, j, k.argValue);
+			if (group.pathsReversed) {
+				groupDelta = -groupDelta;
+			}
 		}
 		if (Math.abs(groupDelta) < TOLERANCE) {
 			group.outPath.add(path.get(j));

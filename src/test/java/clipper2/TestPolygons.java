@@ -1,6 +1,7 @@
 package clipper2;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -51,7 +52,7 @@ class TestPolygons {
 			} else if (Arrays.asList(23, 37, 43, 45, 87, 102, 111, 118, 119).contains(testNum)) {
 				assertTrue(countDiff <= 1);
 			} else {
-				assertTrue(countDiff == 0);
+				assertEquals(0, countDiff);
 			}
 		}
 
@@ -70,7 +71,8 @@ class TestPolygons {
 			} else if (Arrays.asList(52, 53, 54, 59, 60, 64, 117, 118, 119, 184).contains(test.testNum())) {
 				assertTrue(areaDiffRatio <= 0.02);
 			} else {
-				assertTrue(areaDiffRatio <= 0.01);
+				assertTrue(areaDiffRatio <= 0.01,
+						"Expected area difference ratio to be less than 0.01, but was " + String.format("%.3f", areaDiffRatio));
 			}
 		}
 

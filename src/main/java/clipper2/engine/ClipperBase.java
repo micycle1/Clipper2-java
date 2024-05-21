@@ -16,7 +16,6 @@ import clipper2.core.Path64;
 import clipper2.core.PathType;
 import clipper2.core.Paths64;
 import clipper2.core.Point64;
-import clipper2.core.PointD;
 import clipper2.core.Rect64;
 import tangible.OutObject;
 import tangible.RefObject;
@@ -2587,7 +2586,7 @@ abstract class ClipperBase {
 			op1b.prev = op2b;
 			op2b.next = op1b;
 
-			if (or1 == or2) {
+			if (or1 == or2) { // 'join' is really a split
 				or2 = new OutRec();
 				or2.pts = op1b;
 				FixOutRecPts(or2);
@@ -2596,26 +2595,21 @@ abstract class ClipperBase {
 					or1.pts.outrec = or1;
 				}
 
-				if (usingPolytree) {
-					if (Path1InsidePath2(or2.pts, or1.pts)) {
-						SetOwner(or2, or1);
-					} else if (Path1InsidePath2(or1.pts, or2.pts)) {
+				if (usingPolytree) { // #498, #520, #584, D#576
+					if (Path1InsidePath2(or1.pts, or2.pts)) {
+						or2.owner = or1.owner;
 						SetOwner(or1, or2);
+					} else {
+						SetOwner(or2, or1);
 						if (or1.splits == null) {
 							or1.splits = new ArrayList<>();
 						}
 						or1.splits.add(or2.idx); // (#520)
-					} else {
-						if (or1.splits == null) {
-							or1.splits = new ArrayList<>();
-						}
-						or1.splits.add(or2.idx); // (#498)
-						or2.owner = or1;
 					}
 				} else {
 					or2.owner = or1;
 				}
-				outrecList.add(or2); // NOTE removed in 6e15ba0, but then fails tests
+//				outrecList.add(or2); // NOTE removed in 6e15ba0, but then fails tests
 			} else {
 				or2.pts = null;
 				if (usingPolytree) {
@@ -2695,9 +2689,8 @@ abstract class ClipperBase {
 		outrec.pts = prevOp;
 //		OutPt result = prevOp;
 
-		PointD tmp = new PointD();
-		InternalClipper.GetIntersectPoint(prevOp.pt, splitOp.pt, splitOp.next.pt, nextNextOp.pt, tmp);
-		Point64 ip = new Point64(tmp);
+		Point64 ip = new Point64();
+		InternalClipper.GetIntersectPoint(prevOp.pt, splitOp.pt, splitOp.next.pt, nextNextOp.pt, ip);
 
 		double area1 = Area(prevOp);
 		double absArea1 = Math.abs(area1);
@@ -2707,11 +2700,6 @@ abstract class ClipperBase {
 			return;
 		}
 
-		// nb: area1 is the path's area *before* splitting, whereas area2 is
-		// the area of the triangle containing splitOp & splitOp.next.
-		// So the only way for these areas to have the same sign is if
-		// the split triangle is larger than the path containing prevOp or
-		// if there's more than one self=intersection.
 		double area2 = AreaTriangle(ip, splitOp.pt, splitOp.next.pt);
 		double absArea2 = Math.abs(area2);
 
@@ -2728,18 +2716,16 @@ abstract class ClipperBase {
 			prevOp.next = newOp2;
 		}
 
+		// nb: area1 is the path's area *before* splitting, whereas area2 is
+		// the area of the triangle containing splitOp & splitOp.next.
+		// So the only way for these areas to have the same sign is if
+		// the split triangle is larger than the path containing prevOp or
+		// if there's more than one self=intersection.
 		if (absArea2 > 1 && (absArea2 > absArea1 || ((area2 > 0) == (area1 > 0)))) {
 			OutRec newOutRec = NewOutRec();
 			newOutRec.owner = outrec.owner;
 			splitOp.outrec = newOutRec;
 			splitOp.next.outrec = newOutRec;
-
-			if (usingPolytree) {
-				if (outrec.splits == null) {
-					outrec.splits = new ArrayList<>();
-				}
-				outrec.splits.add(newOutRec.idx);
-			}
 
 			OutPt newOp = new OutPt(ip, newOutRec);
 			newOp.prev = splitOp.next;
@@ -2747,6 +2733,20 @@ abstract class ClipperBase {
 			newOutRec.pts = newOp;
 			splitOp.prev = newOp;
 			splitOp.next.next = newOp;
+			if (usingPolytree) {
+				if (Path1InsidePath2(prevOp, newOp)) {
+					if (outrec.splits == null) {
+						outrec.splits = new ArrayList<>();
+					}
+					outrec.splits.add(outrec.idx);
+				} else {
+					if (outrec.splits == null) {
+						outrec.splits = new ArrayList<>();
+					}
+					outrec.splits.add(newOutRec.idx);
+				}
+
+			}
 		}
 		// else { splitOp = null; splitOp.next = null; }
 	}
