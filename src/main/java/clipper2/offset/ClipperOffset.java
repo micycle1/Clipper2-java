@@ -480,34 +480,36 @@ public class ClipperOffset {
 
 		if (deltaCallback != null) {
 			groupDelta = deltaCallback.calculate(path, normals, j, k.argValue);
+			if (group.pathsReversed) {
+				groupDelta = -groupDelta;
+			}
 		}
 		if (Math.abs(groupDelta) < TOLERANCE) {
 			group.outPath.add(path.get(j));
 			return;
 		}
 
-		if (cosA > 0.999) {
-			DoMiter(group, path, j, k.argValue, cosA);
-		} else if (cosA > -0.99 && (sinA * groupDelta < 0)) {
+		if (cosA > -0.99 && (sinA * groupDelta < 0)) // test for concavity first (#593)
+		{
 			// is concave
 			group.outPath.add(GetPerpendic(path.get(j), normals.get(k.argValue)));
 			// this extra point is the only (simple) way to ensure that
 			// path reversals are fully cleaned with the trailing clipper
 			group.outPath.add(path.get(j)); // (#405)
 			group.outPath.add(GetPerpendic(path.get(j), normals.get(j)));
-		} else if (joinType == JoinType.Miter) {
+		} else if (cosA > 0.999)
+			DoMiter(group, path, j, k.argValue, cosA);
+		else if (joinType == JoinType.Miter) {
 			// miter unless the angle is so acute the miter would exceeds ML
-			if (cosA > mitLimSqr - 1) {
+			if (cosA > mitLimSqr - 1)
 				DoMiter(group, path, j, k.argValue, cosA);
-			} else {
+			else
 				DoSquare(group, path, j, k.argValue);
-			}
-		} else if (cosA > 0.99 || joinType == JoinType.Square) {
+		} else if (cosA > 0.99 || joinType == JoinType.Square)
 			// angle less than 8 degrees or a squared join
 			DoSquare(group, path, j, k.argValue);
-		} else {
+		else
 			DoRound(group, path, j, k.argValue, Math.atan2(sinA, cosA));
-		}
 
 		k.argValue = j;
 	}
