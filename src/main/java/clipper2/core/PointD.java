@@ -48,7 +48,7 @@ public final class PointD {
 	}
 
 	@Override
-	public String toString() {
+	public final String toString() {
 		return String.format("(%1$f,%2$f) ", x, y);
 	}
 
@@ -61,7 +61,7 @@ public final class PointD {
 	}
 
 	@Override
-	public boolean equals(Object obj) {
+	public final boolean equals(Object obj) {
 		if (obj instanceof PointD) {
 			PointD p = (PointD) obj;
 			return opEquals(this, p);
@@ -70,7 +70,7 @@ public final class PointD {
 	}
 
 	@Override
-	public int hashCode() {
+	public final int hashCode() {
 		return Double.hashCode(x * 31 + y);
 	}
 
