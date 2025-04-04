@@ -545,7 +545,7 @@ public class RectClip64 {
 				loc.argValue = prev.argValue;
 				Point64 ip2 = new Point64();
 				GetIntersection(rectPath, prevPt, path.get(i.argValue), loc, ip2);
-				if (prevCrossLoc != Location.INSIDE) {
+				if (prevCrossLoc != Location.INSIDE && prevCrossLoc != loc.argValue) { // #597
 					AddCorner(prevCrossLoc, loc.argValue);
 				}
 

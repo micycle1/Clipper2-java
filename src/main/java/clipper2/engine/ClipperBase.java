@@ -2108,7 +2108,6 @@ abstract class ClipperBase {
 				}
 
 				if (IsHotEdge(horz) && (horz.outrec != currOutrec)) {
-					currOutrec = horz.outrec;
 					AddToHorzSegList(GetLastOp(horz));
 				}
 
