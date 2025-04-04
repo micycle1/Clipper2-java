@@ -1,26 +1,35 @@
-# This workflow will build a Java project with Maven, and cache/restore any dependencies to improve the workflow execution time
-# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
-
 name: Java CI with Maven
 
 on:
   push:
-    branches: [ "master" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "master" ]
+    branches: ["main"]
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
+    
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
+    
     - name: Set up JDK
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@v4
       with:
-        java-version: '17'
+        java-version: '21'  # Updated to latest LTS
         distribution: 'temurin'
-        cache: maven
+        cache: 'maven'
+    
     - name: Build with Maven
       run: mvn -B package --file pom.xml
+      
+    - name: Run tests
+      run: mvn -B test
+
+    - name: Upload build artifacts
+      if: success()
+      uses: actions/upload-artifact@v4
+      with:
+        name: package
+        path: target/*.jar
+        retention-days: 5
