@@ -82,12 +82,12 @@ public final class Point64 {
 	}
 
 	@Override
-	public String toString() {
+	public final String toString() {
 		return String.format("(%1$s,%2$s) ", x, y); // nb: trailing space
 	}
 
 	@Override
-	public boolean equals(Object obj) {
+	public final boolean equals(Object obj) {
 		if (obj instanceof Point64) {
 			Point64 p = (Point64) obj;
 			return opEquals(this, p);

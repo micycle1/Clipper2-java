@@ -70,6 +70,8 @@ abstract class ClipperBase {
 		boolean isOpen;
 		@Nullable
 		public List<Integer> splits = null;
+		@Nullable
+		OutRec recursiveSplit;
 	}
 
 	private static class HorzSegSorter implements Comparator<HorzSegment> {
@@ -615,6 +617,13 @@ abstract class ClipperBase {
 			outRec = outRec.owner;
 		}
 		return outRec;
+	}
+	
+	private static boolean IsValidOwner(OutRec outRec, OutRec testOwner) {
+		while ((testOwner != null) && (testOwner != outRec)) {
+			testOwner = testOwner.owner;
+		}
+		return testOwner == null;
 	}
 
 	private static void UncoupleOutRec(Active ae) {
@@ -2451,23 +2460,26 @@ abstract class ClipperBase {
 		}
 	}
 
-	private static Rect64 GetBounds(OutPt op) {
-		Rect64 result = new Rect64(op.pt.x, op.pt.y, op.pt.x, op.pt.y);
-		OutPt op2 = op.next;
-		while (op2 != op) {
-			if (op2.pt.x < result.left) {
-				result.left = op2.pt.x;
-			} else if (op2.pt.x > result.right) {
-				result.right = op2.pt.x;
-			}
-			if (op2.pt.y < result.top) {
-				result.top = op2.pt.y;
-			} else if (op2.pt.y > result.bottom) {
-				result.bottom = op2.pt.y;
-			}
-			op2 = op2.next;
-		}
-		return result;
+	private static Path64 GetCleanPath(OutPt op) {
+	    Path64 result = new Path64();
+	    OutPt op2 = op;
+	    while (op2.next != op &&
+	           ((op2.pt.x == op2.next.pt.x && op2.pt.x == op2.prev.pt.x) ||
+	            (op2.pt.y == op2.next.pt.y && op2.pt.y == op2.prev.pt.y))) {
+	        op2 = op2.next;
+	    }
+	    result.add(op2.pt);
+	    OutPt prevOp = op2;
+	    op2 = op2.next;
+	    while (op2 != op) {
+	        if ((op2.pt.x != op2.next.pt.x || op2.pt.x != prevOp.pt.x) &&
+	            (op2.pt.y != op2.next.pt.y || op2.pt.y != prevOp.pt.y)) {
+	            result.add(op2.pt);
+	            prevOp = op2;
+	        }
+	        op2 = op2.next;
+	    }
+	    return result;
 	}
 
 	private static PointInPolygonResult PointInOpPolygon(Point64 pt, OutPt op) {
@@ -2556,10 +2568,11 @@ abstract class ClipperBase {
 	private static boolean Path1InsidePath2(OutPt op1, OutPt op2) {
 		// we need to make some accommodation for rounding errors
 		// so we won't jump if the first vertex is found outside
+		PointInPolygonResult result;
 		int outsideCnt = 0;
 		OutPt op = op1;
 		do {
-			PointInPolygonResult result = PointInOpPolygon(op.pt, op2);
+			result = PointInOpPolygon(op.pt, op2);
 			if (result == PointInPolygonResult.IsOutside) {
 				++outsideCnt;
 			} else if (result == PointInPolygonResult.IsInside) {
@@ -2571,8 +2584,9 @@ abstract class ClipperBase {
 			return (outsideCnt < 0);
 		}
 		// since path1's location is still equivocal, check its midpoint
-		Point64 mp = GetBounds(op).MidPoint();
-		return PointInOpPolygon(mp, op2) == PointInPolygonResult.IsInside;
+		Point64 mp = GetBounds(GetCleanPath(op1)).MidPoint();
+		Path64 path2 = GetCleanPath(op2);
+		return InternalClipper.PointInPolygon(mp, path2) != PointInPolygonResult.IsOutside;
 	}
 
 	private void ProcessHorzJoins() {
@@ -2878,13 +2892,14 @@ abstract class ClipperBase {
 		}
 		for (int i : splits) {
 			OutRec split = GetRealOutRec(outrecList.get(i));
-			if (split==null || split == outrec || split == outrec.owner) {
+			if (split == null || split.recursiveSplit == outrec) {
 				continue;
 			}
+			split.recursiveSplit = outrec; // #599
 			if (split.splits != null && CheckSplitOwner(outrec, split.splits)) {
 				return true;
 			}
-			if (CheckBounds(split) && split.bounds.Contains(outrec.bounds) && Path1InsidePath2(outrec.pts, split.pts)) {
+			if (IsValidOwner(outrec, split) && CheckBounds(split) && split.bounds.Contains(outrec.bounds) && Path1InsidePath2(outrec.pts, split.pts)) {
 				outrec.owner = split; // found in split
 				return true;
 			}
