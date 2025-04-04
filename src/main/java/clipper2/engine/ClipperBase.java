@@ -2877,8 +2877,8 @@ abstract class ClipperBase {
 			return false;
 		}
 		for (int i : splits) {
-			OutRec split = outrecList.get(i);
-			if (split == outrec || split == outrec.owner) {
+			OutRec split = GetRealOutRec(outrecList.get(i));
+			if (split==null || split == outrec || split == outrec.owner) {
 				continue;
 			}
 			if (split.splits != null && CheckSplitOwner(outrec, split.splits)) {
