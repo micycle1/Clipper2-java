@@ -209,12 +209,12 @@ public final class Clipper {
 		return solution;
 	}
 
-	public static PathsD InflatePaths(PathsD paths, double delta, JoinType joinType, EndType endType, double miterLimit, double arcTolerance) {
-		return InflatePaths(paths, delta, joinType, endType, miterLimit, 0.0, 8);
+	public static PathsD InflatePaths(PathsD paths, double delta, JoinType joinType, EndType endType, double miterLimit) {
+		return InflatePaths(paths, delta, joinType, endType, miterLimit, 0.25, 8);
 	}
 
 	public static PathsD InflatePaths(PathsD paths, double delta, JoinType joinType, EndType endType) {
-		return InflatePaths(paths, delta, joinType, endType, 2.0, 0.0, 8);
+		return InflatePaths(paths, delta, joinType, endType, 2.0, 0.25, 8);
 	}
 
 	public static PathsD InflatePaths(PathsD paths, double delta, JoinType joinType, EndType endType, double miterLimit, double arcTolerance, int precision) {
