@@ -49,6 +49,14 @@ public final class Point64 {
 		y = (long) Math.rint(pt.y * scale);
 	}
 
+	public void setX(double x) {
+		this.x = (long) Math.rint(x);
+	}
+
+	public void setY(double y) {
+		this.y = (long) Math.rint(y);
+	}
+
 	public boolean opEquals(Point64 o) {
 		return x == o.x && y == o.y;
 	}
