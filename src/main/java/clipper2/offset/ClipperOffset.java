@@ -513,6 +513,16 @@ public class ClipperOffset {
 	}
 
 	private void OffsetPolygon(Group group, Path64 path) {
+		// when the path is contracting, make sure
+		// there is sufficient space to do so. // #593
+		// nb: this will have a small impact on performance
+		double a = Clipper.Area(path);
+		if ((a < 0) != (groupDelta < 0)) {
+			Rect64 rec = Clipper.GetBounds(path);
+			if (Math.abs(groupDelta) * 2 > rec.getWidth()) {
+				return;
+			}
+		}
 		group.outPath = new Path64();
 		int cnt = path.size();
 		RefObject<Integer> prev = new RefObject<>(cnt - 1);
