@@ -2633,7 +2633,7 @@ abstract class ClipperBase {
 						FixOutRecPts(or1);
 						FixOutRecPts(or2);
 						// or2 is now inside or1
-						or2.owner = or1.owner;
+						or2.owner = or1;
 					} else if (Path1InsidePath2(or2.pts, or1.pts)) {
 						or2.owner = or1;
 					} else {
