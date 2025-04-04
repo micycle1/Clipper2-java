@@ -154,7 +154,7 @@ public final class Clipper {
 	}
 
 	public static Paths64 InflatePaths(Paths64 paths, double delta, JoinType joinType, EndType endType) {
-		return InflatePaths(paths, delta, joinType, endType, 2.0);
+		return InflatePaths(paths, delta, joinType, endType, 2.0, 0.25);
 	}
 
 	/**
