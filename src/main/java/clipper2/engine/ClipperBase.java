@@ -2587,7 +2587,7 @@ abstract class ClipperBase {
 			op1b.prev = op2b;
 			op2b.next = op1b;
 
-			if (or1 == or2) {
+			if (or1 == or2) { // 'join' is really a split
 				or2 = new OutRec();
 				or2.pts = op1b;
 				FixOutRecPts(or2);
@@ -2596,21 +2596,16 @@ abstract class ClipperBase {
 					or1.pts.outrec = or1;
 				}
 
-				if (usingPolytree) {
-					if (Path1InsidePath2(or2.pts, or1.pts)) {
-						SetOwner(or2, or1);
-					} else if (Path1InsidePath2(or1.pts, or2.pts)) {
+				if (usingPolytree) {  //#498, #520, #584, D#576
+					if (Path1InsidePath2(or1.pts, or2.pts)) {
+						or2.owner = or1.owner;
 						SetOwner(or1, or2);
-						if (or1.splits == null) {
-							or1.splits = new ArrayList<>();
-						}
-						or1.splits.add(or2.idx); // (#520)
 					} else {
+						SetOwner(or2, or1);
 						if (or1.splits == null) {
 							or1.splits = new ArrayList<>();
 						}
-						or1.splits.add(or2.idx); // (#498)
-						or2.owner = or1;
+						or1.splits.add(or2.idx);
 					}
 				} else {
 					or2.owner = or1;
@@ -2695,9 +2690,8 @@ abstract class ClipperBase {
 		outrec.pts = prevOp;
 //		OutPt result = prevOp;
 
-		PointD tmp = new PointD();
-		InternalClipper.GetIntersectPoint(prevOp.pt, splitOp.pt, splitOp.next.pt, nextNextOp.pt, tmp);
-		Point64 ip = new Point64(tmp);
+		Point64 ip = new Point64(); // ip mutated by GetIntersectPoint() 
+		InternalClipper.GetIntersectPoint(prevOp.pt, splitOp.pt, splitOp.next.pt, nextNextOp.pt, ip);
 
 		double area1 = Area(prevOp);
 		double absArea1 = Math.abs(area1);
