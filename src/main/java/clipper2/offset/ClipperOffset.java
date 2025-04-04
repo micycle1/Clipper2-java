@@ -670,7 +670,8 @@ public class ClipperOffset {
 				// single vertex so build a circle or square ...
 				if (group.endType == EndType.Round) {
 					double r = absDelta;
-					group.outPath = Clipper.Ellipse(path.get(0), r, r);
+					int steps = (int) Math.ceil(stepsPerRad * 2 * Math.PI);
+					group.outPath = Clipper.Ellipse(path.get(0), r, r, steps);
 				} else {
 					int d = (int) Math.ceil(this.groupDelta);
 					Rect64 r = new Rect64(path.get(0).x - d, path.get(0).y - d, path.get(0).x - d, path.get(0).y - d);
