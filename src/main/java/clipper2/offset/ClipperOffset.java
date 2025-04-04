@@ -426,7 +426,7 @@ public class ClipperOffset {
 			// when deltaCallback is assigned, groupDelta won't be constant,
 			// so we'll need to do the following calculations for *every* vertex.
 			double absDelta = Math.abs(groupDelta);
-			double arcTol = arcTolerance > 0.01 ? arcTolerance : Math.log10(2 + absDelta) * DEFAULT_ARC_TOLERANCE;
+			double arcTol = arcTolerance > TOLERANCE ? Math.min(absDelta, arcTolerance) : Math.log10(2 + absDelta) * DEFAULT_ARC_TOLERANCE;
 			double stepsPer360 = Math.PI / Math.acos(1 - arcTol / absDelta);
 			stepSin = Math.sin((2 * Math.PI) / stepsPer360);
 			stepCos = Math.cos((2 * Math.PI) / stepsPer360);
@@ -436,20 +436,17 @@ public class ClipperOffset {
 			stepsPerRad = stepsPer360 / (2 * Math.PI);
 		}
 
-		Point64 pt = path.get(j);
+		final Point64 pt = path.get(j);
 		PointD offsetVec = new PointD(normals.get(k).x * groupDelta, normals.get(k).y * groupDelta);
 		if (j == k) {
 			offsetVec.Negate();
 		}
 		group.outPath.add(new Point64(pt.x + offsetVec.x, pt.y + offsetVec.y));
-		if (angle > -Math.PI + 0.01) // avoid 180deg concave
+		int steps = (int) Math.ceil(stepsPerRad * Math.abs(angle)); // #448, #456
+		for (int i = 1; i < steps; ++i) // ie 1 less than steps
 		{
-			int steps = (int) Math.ceil(stepsPerRad * Math.abs(angle));
-			for (int i = 1; i < steps; i++) // ie 1 less than steps
-			{
-				offsetVec = new PointD(offsetVec.x * stepCos - stepSin * offsetVec.y, offsetVec.x * stepSin + offsetVec.y * stepCos);
-				group.outPath.add(new Point64(pt.x + offsetVec.x, pt.y + offsetVec.y));
-			}
+			offsetVec = new PointD(offsetVec.x * stepCos - stepSin * offsetVec.y, offsetVec.x * stepSin + offsetVec.y * stepCos);
+			group.outPath.add(new Point64(pt.x + offsetVec.x, pt.y + offsetVec.y));
 		}
 		group.outPath.add(GetPerpendic(pt, normals.get(j)));
 	}
@@ -648,7 +645,7 @@ public class ClipperOffset {
 			 * large offsets will almost always require much less precision. See also
 			 * offset_triginometry2.svg
 			 */
-			double arcTol = arcTolerance > 0.01 ? arcTolerance : Math.log10(2 + absDelta) * DEFAULT_ARC_TOLERANCE;
+			double arcTol = arcTolerance > TOLERANCE ? arcTolerance : Math.log10(2 + absDelta) * DEFAULT_ARC_TOLERANCE;
 			double stepsPer360 = Math.PI / Math.acos(1 - arcTol / absDelta);
 			stepSin = Math.sin((2 * Math.PI) / stepsPer360);
 			stepCos = Math.cos((2 * Math.PI) / stepsPer360);
