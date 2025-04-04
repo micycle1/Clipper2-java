@@ -69,10 +69,11 @@ public final class InternalClipper {
 		}
 		else if (t >= 1.0) {
 			ip = ln1b;
-		}
-		else {
-			ip.setX(ln1a.x + t * dx1);
-			ip.setY(ln1a.y + t * dy1);
+		} else {
+			// NB: truncate the result instead of rounding it, to make the C# version work
+			// similarly to the C++ and Delphi versions
+			ip.x = (long) (ln1a.x + t * dx1);
+			ip.y = (long) (ln1a.y + t * dy1);
 		}
 		return true;
 	}
