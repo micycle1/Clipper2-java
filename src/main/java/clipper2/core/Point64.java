@@ -56,6 +56,15 @@ public final class Point64 {
 	public void setY(double y) {
 		this.y = (long) Math.rint(y);
 	}
+	
+	/**
+	 * Set x,y of this point equal to another.
+	 * @param other
+	 */
+	public void set(Point64 other) {
+		this.x = other.x;
+		this.y = other.y;
+	}
 
 	public boolean opEquals(Point64 o) {
 		return x == o.x && y == o.y;
