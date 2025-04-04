@@ -198,29 +198,30 @@ public final class Clipper {
 	 *                   mitering was unrestricted (ie without any squaring), then
 	 *                   offsets at very acute angles would generate unacceptably
 	 *                   long 'spikes'.
+	 * @param  arcTolerance  Sets the distance the flattened path will deviate from the 'true' arc.
 	 * @return
 	 */
-	public static Paths64 InflatePaths(Paths64 paths, double delta, JoinType joinType, EndType endType, double miterLimit) {
-		ClipperOffset co = new ClipperOffset(miterLimit);
+	public static Paths64 InflatePaths(Paths64 paths, double delta, JoinType joinType, EndType endType, double miterLimit, double arcTolerance) {
+		ClipperOffset co = new ClipperOffset(miterLimit, arcTolerance);
 		co.AddPaths(paths, joinType, endType);
 		Paths64 solution = new Paths64();
 		co.Execute(delta, solution);
 		return solution;
 	}
 
-	public static PathsD InflatePaths(PathsD paths, double delta, JoinType joinType, EndType endType, double miterLimit) {
-		return InflatePaths(paths, delta, joinType, endType, miterLimit, 2);
+	public static PathsD InflatePaths(PathsD paths, double delta, JoinType joinType, EndType endType, double miterLimit, double arcTolerance) {
+		return InflatePaths(paths, delta, joinType, endType, miterLimit, 0.0, 8);
 	}
 
 	public static PathsD InflatePaths(PathsD paths, double delta, JoinType joinType, EndType endType) {
-		return InflatePaths(paths, delta, joinType, endType, 2.0, 2);
+		return InflatePaths(paths, delta, joinType, endType, 2.0, 0.0, 8);
 	}
 
-	public static PathsD InflatePaths(PathsD paths, double delta, JoinType joinType, EndType endType, double miterLimit, int precision) {
+	public static PathsD InflatePaths(PathsD paths, double delta, JoinType joinType, EndType endType, double miterLimit, double arcTolerance, int precision) {
 		InternalClipper.CheckPrecision(precision);
 		double scale = Math.pow(10, precision);
 		Paths64 tmp = ScalePaths64(paths, scale);
-		ClipperOffset co = new ClipperOffset(miterLimit);
+		ClipperOffset co = new ClipperOffset(miterLimit, arcTolerance * scale);
 		co.AddPaths(tmp, joinType, endType);
 		co.Execute(delta * scale, tmp); // reuse 'tmp' to receive (scaled) solution
 		return ScalePathsD(tmp, 1 / scale);
