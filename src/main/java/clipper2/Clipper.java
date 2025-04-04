@@ -1067,7 +1067,7 @@ public final class Clipper {
 
 		boolean[] flags = new boolean[len];
 		double[] dsq = new double[len];
-		int prev = high, curr = 0, start, next, prior2, next2;
+		int curr = 0, prev, start, next, prior2, next2;
 		if (isOpenPath) {
 			dsq[0] = Double.MAX_VALUE;
 			dsq[high] = Double.MAX_VALUE;
@@ -1150,7 +1150,7 @@ public final class Clipper {
 
 		boolean[] flags = new boolean[len];
 		double[] dsq = new double[len];
-		int prev = high, curr = 0, start, next, prior2, next2;
+		int curr = 0, prev, start, next, prior2, next2;
 		if (isOpenPath) {
 			dsq[0] = Double.MAX_VALUE;
 			dsq[high] = Double.MAX_VALUE;

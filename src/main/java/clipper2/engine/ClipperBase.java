@@ -720,17 +720,6 @@ abstract class ClipperBase {
 		return minimaList.get(currentLocMin++);
 	}
 
-	private void AddLocMin(Vertex vert, PathType polytype, boolean isOpen) {
-		// make sure the vertex is added only once ...
-		if ((vert.flags & VertexFlags.LocalMin) != VertexFlags.None) {
-			return;
-		}
-		vert.flags |= VertexFlags.LocalMin;
-
-		LocalMinima lm = new LocalMinima(vert, polytype, isOpen);
-		minimaList.add(lm);
-	}
-
 	public final void AddSubject(Path64 path) {
 		AddPath(path, PathType.Subject);
 	}
