@@ -2588,6 +2588,20 @@ abstract class ClipperBase {
 		return InternalClipper.PointInPolygon(mp, path2) != PointInPolygonResult.IsOutside;
 	}
 
+	private void MoveSplits(OutRec fromOr, OutRec toOr) {
+	    if (fromOr.splits == null) {
+	        return;
+	    }
+	    if (toOr.splits == null) {
+	        toOr.splits = new ArrayList<>();
+	    }
+	    for (int i : fromOr.splits) {
+	        toOr.splits.add(i);
+	    }
+
+	    fromOr.splits = null;
+	}
+
 	private void ProcessHorzJoins() {
 		for (HorzJoin j : horzJoinList) {
 			OutRec or1 = GetRealOutRec(j.op1.outrec);
@@ -2604,30 +2618,40 @@ abstract class ClipperBase {
 				or2 = new OutRec();
 				or2.pts = op1b;
 				FixOutRecPts(or2);
+				// if or1->pts has moved to or2 then update or1->pts!!
 				if (or1.pts.outrec == or2) {
 					or1.pts = j.op1;
 					or1.pts.outrec = or1;
 				}
 
-				if (usingPolytree) {  //#498, #520, #584, D#576
+				if (usingPolytree) { // #498, #520, #584, D#576, #618
 					if (Path1InsidePath2(or1.pts, or2.pts)) {
+						// swap or1's & or2's pts
+						OutPt tmp = or1.pts;
+						or1.pts = or2.pts;
+						or2.pts = tmp;
+						FixOutRecPts(or1);
+						FixOutRecPts(or2);
+						// or2 is now inside or1
 						or2.owner = or1.owner;
-						SetOwner(or1, or2);
+					} else if (Path1InsidePath2(or2.pts, or1.pts)) {
+						or2.owner = or1;
 					} else {
-						SetOwner(or2, or1);
-						if (or1.splits == null) {
-							or1.splits = new ArrayList<>();
-						}
-						or1.splits.add(or2.idx);
+						or2.owner = or1.owner;
 					}
+					if (or1.splits == null) {
+						or1.splits = new ArrayList<>();
+					}
+					or1.splits.add(or2.idx);
 				} else {
 					or2.owner = or1;
 				}
-				outrecList.add(or2); // NOTE removed in 6e15ba0, but then fails tests
+//				outrecList.add(or2); // NOTE removed in 6e15ba0, but then fails tests
 			} else {
 				or2.pts = null;
 				if (usingPolytree) {
 					SetOwner(or2, or1);
+					MoveSplits(or2, or1); // #618
 				} else {
 					or2.owner = or1;
 				}
@@ -2891,7 +2915,7 @@ abstract class ClipperBase {
 		}
 		for (int i : splits) {
 			OutRec split = GetRealOutRec(outrecList.get(i));
-			if (split == null || split.recursiveSplit == outrec) {
+			if (split == null ||  split == outrec || split.recursiveSplit == outrec) {
 				continue;
 			}
 			split.recursiveSplit = outrec; // #599
