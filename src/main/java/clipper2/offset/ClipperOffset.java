@@ -518,7 +518,8 @@ public class ClipperOffset {
 		double a = Clipper.Area(path);
 		if ((a < 0) != (groupDelta < 0)) {
 			Rect64 rec = Clipper.GetBounds(path);
-			if (Math.abs(groupDelta) * 2 > rec.getWidth()) {
+			double offsetMinDim = Math.abs(groupDelta) * 2;
+			if (offsetMinDim > rec.getWidth() || offsetMinDim > rec.getHeight()) {
 				return;
 			}
 		}
