@@ -56,15 +56,24 @@ public final class InternalClipper {
 		double dx1 = (ln1b.x - ln1a.x);
 		double dy2 = (ln2b.y - ln2a.y);
 		double dx2 = (ln2b.x - ln2a.x);
-		double cp = dy1 * dx2 - dy2 * dx1;
-		if (cp == 0.0) {
+		double det = dy1 * dx2 - dy2 * dx1;
+		if (det == 0.0) {
+			ip = new Point64();
 			return false;
 		}
-		double qx = dx1 * ln1a.y - dy1 * ln1a.x;
-		double qy = dx2 * ln2a.y - dy2 * ln2a.x;
-		ip.x = CheckCastInt64((dx1 * qy - dx2 * qx) / cp);
-		ip.y = CheckCastInt64((dy1 * qy - dy2 * qx) / cp);
-		return (ip.x != Invalid64 && ip.y != Invalid64);
+
+		double t = ((ln1a.x - ln2a.x) * dy2 - (ln1a.y - ln2a.y) * dx2) / det;
+		if (t <= 0.0) {
+			ip = ln1a;
+		}
+		else if (t >= 1.0) {
+			ip = ln1b;
+		}
+		else {
+			ip.setX(ln1a.x + t * dx1);
+			ip.setY(ln1a.y + t * dy1);
+		}
+		return true;
 	}
 
 	public static boolean GetIntersectPoint(Point64 ln1a, Point64 ln1b, Point64 ln2a, Point64 ln2b, /* out */ Point64 ip) {
