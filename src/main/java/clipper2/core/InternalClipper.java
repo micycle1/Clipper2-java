@@ -58,7 +58,8 @@ public final class InternalClipper {
 		double dx2 = (ln2b.x - ln2a.x);
 		double det = dy1 * dx2 - dy2 * dx1;
 		if (det == 0.0) {
-			ip = new Point64();
+			ip.setX(0);
+			ip.setY(0);
 			return false;
 		}
 
