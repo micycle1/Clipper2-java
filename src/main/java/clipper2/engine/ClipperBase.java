@@ -1758,7 +1758,7 @@ abstract class ClipperBase {
 
 	private void AddNewIntersectNode(Active ae1, Active ae2, long topY) {
 		Point64 ip = new Point64();
-		if (!InternalClipper.GetIntersectPt(ae1.bot, ae1.top, ae2.bot, ae2.top, ip)) {
+		if (!InternalClipper.GetIntersectPoint(ae1.bot, ae1.top, ae2.bot, ae2.top, ip)) {
 			ip = new Point64(ae1.curX, topY);
 		}
 

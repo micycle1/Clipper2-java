@@ -51,7 +51,7 @@ public final class InternalClipper {
 		return (long) Math.rint(val);
 	}
 
-	public static boolean GetIntersectPt(Point64 ln1a, Point64 ln1b, Point64 ln2a, Point64 ln2b, /* out */ Point64 ip) {
+	public static boolean GetIntersectPoint(Point64 ln1a, Point64 ln1b, Point64 ln2a, Point64 ln2b, /* out */ Point64 ip) {
 		double dy1 = (ln1b.y - ln1a.y);
 		double dx1 = (ln1b.x - ln1a.x);
 		double dy2 = (ln2b.y - ln2a.y);
@@ -71,29 +71,6 @@ public final class InternalClipper {
 			ip = ln1b;
 		}
 		else {
-			ip.setX(ln1a.x + t * dx1);
-			ip.setY(ln1a.y + t * dy1);
-		}
-		return true;
-	}
-
-	public static boolean GetIntersectPoint(Point64 ln1a, Point64 ln1b, Point64 ln2a, Point64 ln2b, /* out */ Point64 ip) {
-		double dy1 = (ln1b.y - ln1a.y);
-		double dx1 = (ln1b.x - ln1a.x);
-		double dy2 = (ln2b.y - ln2a.y);
-		double dx2 = (ln2b.x - ln2a.x);
-		double det = dy1 * dx2 - dy2 * dx1;
-		if (det == 0.0) {
-			ip.x = 0;
-			ip.y = 0;
-			return false;
-		}
-		double t = ((ln1a.x - ln2a.x) * dy2 - (ln1a.y - ln2a.y) * dx2) / det;
-		if (t <= 0.0) {
-			ip = ln1a; // ?? check further (see also #568)
-		} else if (t >= 1.0) {
-			ip = ln2a; // ?? check further
-		} else {
 			ip.setX(ln1a.x + t * dx1);
 			ip.setY(ln1a.y + t * dy1);
 		}
