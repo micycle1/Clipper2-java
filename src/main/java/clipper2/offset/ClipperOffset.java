@@ -640,7 +640,7 @@ public class ClipperOffset {
 			// if (area == 0) return; // probably unhelpful (#430)
 			groupDelta = (group.pathsReversed) ? -delta : delta;
 		} else {
-			groupDelta = Math.abs(delta) * 0.5;
+			groupDelta = Math.abs(delta); // * 0.5
 		}
 
 		double absDelta = Math.abs(groupDelta);
