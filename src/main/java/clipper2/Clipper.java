@@ -31,6 +31,64 @@ import clipper2.offset.JoinType;
 import clipper2.rectclip.RectClip64;
 import clipper2.rectclip.RectClipLines64;
 
+/**
+ * Line and polygon clipping, and offsetting.
+ * <p>
+ * This unit has been designed to hide the library's complexities behind a
+ * number of simple functions. However, not all of the library's features are
+ * accessible here. Less commonly needed features that provide more flexibility
+ * can still be accessed from the other units.
+ * <p>
+ * <h2>Boolean operations for polygon clipping:</h2>
+ * <ul>
+ * <li><b>AND (intersection)</b> - regions covered by both subject and clip
+ * polygons</li>
+ * <li><b>OR (union)</b> - regions covered by subject or clip polygons, or both
+ * polygons</li>
+ * <li><b>NOT (difference)</b> - regions covered by subject, but not clip
+ * polygons</li>
+ * <li><b>XOR (exclusive or)</b> - regions covered by subject or clip polygons,
+ * but not both</li>
+ * </ul>
+ * Of these four operations, only <code>difference</code> is non-commutative.
+ * This means that <code>subject</code> and <code>clip</code> paths are
+ * interchangeable except when performing difference operations (and as long as
+ * subject paths are closed).
+ * <p>
+ * All polygon clipping is performed with a Clipper object with the specific
+ * boolean operation indicated by the <code>ClipType</code> parameter passed in
+ * its Execute method. With regard to <b>open</b> paths (polylines), clipping
+ * rules generally match those of closed paths (polygons). However, when there
+ * are both polyline and polygon subjects, the following clipping rules apply:
+ * </p>
+ * 
+ * <ul>
+ * <li><b>union operations</b> - polylines will be clipped by <b>any</b>
+ * overlapping polygons so that only non-overlapped portions will be returned in
+ * the solution, together with solution polygons</li>
+ * <li><b>intersection, difference and xor operations</b> - polylines will be
+ * clipped by 'clip' polygons, and there will be no interaction between
+ * polylines and any subject polygons</li>
+ * </ul>
+ * 
+ * <h2>Polygon Offsetting:</h2>
+ * <p>
+ * Geometric offsetting refers to the process of creating parallel curves that
+ * are offset a specified distance from their starting positions.
+ * <p>
+ * While all offsetting is performed by the <code>ClipperOffset</code> class in
+ * the <code>Clipper.Offset</code> unit, the complexities of constructing and
+ * using this class can usually be avoided by using instead the
+ * {@link #InflatePaths(PathsD, double, JoinType, EndType, double, double, int)
+ * InflatePaths()} function in this class. This function can both inflate and
+ * shrink polygons (using positive and negative offsets respectively).
+ * Offsetting can be performed using a number of JoinTypes and EndTypes. While
+ * both open paths and closed paths can be offset, logically only closed paths
+ * can be shrunk (ie with negative offsets).
+ * <p>
+ * Note: Offsetting shouldn't be confused with the process of polygon
+ * <i>translation</i>.
+ */
 public final class Clipper {
 
 	public static final Rect64 InvalidRect64 = new Rect64(false);
@@ -107,6 +165,10 @@ public final class Clipper {
 		return solution;
 	}
 
+	/**
+	 * This function is a generic alternative to the Intersect, Difference, Union
+	 * and XOR functions.
+	 */
 	public static void BooleanOp(ClipType clipType, @Nullable Paths64 subject, @Nullable Paths64 clip, PolyTree64 polytree, FillRule fillRule) {
 		if (subject == null) {
 			return;
@@ -123,6 +185,16 @@ public final class Clipper {
 		return BooleanOp(clipType, subject, clip, fillRule, 2);
 	}
 
+	/**
+	 * This function is a generic alternative to the Intersect, Difference, Union
+	 * and XOR functions.
+	 * 
+	 * @param clipType
+	 * @param subject
+	 * @param clip
+	 * @param fillRule
+	 * @param precision The desired coordinate precision (up to 8 decimal places).
+	 */
 	public static PathsD BooleanOp(ClipType clipType, PathsD subject, @Nullable PathsD clip, FillRule fillRule, int precision) {
 		PathsD solution = new PathsD();
 		ClipperD c = new ClipperD(precision);
