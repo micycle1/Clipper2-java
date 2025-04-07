@@ -107,8 +107,7 @@ public final class Clipper {
 		return solution;
 	}
 
-	public static void BooleanOp(ClipType clipType, @Nullable Paths64 subject, @Nullable Paths64 clip, PolyTree64 polytree,
-			FillRule fillRule) {
+	public static void BooleanOp(ClipType clipType, @Nullable Paths64 subject, @Nullable Paths64 clip, PolyTree64 polytree, FillRule fillRule) {
 		if (subject == null) {
 			return;
 		}
@@ -135,13 +134,11 @@ public final class Clipper {
 		return solution;
 	}
 
-	public static void BooleanOp(ClipType clipType, @Nullable PathsD subject, @Nullable PathsD clip, PolyTreeD polytree,
-			FillRule fillRule) {
+	public static void BooleanOp(ClipType clipType, @Nullable PathsD subject, @Nullable PathsD clip, PolyTreeD polytree, FillRule fillRule) {
 		BooleanOp(clipType, subject, clip, polytree, fillRule, 2);
 	}
 
-	public static void BooleanOp(ClipType clipType, @Nullable PathsD subject, @Nullable PathsD clip, PolyTreeD polytree, FillRule fillRule,
-			int precision) {
+	public static void BooleanOp(ClipType clipType, @Nullable PathsD subject, @Nullable PathsD clip, PolyTreeD polytree, FillRule fillRule, int precision) {
 		if (subject == null) {
 			return;
 		}
@@ -153,8 +150,36 @@ public final class Clipper {
 		c.Execute(clipType, fillRule, polytree);
 	}
 
+	/**
+	 * @see #InflatePaths(PathsD, double, JoinType, EndType, double, double, int)
+	 */
 	public static Paths64 InflatePaths(Paths64 paths, double delta, JoinType joinType, EndType endType) {
 		return InflatePaths(paths, delta, joinType, endType, 2.0, 0.25);
+	}
+
+	/**
+	 * @see #InflatePaths(PathsD, double, JoinType, EndType, double, double, int)
+	 */
+	public static Paths64 InflatePaths(Paths64 paths, double delta, JoinType joinType, EndType endType, double miterLimit, double arcTolerance) {
+		ClipperOffset co = new ClipperOffset(miterLimit, arcTolerance);
+		co.AddPaths(paths, joinType, endType);
+		Paths64 solution = new Paths64();
+		co.Execute(delta, solution);
+		return solution;
+	}
+
+	/**
+	 * @see #InflatePaths(PathsD, double, JoinType, EndType, double, double, int)
+	 */
+	public static PathsD InflatePaths(PathsD paths, double delta, JoinType joinType, EndType endType, double miterLimit) {
+		return InflatePaths(paths, delta, joinType, endType, miterLimit, 0.25, 8);
+	}
+
+	/**
+	 * @see #InflatePaths(PathsD, double, JoinType, EndType, double, double, int)
+	 */
+	public static PathsD InflatePaths(PathsD paths, double delta, JoinType joinType, EndType endType) {
+		return InflatePaths(paths, delta, joinType, endType, 2.0, 0.25, 8);
 	}
 
 	/**
@@ -176,47 +201,34 @@ public final class Clipper {
 	 * Caution: Offsetting self-intersecting polygons may produce unexpected
 	 * results.
 	 *
-	 * @param paths
-	 * @param delta      With closed paths (polygons), a positive <code>delta</code>
-	 *                   specifies how much outer polygon contours will expand and
-	 *                   how much inner "hole" contours will contract (and the
-	 *                   converse with negative deltas).
-	 *                   <p>
-	 *                   With open paths (polylines), including EndType.Join,
-	 *                   <code>delta</code> specifies the width of the inflated
-	 *                   line.
-	 * @param joinType
-	 * @param endType
-	 * @param miterLimit sets the maximum distance in multiples of delta that
-	 *                   vertices can be offset from their original positions before
-	 *                   squaring is applied. (Squaring truncates a miter by
-	 *                   'cutting it off' at 1 × delta distance from the original
-	 *                   vertex.)
-	 *                   <p>
-	 *                   The default value for MiterLimit is 2 (ie twice delta).
-	 *                   This is also the smallest MiterLimit that's allowed. If
-	 *                   mitering was unrestricted (ie without any squaring), then
-	 *                   offsets at very acute angles would generate unacceptably
-	 *                   long 'spikes'.
-	 * @param  arcTolerance  Sets the distance the flattened path will deviate from the 'true' arc.
-	 * @return
+	 * @param paths        A Paths object that is to undergo offsetting.
+	 * @param delta        With closed paths (polygons), a positive
+	 *                     <code>delta</code> specifies how much outer polygon
+	 *                     contours will expand and how much inner "hole" contours
+	 *                     will contract (and the converse with negative deltas).
+	 *                     <p>
+	 *                     With open paths (polylines), including EndType.Join,
+	 *                     <code>delta</code> specifies the width of the inflated
+	 *                     line.
+	 * @param joinType     see {@link JoinType}
+	 * @param endType      see {@link EndType}
+	 * @param miterLimit   Sets the maximum distance in multiples of delta that
+	 *                     vertices can be offset from their original positions
+	 *                     before squaring is applied. (Squaring truncates a miter
+	 *                     by 'cutting it off' at 1 × delta distance from the
+	 *                     original vertex.)
+	 *                     <p>
+	 *                     The default value for MiterLimit is 2 (ie twice delta).
+	 *                     This is also the smallest MiterLimit that's allowed. If
+	 *                     mitering was unrestricted (ie without any squaring), then
+	 *                     offsets at very acute angles would generate unacceptably
+	 *                     long 'spikes'.
+	 * @param arcTolerance Sets the distance the flattened path will deviate from
+	 *                     the 'true' arc (only relevant when offsetting with
+	 *                     JoinType.Round and/or EndType.Round).
+	 * @param precision    The number of decimal places of precision to consider
+	 *                     when paths is type PathsD. (Maximum is 8 decimal places)
 	 */
-	public static Paths64 InflatePaths(Paths64 paths, double delta, JoinType joinType, EndType endType, double miterLimit, double arcTolerance) {
-		ClipperOffset co = new ClipperOffset(miterLimit, arcTolerance);
-		co.AddPaths(paths, joinType, endType);
-		Paths64 solution = new Paths64();
-		co.Execute(delta, solution);
-		return solution;
-	}
-
-	public static PathsD InflatePaths(PathsD paths, double delta, JoinType joinType, EndType endType, double miterLimit) {
-		return InflatePaths(paths, delta, joinType, endType, miterLimit, 0.25, 8);
-	}
-
-	public static PathsD InflatePaths(PathsD paths, double delta, JoinType joinType, EndType endType) {
-		return InflatePaths(paths, delta, joinType, endType, 2.0, 0.25, 8);
-	}
-
 	public static PathsD InflatePaths(PathsD paths, double delta, JoinType joinType, EndType endType, double miterLimit, double arcTolerance, int precision) {
 		InternalClipper.CheckPrecision(precision);
 		double scale = Math.pow(10, precision);
@@ -489,8 +501,7 @@ public final class Clipper {
 	}
 
 	public static Rect64 ScaleRect(RectD rec, double scale) {
-		Rect64 result = new Rect64((long) (rec.left * scale), (long) (rec.top * scale), (long) (rec.right * scale),
-				(long) (rec.bottom * scale));
+		Rect64 result = new Rect64((long) (rec.left * scale), (long) (rec.top * scale), (long) (rec.right * scale), (long) (rec.bottom * scale));
 		return result;
 	}
 
@@ -1058,23 +1069,41 @@ public final class Clipper {
 		return SimplifyPath(path, epsilon, false);
 	}
 
-	public static Path64 SimplifyPath(Path64 path, double epsilon, boolean isOpenPath) {
-		int len = path.size(), high = len - 1;
+	/**
+	 * Removes vertices that are less than the specified epsilon distance from an
+	 * imaginary line that passes through its 2 adjacent vertices. Logically,
+	 * smaller epsilon values will be less aggressive in removing vertices than
+	 * larger epsilon values.
+	 * <p>
+	 * This function is strongly recommended before offsetting (ie before
+	 * inflating/shrinking) when paths may contain redundant segments. And removing
+	 * redundant segments is especially important when offsetting paths that have
+	 * themselves been offset.
+	 * 
+	 * @param path
+	 * @param epsilon
+	 * @param isClosedPath
+	 */
+	public static Path64 SimplifyPath(Path64 path, double epsilon, boolean isClosedPath) {
+		int len = path.size();
+		int high = len - 1;
 		double epsSqr = Sqr(epsilon);
 		if (len < 4) {
-			return path;
+			return path; // Return original path if too short
 		}
 
 		boolean[] flags = new boolean[len];
 		double[] dsq = new double[len];
-		int curr = 0, prev, start, next, prior2, next2;
-		if (isOpenPath) {
-			dsq[0] = Double.MAX_VALUE;
-			dsq[high] = Double.MAX_VALUE;
-		} else {
+		int curr = 0, prev, start, next, prior2;
+
+		if (isClosedPath) {
 			dsq[0] = PerpendicDistFromLineSqrd(path.get(0), path.get(high), path.get(1));
 			dsq[high] = PerpendicDistFromLineSqrd(path.get(high), path.get(0), path.get(high - 1));
+		} else {
+			dsq[0] = Double.MAX_VALUE;
+			dsq[high] = Double.MAX_VALUE;
 		}
+
 		for (int i = 1; i < high; ++i) {
 			dsq[i] = PerpendicDistFromLineSqrd(path.get(i), path.get(i - 1), path.get(i + 1));
 		}
@@ -1083,39 +1112,40 @@ public final class Clipper {
 			if (dsq[curr] > epsSqr) {
 				start = curr;
 				do {
-					curr = GetNext(curr, high, /* ref */ flags);
+					curr = GetNext(curr, high, flags);
 				} while (curr != start && dsq[curr] > epsSqr);
 				if (curr == start) {
 					break;
 				}
 			}
 
-			prev = GetPrior(curr, high, /* ref */ flags);
-			next = GetNext(curr, high, /* ref */ flags);
+			prev = GetPrior(curr, high, flags);
+			next = GetNext(curr, high, flags);
 			if (next == prev) {
 				break;
 			}
 
 			if (dsq[next] < dsq[curr]) {
-				flags[next] = true;
-				next = GetNext(next, high, /* ref */ flags);
-				next2 = GetNext(next, high, /* ref */ flags);
-				dsq[curr] = PerpendicDistFromLineSqrd(path.get(curr), path.get(prev), path.get(next));
-				if (next != high || !isOpenPath) {
-					dsq[next] = PerpendicDistFromLineSqrd(path.get(next), path.get(curr), path.get(next2));
-				}
+				prior2 = prev;
+				prev = curr;
 				curr = next;
+				next = GetNext(next, high, flags);
 			} else {
-				flags[curr] = true;
-				curr = next;
-				next = GetNext(next, high, /* ref */ flags);
-				prior2 = GetPrior(prev, high, /* ref */ flags);
+				prior2 = GetPrior(prev, high, flags);
+			}
+
+			flags[curr] = true;
+			curr = next;
+			next = GetNext(next, high, flags);
+
+			if (isClosedPath || ((curr != high) && (curr != 0))) {
 				dsq[curr] = PerpendicDistFromLineSqrd(path.get(curr), path.get(prev), path.get(next));
-				if (prev != 0 || !isOpenPath) {
-					dsq[prev] = PerpendicDistFromLineSqrd(path.get(prev), path.get(prior2), path.get(curr));
-				}
+			}
+			if (isClosedPath || ((prev != 0) && (prev != high))) {
+				dsq[prev] = PerpendicDistFromLineSqrd(path.get(prev), path.get(prior2), path.get(curr));
 			}
 		}
+
 		Path64 result = new Path64(len);
 		for (int i = 0; i < len; i++) {
 			if (!flags[i]) {
@@ -1129,10 +1159,10 @@ public final class Clipper {
 		return SimplifyPaths(paths, epsilon, false);
 	}
 
-	public static Paths64 SimplifyPaths(Paths64 paths, double epsilon, boolean isOpenPath) {
+	public static Paths64 SimplifyPaths(Paths64 paths, double epsilon, boolean isClosedPath) {
 		Paths64 result = new Paths64(paths.size());
 		for (Path64 path : paths) {
-			result.add(SimplifyPath(path, epsilon, isOpenPath));
+			result.add(SimplifyPath(path, epsilon, isClosedPath));
 		}
 		return result;
 	}
@@ -1141,8 +1171,24 @@ public final class Clipper {
 		return SimplifyPath(path, epsilon, false);
 	}
 
-	public static PathD SimplifyPath(PathD path, double epsilon, boolean isOpenPath) {
-		int len = path.size(), high = len - 1;
+	/**
+	 * Removes vertices that are less than the specified epsilon distance from an
+	 * imaginary line that passes through its 2 adjacent vertices. Logically,
+	 * smaller epsilon values will be less aggressive in removing vertices than
+	 * larger epsilon values.
+	 * <p>
+	 * This function is strongly recommended before offsetting (ie before
+	 * inflating/shrinking) when paths may contain redundant segments. And removing
+	 * redundant segments is especially important when offsetting paths that have
+	 * themselves been offset.
+	 * 
+	 * @param path
+	 * @param epsilon
+	 * @param isClosedPath
+	 */
+	public static PathD SimplifyPath(PathD path, double epsilon, boolean isClosedPath) {
+		int len = path.size();
+		int high = len - 1;
 		double epsSqr = Sqr(epsilon);
 		if (len < 4) {
 			return path;
@@ -1150,14 +1196,16 @@ public final class Clipper {
 
 		boolean[] flags = new boolean[len];
 		double[] dsq = new double[len];
-		int curr = 0, prev, start, next, prior2, next2;
-		if (isOpenPath) {
-			dsq[0] = Double.MAX_VALUE;
-			dsq[high] = Double.MAX_VALUE;
-		} else {
+		int curr = 0, prev, start, next, prior2;
+
+		if (isClosedPath) {
 			dsq[0] = PerpendicDistFromLineSqrd(path.get(0), path.get(high), path.get(1));
 			dsq[high] = PerpendicDistFromLineSqrd(path.get(high), path.get(0), path.get(high - 1));
+		} else {
+			dsq[0] = Double.MAX_VALUE;
+			dsq[high] = Double.MAX_VALUE;
 		}
+
 		for (int i = 1; i < high; ++i) {
 			dsq[i] = PerpendicDistFromLineSqrd(path.get(i), path.get(i - 1), path.get(i + 1));
 		}
@@ -1166,39 +1214,39 @@ public final class Clipper {
 			if (dsq[curr] > epsSqr) {
 				start = curr;
 				do {
-					curr = GetNext(curr, high, /* ref */ flags);
+					curr = GetNext(curr, high, flags);
 				} while (curr != start && dsq[curr] > epsSqr);
 				if (curr == start) {
 					break;
 				}
 			}
 
-			prev = GetPrior(curr, high, /* ref */ flags);
-			next = GetNext(curr, high, /* ref */ flags);
+			prev = GetPrior(curr, high, flags);
+			next = GetNext(curr, high, flags);
 			if (next == prev) {
 				break;
 			}
 
 			if (dsq[next] < dsq[curr]) {
-				flags[next] = true;
-				next = GetNext(next, high, /* ref */ flags);
-				next2 = GetNext(next, high, /* ref */ flags);
-				dsq[curr] = PerpendicDistFromLineSqrd(path.get(curr), path.get(prev), path.get(next));
-				if (next != high || !isOpenPath) {
-					dsq[next] = PerpendicDistFromLineSqrd(path.get(next), path.get(curr), path.get(next2));
-				}
+				prior2 = prev;
+				prev = curr;
 				curr = next;
+				next = GetNext(next, high, flags);
 			} else {
-				flags[curr] = true;
-				curr = next;
-				next = GetNext(next, high, /* ref */ flags);
-				prior2 = GetPrior(prev, high, /* ref */ flags);
+				prior2 = GetPrior(prev, high, flags);
+			}
+
+			flags[curr] = true;
+			curr = next;
+			next = GetNext(next, high, flags);
+			if (isClosedPath || ((curr != high) && (curr != 0))) {
 				dsq[curr] = PerpendicDistFromLineSqrd(path.get(curr), path.get(prev), path.get(next));
-				if (prev != 0 || !isOpenPath) {
-					dsq[prev] = PerpendicDistFromLineSqrd(path.get(prev), path.get(prior2), path.get(curr));
-				}
+			}
+			if (isClosedPath || ((prev != 0) && (prev != high))) {
+				dsq[prev] = PerpendicDistFromLineSqrd(path.get(prev), path.get(prior2), path.get(curr));
 			}
 		}
+
 		PathD result = new PathD(len);
 		for (int i = 0; i < len; i++) {
 			if (!flags[i]) {
@@ -1212,10 +1260,10 @@ public final class Clipper {
 		return SimplifyPaths(paths, epsilon, false);
 	}
 
-	public static PathsD SimplifyPaths(PathsD paths, double epsilon, boolean isOpenPath) {
+	public static PathsD SimplifyPaths(PathsD paths, double epsilon, boolean isClosedPath) {
 		PathsD result = new PathsD(paths.size());
 		for (PathD path : paths) {
-			result.add(SimplifyPath(path, epsilon, isOpenPath));
+			result.add(SimplifyPath(path, epsilon, isClosedPath));
 		}
 		return result;
 	}
@@ -1277,8 +1325,7 @@ public final class Clipper {
 		} else if (InternalClipper.CrossProduct(last, path.get(len - 1), result.get(0)) != 0) {
 			result.add(path.get(len - 1));
 		} else {
-			while (result.size() > 2
-					&& InternalClipper.CrossProduct(result.get(result.size() - 1), result.get(result.size() - 2), result.get(0)) == 0) {
+			while (result.size() > 2 && InternalClipper.CrossProduct(result.get(result.size() - 1), result.get(result.size() - 2), result.get(0)) == 0) {
 				result.remove(result.size() - 1);
 			}
 			if (result.size() < 3) {
