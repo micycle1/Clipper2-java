@@ -31,9 +31,9 @@ import tangible.RefObject;
  * curves</b> that are offset a specified distance from their primary curves.
  * <p>
  * Library users will rarely need to access this class directly since it's
- * generally easier to use the {@link Clipper#InflatePaths(Paths64, double, JoinType, EndType)
- * InflatePaths()} function for polygon
- * offsetting.
+ * generally easier to use the
+ * {@link Clipper#InflatePaths(Paths64, double, JoinType, EndType)
+ * InflatePaths()} function for polygon offsetting.
  * <p>
  * <b>Notes:</b>
  * <ul>
@@ -64,10 +64,9 @@ import tangible.RefObject;
  * point coordinates, the <b>InflatePaths</b> function will accept paths with
  * floating point coordinates.</li>
  * <li>Redundant segments should be removed before offsetting (see
- * {@link Clipper#SimplifyPaths(Paths64, double)
- * SimplifyPaths()}), and between offsetting operations too. These redundant
- * segments not only slow down offsetting, but they can cause unexpected
- * blemishes in offset solutions.</li>
+ * {@link Clipper#SimplifyPaths(Paths64, double) SimplifyPaths()}), and between
+ * offsetting operations too. These redundant segments not only slow down
+ * offsetting, but they can cause unexpected blemishes in offset solutions.</li>
  * </ul>
  */
 public class ClipperOffset {
@@ -76,7 +75,6 @@ public class ClipperOffset {
 	private static final String COORD_RANGE_ERROR = "Error: Coordinate range.";
 
 	private final List<Group> groupList = new ArrayList<>();
-	private final Path64 inPath = new Path64();
 	private Path64 pathOut = new Path64();
 	private final PathD normals = new PathD();
 	private final Paths64 solution = new Paths64();
@@ -283,7 +281,7 @@ public class ClipperOffset {
 		c.setPreserveCollinear(preserveCollinear);
 		// the solution should normally retain the orientation of the input
 		c.setReverseSolution(reverseSolution != pathsReversed);
-		c.AddSubject(solution);
+		c.AddSubject(this.solution);
 		c.Execute(ClipType.Union, fillRule, solutionTree);
 	}
 
@@ -347,31 +345,6 @@ public class ClipperOffset {
 		dy *= f;
 
 		return new PointD(dy, -dx);
-	}
-
-	private static void GetBoundsAndLowestPolyIdx(Paths64 paths, OutObject<Integer> index, OutObject<Rect64> recRef) {
-		final Rect64 rec = new Rect64(false); // ie invalid rect
-		recRef.argValue = rec;
-		long lpX = Long.MIN_VALUE;
-		index.argValue = -1;
-		for (int i = 0; i < paths.size(); i++) {
-			for (Point64 pt : paths.get(i)) {
-				if (pt.y >= rec.bottom) {
-					if (pt.y > rec.bottom || pt.x < lpX) {
-						index.argValue = i;
-						lpX = pt.x;
-						rec.bottom = pt.y;
-					}
-				} else if (pt.y < rec.top) {
-					rec.top = pt.y;
-				}
-				if (pt.x > rec.right) {
-					rec.right = pt.x;
-				} else if (pt.x < rec.left) {
-					rec.left = pt.y;
-				}
-			}
-		}
 	}
 
 	private static PointD TranslatePoint(PointD pt, double dx, double dy) {
@@ -499,7 +472,7 @@ public class ClipperOffset {
 			// when deltaCallback is assigned, groupDelta won't be constant,
 			// so we'll need to do the following calculations for *every* vertex.
 			double absDelta = Math.abs(groupDelta);
-			double arcTol = arcTolerance > TOLERANCE ? Math.min(absDelta, arcTolerance) : Math.log10(2 + absDelta) * DEFAULT_ARC_TOLERANCE;
+			double arcTol = arcTolerance > 0.01 ? arcTolerance : Math.log10(2 + absDelta) * InternalClipper.DEFAULT_ARC_TOLERANCE;
 			double stepsPer360 = Math.PI / Math.acos(1 - arcTol / absDelta);
 			stepSin = Math.sin((2 * Math.PI) / stepsPer360);
 			stepCos = Math.cos((2 * Math.PI) / stepsPer360);
@@ -568,7 +541,7 @@ public class ClipperOffset {
 			pathOut.add(GetPerpendic(path.get(j), normals.get(j)));
 		} else if (cosA > 0.999 && joinType != JoinType.Round) {
 			// almost straight - less than 2.5 degree (#424, #482, #526 & #724)
-	        DoMiter(group, path, j, k.argValue, cosA);
+			DoMiter(group, path, j, k.argValue, cosA);
 		} else if (joinType == JoinType.Miter) {
 			// miter unless the angle is sufficiently acute to exceed ML
 			if (cosA > mitLimSqr - 1) {
@@ -590,7 +563,7 @@ public class ClipperOffset {
 	private void OffsetPolygon(Group group, Path64 path) {
 		pathOut = new Path64();
 		int cnt = path.size();
-		RefObject<Integer> prev = new RefObject<Integer>(cnt-1);
+		RefObject<Integer> prev = new RefObject<Integer>(cnt - 1);
 		for (int i = 0; i < cnt; i++) {
 			OffsetPoint(group, path, i, prev);
 		}
@@ -661,12 +634,17 @@ public class ClipperOffset {
 		solution.add(pathOut);
 	}
 
+	private static boolean ToggleBoolIf(boolean val, boolean condition) {
+		return condition ? !val : val;
+	}
+
 	private void DoGroupOffset(Group group) {
 		if (group.endType == EndType.Polygon) {
+			// a straight path (2 points) can now also be 'polygon' offset
+			// where the ends will be treated as (180 deg.) joins
 			if (group.lowestPathIdx < 0) {
-				return;
+				delta = Math.abs(delta);
 			}
-			// if (area == 0) return; // probably unhelpful (#430)
 			groupDelta = (group.pathsReversed) ? -delta : delta;
 		} else {
 			groupDelta = Math.abs(delta); // * 0.5
@@ -698,7 +676,9 @@ public class ClipperOffset {
 
 		int i = 0;
 		for (Path64 p : group.inPaths) {
-			Rect64 pathBounds = group.boundsList.get(i++);
+			// NOTE use int i rather than 3 iterators
+			Rect64 pathBounds = group.boundsList.get(i);
+			boolean isHole = group.isHoleList.get(i++);
 			if (!pathBounds.IsValid()) {
 				continue;
 			}
@@ -723,12 +703,12 @@ public class ClipperOffset {
 				}
 				solution.add(pathOut);
 				continue;
-			} // end of offsetting a single (open path) point
+			} // end of offsetting a single point
 
-			// when shrinking, then make sure the path can shrink that far (#593)
-			if (groupDelta < 0 && Math.min(pathBounds.getWidth(), pathBounds.getHeight()) < -groupDelta * 2) {
+			// when shrinking outer paths, make sure they can shrink this far (#593)
+			// also when shrinking holes, make sure they too can shrink this far (#715)
+			if (((groupDelta > 0) == ToggleBoolIf(isHole, group.pathsReversed)) && (Math.min(pathBounds.getWidth(), pathBounds.getHeight()) <= -groupDelta * 2))
 				continue;
-			}
 
 			if (cnt == 2 && group.endType == EndType.Joined) {
 				endType = (group.joinType == JoinType.Round) ? EndType.Round : EndType.Square;

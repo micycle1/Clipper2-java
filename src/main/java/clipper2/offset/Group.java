@@ -37,7 +37,7 @@ class Group {
 
 		// get bounds of each path --> boundsList
 		boundsList = new ArrayList<>(inPaths.size());
-		GetMultiBounds(inPaths, boundsList, endType);
+		GetMultiBounds(inPaths, boundsList);
 
 		if (endType == EndType.Polygon) {
 			lowestPathIdx = GetLowestPathIdx(boundsList);
@@ -63,15 +63,9 @@ class Group {
 		}
 	}
 
-	private static void GetMultiBounds(Paths64 paths, List<Rect64> boundsList, EndType endType) {
-		int minPathLen = (endType == EndType.Polygon) ? 3 : 1;
-
-//		if (boundsList instanceof ArrayList) {
-//			((ArrayList<Rect64>) boundsList).ensureCapacity(paths.size());
-//		}
-
+	private static void GetMultiBounds(Paths64 paths, List<Rect64> boundsList) {
 		for (Path64 path : paths) {
-			if (path.size() < minPathLen) {
+			if (path.size() < 1) {
 				boundsList.add(Clipper.InvalidRect64.clone());
 				continue;
 			}
