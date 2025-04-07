@@ -24,22 +24,51 @@ import tangible.OutObject;
 import tangible.RefObject;
 
 /**
- * Geometric offsetting refers to the process of creating parallel curves that
- * are offset a specified distance from their primary curves.
+ * Manages the process of offsetting (inflating/deflating) both open and closed
+ * paths using different join types and end types.
  * <p>
- * The ClipperOffset class manages the process of offsetting
- * (inflating/deflating) both open and closed paths using a number of different
- * join types and end types. The library user will rarely need to access this
- * unit directly since it will generally be easier to use the
- * {@link Clipper#InflatePaths(Paths64, double, JoinType, EndType)
- * InflatePaths()} function when doing polygon offsetting.
+ * Geometric <b>offsetting</b> refers to the process of creating <b>parallel
+ * curves</b> that are offset a specified distance from their primary curves.
  * <p>
- * Caution: Offsetting self-intersecting polygons may produce unexpected
- * results.
+ * Library users will rarely need to access this class directly since it's
+ * generally easier to use the {@link Clipper#InflatePaths(Paths64, double, JoinType, EndType)
+ * InflatePaths()} function for polygon
+ * offsetting.
  * <p>
- * Note: When inflating polygons, it's important that you select
- * {@link EndType#Polygon}. If you select one of the open path end types instead
- * (including EndType.Join), you'll simply inflate the polygon's outline.
+ * <b>Notes:</b>
+ * <ul>
+ * <li>When offsetting <i>closed</i> paths (polygons), a positive offset delta
+ * specifies how much outer polygon contours will expand and inner "hole"
+ * contours will contract. The converse occurs with negative deltas.</li>
+ * <li>You cannot offset <i>open</i> paths (polylines) with negative deltas
+ * because it's not possible to contract/shrink open paths.</li>
+ * <li>When offsetting, it's important not to confuse <b>EndType.Polygon</b>
+ * with <b>EndType.Joined</b>. <b>EndType.Polygon</b> should be used when
+ * offsetting polygons (closed paths). <b>EndType.Joined</b> should be used with
+ * polylines (open paths).</li>
+ * <li>Offsetting should <b>not</b> be performed on <b>intersecting closed
+ * paths</b>, as doing so will almost always produce undesirable results.
+ * Intersections must be removed before offsetting, which can be achieved
+ * through a <b>Union</b> clipping operation.</li>
+ * <li>It is OK to offset self-intersecting open paths (polylines), though the
+ * intersecting (overlapping) regions will be flattened in the solution
+ * polygon.</li>
+ * <li>When offsetting closed paths (polygons), the <b>winding direction</b> of
+ * paths in the solution will match that of the paths prior to offsetting.
+ * Polygons with hole regions should comply with <b>NonZero filling</b>.</li>
+ * <li>When offsetting open paths (polylines), the solutions will always have
+ * <b>Positive orientation</b>.</li>
+ * <li>Path <b>order</b> following offsetting very likely <i>won't</i> match
+ * path order prior to offsetting.</li>
+ * <li>While the ClipperOffset class itself won't accept paths with floating
+ * point coordinates, the <b>InflatePaths</b> function will accept paths with
+ * floating point coordinates.</li>
+ * <li>Redundant segments should be removed before offsetting (see
+ * {@link Clipper#SimplifyPaths(Paths64, double)
+ * SimplifyPaths()}), and between offsetting operations too. These redundant
+ * segments not only slow down offsetting, but they can cause unexpected
+ * blemishes in offset solutions.</li>
+ * </ul>
  */
 public class ClipperOffset {
 
