@@ -16,7 +16,6 @@ import clipper2.core.Path64;
 import clipper2.core.PathType;
 import clipper2.core.Paths64;
 import clipper2.core.Point64;
-import clipper2.core.PointD;
 import clipper2.core.Rect64;
 import tangible.OutObject;
 import tangible.RefObject;
@@ -163,8 +162,7 @@ abstract class ClipperBase {
 			minimaList.add(lm);
 		}
 
-		private static void AddPathsToVertexList(Paths64 paths, PathType polytype, boolean isOpen, List<LocalMinima> minimaList,
-				List<Vertex> vertexList) {
+		private static void AddPathsToVertexList(Paths64 paths, PathType polytype, boolean isOpen, List<LocalMinima> minimaList, List<Vertex> vertexList) {
 			for (Path64 path : paths) {
 				Vertex v0 = null, prevV = null, currV;
 				for (Point64 pt : path) {
@@ -618,7 +616,7 @@ abstract class ClipperBase {
 		}
 		return outRec;
 	}
-	
+
 	private static boolean IsValidOwner(OutRec outRec, OutRec testOwner) {
 		while ((testOwner != null) && (testOwner != outRec)) {
 			testOwner = testOwner.owner;
@@ -1397,6 +1395,9 @@ abstract class ClipperBase {
 		}
 
 		if (IsHorizontal(ae)) {
+			if (!IsOpen(ae)) {
+				TrimHorz(ae, preserveCollinear);
+			}
 			return;
 		}
 		scanlineSet.add(ae.top.y);
@@ -1942,11 +1943,6 @@ abstract class ClipperBase {
 		return false; // right to left
 	}
 
-	private static boolean HorzIsSpike(Active horz) {
-		Point64 nextPt = NextVertex(horz).pt;
-		return (horz.bot.x < horz.top.x) != (horz.top.x < nextPt.x);
-	}
-
 	private void TrimHorz(Active horzEdge, boolean preserveCollinear) {
 		boolean wasTrimmed = false;
 		Point64 pt = NextVertex(horzEdge).pt;
@@ -2005,12 +2001,6 @@ abstract class ClipperBase {
 
 		@Nullable
 		Vertex vertexMax = horzIsOpen ? GetCurrYMaximaVertex_Open(horz) : GetCurrYMaximaVertex(horz);
-
-		// remove 180 deg.spikes and also simplify
-		// consecutive horizontals when PreserveCollinear = true
-		if (vertexMax != null && !horzIsOpen && vertexMax != horz.vertexTop) {
-			TrimHorz(horz, getPreserveCollinear());
-		}
 
 		long leftX;
 		OutObject<Long> tempOutleftX = new OutObject<>();
@@ -2129,10 +2119,6 @@ abstract class ClipperBase {
 			}
 
 			UpdateEdgeIntoAEL(horz);
-
-			if (getPreserveCollinear() && !horzIsOpen && HorzIsSpike(horz)) {
-				TrimHorz(horz, true);
-			}
 
 			OutObject<Long> tempOutleftX2 = new OutObject<>();
 			OutObject<Long> tempOutrightX2 = new OutObject<>();
@@ -2420,8 +2406,7 @@ abstract class ClipperBase {
 			// for each HorzSegment, find others that overlap
 			for (int j = i + 1; j < k; j++) {
 				HorzSegment hs2 = horzSegList.get(j);
-				if ((hs2.leftOp.pt.x >= hs1.rightOp.pt.x) || (hs2.leftToRight == hs1.leftToRight)
-						|| (hs2.rightOp.pt.x <= hs1.leftOp.pt.x)) {
+				if ((hs2.leftOp.pt.x >= hs1.rightOp.pt.x) || (hs2.leftToRight == hs1.leftToRight) || (hs2.rightOp.pt.x <= hs1.leftOp.pt.x)) {
 					continue;
 				}
 				long currY = hs1.leftOp.pt.y;
@@ -2449,25 +2434,22 @@ abstract class ClipperBase {
 	}
 
 	private static Path64 GetCleanPath(OutPt op) {
-	    Path64 result = new Path64();
-	    OutPt op2 = op;
-	    while (op2.next != op &&
-	           ((op2.pt.x == op2.next.pt.x && op2.pt.x == op2.prev.pt.x) ||
-	            (op2.pt.y == op2.next.pt.y && op2.pt.y == op2.prev.pt.y))) {
-	        op2 = op2.next;
-	    }
-	    result.add(op2.pt);
-	    OutPt prevOp = op2;
-	    op2 = op2.next;
-	    while (op2 != op) {
-	        if ((op2.pt.x != op2.next.pt.x || op2.pt.x != prevOp.pt.x) &&
-	            (op2.pt.y != op2.next.pt.y || op2.pt.y != prevOp.pt.y)) {
-	            result.add(op2.pt);
-	            prevOp = op2;
-	        }
-	        op2 = op2.next;
-	    }
-	    return result;
+		Path64 result = new Path64();
+		OutPt op2 = op;
+		while (op2.next != op && ((op2.pt.x == op2.next.pt.x && op2.pt.x == op2.prev.pt.x) || (op2.pt.y == op2.next.pt.y && op2.pt.y == op2.prev.pt.y))) {
+			op2 = op2.next;
+		}
+		result.add(op2.pt);
+		OutPt prevOp = op2;
+		op2 = op2.next;
+		while (op2 != op) {
+			if ((op2.pt.x != op2.next.pt.x || op2.pt.x != prevOp.pt.x) && (op2.pt.y != op2.next.pt.y || op2.pt.y != prevOp.pt.y)) {
+				result.add(op2.pt);
+				prevOp = op2;
+			}
+			op2 = op2.next;
+		}
+		return result;
 	}
 
 	private static PointInPolygonResult PointInOpPolygon(Point64 pt, OutPt op) {
@@ -2578,17 +2560,17 @@ abstract class ClipperBase {
 	}
 
 	private void MoveSplits(OutRec fromOr, OutRec toOr) {
-	    if (fromOr.splits == null) {
-	        return;
-	    }
-	    if (toOr.splits == null) {
-	        toOr.splits = new ArrayList<>();
-	    }
-	    for (int i : fromOr.splits) {
-	        toOr.splits.add(i);
-	    }
+		if (fromOr.splits == null) {
+			return;
+		}
+		if (toOr.splits == null) {
+			toOr.splits = new ArrayList<>();
+		}
+		for (int i : fromOr.splits) {
+			toOr.splits.add(i);
+		}
 
-	    fromOr.splits = null;
+		fromOr.splits = null;
 	}
 
 	private void ProcessHorzJoins() {
@@ -2653,8 +2635,7 @@ abstract class ClipperBase {
 	}
 
 	private static boolean IsVerySmallTriangle(OutPt op) {
-		return op.next.next == op.prev
-				&& (PtsReallyClose(op.prev.pt, op.next.pt) || PtsReallyClose(op.pt, op.next.pt) || PtsReallyClose(op.pt, op.prev.pt));
+		return op.next.next == op.prev && (PtsReallyClose(op.prev.pt, op.next.pt) || PtsReallyClose(op.pt, op.next.pt) || PtsReallyClose(op.pt, op.prev.pt));
 	}
 
 	private static boolean IsValidClosedPath(@Nullable OutPt op) {
@@ -2686,9 +2667,8 @@ abstract class ClipperBase {
 		OutPt op2 = startOp;
 		for (;;) {
 			// NB if preserveCollinear == true, then only remove 180 deg. spikes
-			if ((InternalClipper.CrossProduct(op2.prev.pt, op2.pt, op2.next.pt) == 0)
-					&& ((op2.pt.opEquals(op2.prev.pt)) || (op2.pt.opEquals(op2.next.pt)) || !getPreserveCollinear()
-							|| (InternalClipper.DotProduct(op2.prev.pt, op2.pt, op2.next.pt) < 0))) {
+			if ((InternalClipper.CrossProduct(op2.prev.pt, op2.pt, op2.next.pt) == 0) && ((op2.pt.opEquals(op2.prev.pt)) || (op2.pt.opEquals(op2.next.pt))
+					|| !getPreserveCollinear() || (InternalClipper.DotProduct(op2.prev.pt, op2.pt, op2.next.pt) < 0))) {
 				if (op2.equals(outrec.pts)) {
 					outrec.pts = op2.prev;
 				}
@@ -2716,7 +2696,7 @@ abstract class ClipperBase {
 		outrec.pts = prevOp;
 //		OutPt result = prevOp;
 
-		Point64 ip = new Point64(); // ip mutated by GetIntersectPoint() 
+		Point64 ip = new Point64(); // ip mutated by GetIntersectPoint()
 		InternalClipper.GetIntersectPoint(prevOp.pt, splitOp.pt, splitOp.next.pt, nextNextOp.pt, ip);
 
 		double area1 = Area(prevOp);
@@ -2904,7 +2884,7 @@ abstract class ClipperBase {
 		}
 		for (int i : splits) {
 			OutRec split = GetRealOutRec(outrecList.get(i));
-			if (split == null ||  split == outrec || split.recursiveSplit == outrec) {
+			if (split == null || split == outrec || split.recursiveSplit == outrec) {
 				continue;
 			}
 			split.recursiveSplit = outrec; // #599
