@@ -1,6 +1,8 @@
 package clipper2.offset;
 
 import static clipper2.core.InternalClipper.DEFAULT_ARC_TOLERANCE;
+import static clipper2.core.InternalClipper.MAX_COORD;
+import static clipper2.core.InternalClipper.MIN_COORD;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -42,8 +44,11 @@ import tangible.RefObject;
 public class ClipperOffset {
 
 	private static double TOLERANCE = 1.0E-12;
+	private static final String COORD_RANGE_ERROR = "Error: Coordinate range.";
 
 	private final List<Group> groupList = new ArrayList<>();
+	private final Path64 inPath = new Path64();
+	private Path64 pathOut = new Path64();
 	private final PathD normals = new PathD();
 	private final Paths64 solution = new Paths64();
 	private double groupDelta; // *0.5 for open paths; *-1.0 for negative areas
@@ -167,42 +172,67 @@ public class ClipperOffset {
 		groupList.add(new Group(paths, joinType, endType));
 	}
 
+	private int CalcSolutionCapacity() {
+		int result = 0;
+		for (Group g : groupList) {
+			result += (g.endType == EndType.Joined) ? g.inPaths.size() * 2 : g.inPaths.size();
+		}
+		return result;
+	}
+
 	private void ExecuteInternal(double delta) {
 		solution.clear();
 		if (groupList.isEmpty()) {
 			return;
 		}
+		solution.ensureCapacity(CalcSolutionCapacity());
 
+		// make sure the offset delta is significant
 		if (Math.abs(delta) < 0.5) {
 			for (Group group : groupList) {
 				for (Path64 path : group.inPaths) {
 					solution.add(path);
 				}
 			}
-		} else {
-			this.delta = delta;
-			this.mitLimSqr = (getMiterLimit() <= 1 ? 2.0 : 2.0 / Clipper.Sqr(getMiterLimit()));
+			return;
+		}
+		this.delta = delta;
+		this.mitLimSqr = (miterLimit <= 1 ? 2.0 : 2.0 / Clipper.Sqr(miterLimit));
 
-			for (Group group : groupList) {
-				DoGroupOffset(group);
+		for (Group group : groupList) {
+			DoGroupOffset(group);
+		}
+	}
+
+	boolean CheckPathsReversed() {
+		boolean result = false;
+		for (Group g : groupList) {
+			if (g.endType == EndType.Polygon) {
+				result = g.pathsReversed;
+				break;
 			}
 		}
+
+		return result;
 	}
 
 	public final void Execute(double delta, Paths64 solution) {
 		solution.clear();
 		ExecuteInternal(delta);
+		if (groupList.isEmpty()) {
+			return;
+		}
+
+		boolean pathsReversed = CheckPathsReversed();
+		FillRule fillRule = pathsReversed ? FillRule.Negative : FillRule.Positive;
 
 		// clean up self-intersections ...
 		Clipper64 c = new Clipper64();
-		c.setPreserveCollinear(getPreserveCollinear());
-		c.setReverseSolution(getReverseSolution() != groupList.get(0).pathsReversed);
-		c.AddSubject(this.solution);
-		if (groupList.get(0).pathsReversed) {
-			c.Execute(ClipType.Union, FillRule.Negative, solution);
-		} else {
-			c.Execute(ClipType.Union, FillRule.Positive, solution);
-		}
+		c.setPreserveCollinear(preserveCollinear);
+		// the solution should retain the orientation of the input
+		c.setReverseSolution(reverseSolution != pathsReversed);
+		c.AddSubject(solution);
+		c.Execute(ClipType.Union, fillRule, solution);
 	}
 
 	public void Execute(DeltaCallback64 deltaCallback64, Paths64 solution) {
@@ -210,21 +240,22 @@ public class ClipperOffset {
 		Execute(1.0, solution);
 	}
 
-	public void Execute(double delta, PolyTree64 polytree) {
-		polytree.Clear();
+	public void Execute(double delta, PolyTree64 solutionTree) {
+		solutionTree.Clear();
 		ExecuteInternal(delta);
+		if (groupList.isEmpty()) {
+			return;
+		}
 
+		boolean pathsReversed = CheckPathsReversed();
+		FillRule fillRule = pathsReversed ? FillRule.Negative : FillRule.Positive;
 		// clean up self-intersections ...
 		Clipper64 c = new Clipper64();
-		c.setPreserveCollinear(getPreserveCollinear());
-		// the solution should retain the orientation of the input
-		c.setReverseSolution(getReverseSolution() != groupList.get(0).pathsReversed);
-		c.AddSubject(this.solution);
-		if (groupList.get(0).pathsReversed) {
-			c.Execute(ClipType.Union, FillRule.Negative, polytree);
-		} else {
-			c.Execute(ClipType.Union, FillRule.Positive, polytree);
-		}
+		c.setPreserveCollinear(preserveCollinear);
+		// the solution should normally retain the orientation of the input
+		c.setReverseSolution(reverseSolution != pathsReversed);
+		c.AddSubject(solution);
+		c.Execute(ClipType.Union, fillRule, solutionTree);
 	}
 
 	public final double getArcTolerance() {
@@ -382,7 +413,21 @@ public class ClipperOffset {
 		return new PointD(pt.x + norm.x * groupDelta, pt.y + norm.y * groupDelta);
 	}
 
-	private void DoSquare(Group group, Path64 path, int j, int k) {
+	private void DoBevel(Path64 path, int j, int k) {
+		Point64 pt1, pt2;
+		if (j == k) {
+			double absDelta = Math.abs(groupDelta);
+			pt1 = new Point64(path.get(j).x - absDelta * normals.get(j).x, path.get(j).y - absDelta * normals.get(j).y);
+			pt2 = new Point64(path.get(j).x + absDelta * normals.get(j).x, path.get(j).y + absDelta * normals.get(j).y);
+		} else {
+			pt1 = new Point64(path.get(j).x + groupDelta * normals.get(k).x, path.get(j).y + groupDelta * normals.get(k).y);
+			pt2 = new Point64(path.get(j).x + groupDelta * normals.get(j).x, path.get(j).y + groupDelta * normals.get(j).y);
+		}
+		pathOut.add(pt1);
+		pathOut.add(pt2);
+	}
+
+	private void DoSquare(Path64 path, int j, int k) {
 		PointD vec;
 		if (j == k) {
 			vec = new PointD(normals.get(j).y, -normals.get(j).x);
@@ -404,24 +449,23 @@ public class ClipperOffset {
 			PointD pt4 = new PointD(pt3.x + vec.x * groupDelta, pt3.y + vec.y * groupDelta);
 			PointD pt = IntersectPoint(pt1, pt2, pt3, pt4);
 			// get the second intersect point through reflecion
-			group.outPath.add(new Point64(ReflectPoint(pt, ptQ)));
-			group.outPath.add(new Point64(pt));
+			pathOut.add(new Point64(ReflectPoint(pt, ptQ)));
+			pathOut.add(new Point64(pt));
 		} else {
 			PointD pt4 = GetPerpendicD(path.get(j), normals.get(k));
 			PointD pt = IntersectPoint(pt1, pt2, pt3, pt4);
-			group.outPath.add(new Point64(pt));
+			pathOut.add(new Point64(pt));
 			// get the second intersect point through reflecion
-			group.outPath.add(new Point64(ReflectPoint(pt, ptQ)));
+			pathOut.add(new Point64(ReflectPoint(pt, ptQ)));
 		}
 	}
 
 	private void DoMiter(Group group, Path64 path, int j, int k, double cosA) {
 		final double q = groupDelta / (cosA + 1);
-		group.outPath.add(new Point64(path.get(j).x + (normals.get(k).x + normals.get(j).x) * q,
-				path.get(j).y + (normals.get(k).y + normals.get(j).y) * q));
+		pathOut.add(new Point64(path.get(j).x + (normals.get(k).x + normals.get(j).x) * q, path.get(j).y + (normals.get(k).y + normals.get(j).y) * q));
 	}
 
-	private void DoRound(Group group, Path64 path, int j, int k, double angle) {
+	private void DoRound(Path64 path, int j, int k, double angle) {
 		if (deltaCallback != null) {
 			// when deltaCallback is assigned, groupDelta won't be constant,
 			// so we'll need to do the following calculations for *every* vertex.
@@ -441,14 +485,14 @@ public class ClipperOffset {
 		if (j == k) {
 			offsetVec.Negate();
 		}
-		group.outPath.add(new Point64(pt.x + offsetVec.x, pt.y + offsetVec.y));
+		pathOut.add(new Point64(pt.x + offsetVec.x, pt.y + offsetVec.y));
 		int steps = (int) Math.ceil(stepsPerRad * Math.abs(angle)); // #448, #456
 		for (int i = 1; i < steps; ++i) // ie 1 less than steps
 		{
 			offsetVec = new PointD(offsetVec.x * stepCos - stepSin * offsetVec.y, offsetVec.x * stepSin + offsetVec.y * stepCos);
-			group.outPath.add(new Point64(pt.x + offsetVec.x, pt.y + offsetVec.y));
+			pathOut.add(new Point64(pt.x + offsetVec.x, pt.y + offsetVec.y));
 		}
-		group.outPath.add(GetPerpendic(pt, normals.get(j)));
+		pathOut.add(GetPerpendic(pt, normals.get(j)));
 	}
 
 	private void BuildNormals(Path64 path) {
@@ -482,54 +526,46 @@ public class ClipperOffset {
 			}
 		}
 		if (Math.abs(groupDelta) < TOLERANCE) {
-			group.outPath.add(path.get(j));
+			pathOut.add(path.get(j));
 			return;
 		}
 
-		if (cosA > -0.99 && (sinA * groupDelta < 0)) // test for concavity first (#593)
-		{
+		if (cosA > -0.99 && (sinA * groupDelta < 0)) { // test for concavity first (#593)
 			// is concave
-			group.outPath.add(GetPerpendic(path.get(j), normals.get(k.argValue)));
+			pathOut.add(GetPerpendic(path.get(j), normals.get(k.argValue)));
 			// this extra point is the only (simple) way to ensure that
 			// path reversals are fully cleaned with the trailing clipper
-			group.outPath.add(path.get(j)); // (#405)
-			group.outPath.add(GetPerpendic(path.get(j), normals.get(j)));
-		} else if (cosA > 0.999)
+			pathOut.add(path.get(j)); // (#405)
+			pathOut.add(GetPerpendic(path.get(j), normals.get(j)));
+		} else if (cosA > 0.999) {
 			DoMiter(group, path, j, k.argValue, cosA);
-		else if (joinType == JoinType.Miter) {
+		} else if (joinType == JoinType.Miter) {
 			// miter unless the angle is so acute the miter would exceeds ML
-			if (cosA > mitLimSqr - 1)
+			if (cosA > mitLimSqr - 1) {
 				DoMiter(group, path, j, k.argValue, cosA);
-			else
-				DoSquare(group, path, j, k.argValue);
-		} else if (cosA > 0.99 || joinType == JoinType.Square)
+			} else {
+				DoSquare(path, j, k.argValue);
+			}
+		} else if (cosA > 0.99 || joinType == JoinType.Bevel) {
 			// angle less than 8 degrees or a squared join
-			DoSquare(group, path, j, k.argValue);
-		else
-			DoRound(group, path, j, k.argValue, Math.atan2(sinA, cosA));
+			DoBevel(path, j, k.argValue);
+		} else if (joinType == JoinType.Round) {
+			DoRound(path, j, k.argValue, Math.atan2(sinA, cosA));
+		} else {
+			DoSquare(path, j, k.argValue);
+		}
 
 		k.argValue = j;
 	}
 
 	private void OffsetPolygon(Group group, Path64 path) {
-		// when the path is contracting, make sure
-		// there is sufficient space to do so. // #593
-		// nb: this will have a small impact on performance
-		double a = Clipper.Area(path);
-		if ((a < 0) != (groupDelta < 0)) {
-			Rect64 rec = Clipper.GetBounds(path);
-			double offsetMinDim = Math.abs(groupDelta) * 2;
-			if (offsetMinDim > rec.getWidth() || offsetMinDim > rec.getHeight()) {
-				return;
-			}
-		}
-		group.outPath = new Path64();
+		pathOut = new Path64();
 		int cnt = path.size();
-		RefObject<Integer> prev = new RefObject<>(cnt - 1);
+		RefObject<Integer> prev = new RefObject<Integer>(cnt-1);
 		for (int i = 0; i < cnt; i++) {
 			OffsetPoint(group, path, i, prev);
 		}
-		group.outPaths.add(group.outPath);
+		solution.add(pathOut);
 	}
 
 	private void OffsetOpenJoined(Group group, Path64 path) {
@@ -540,113 +576,88 @@ public class ClipperOffset {
 	}
 
 	private void OffsetOpenPath(Group group, Path64 path) {
-		group.outPath = new Path64();
+		pathOut = new Path64();
 		int highI = path.size() - 1;
-
 		if (deltaCallback != null) {
 			groupDelta = deltaCallback.calculate(path, normals, 0, 0);
 		}
-
 		// do the line start cap
 		if (Math.abs(groupDelta) < TOLERANCE) {
-			group.outPath.add(path.get(0));
+			pathOut.add(path.get(0));
 		} else {
-			// do the line start cap
-			switch (this.endType) {
+			switch (endType) {
 				case Butt :
-					group.outPath
-							.add(new Point64(path.get(0).x - normals.get(0).x * groupDelta, path.get(0).y - normals.get(0).y * groupDelta));
-					group.outPath.add(GetPerpendic(path.get(0), normals.get(0)));
+					DoBevel(path, 0, 0);
 					break;
 				case Round :
-					DoRound(group, path, 0, 0, Math.PI);
+					DoRound(path, 0, 0, Math.PI);
 					break;
 				default :
-					DoSquare(group, path, 0, 0);
+					DoSquare(path, 0, 0);
 					break;
 			}
 		}
-
 		// offset the left side going forward
-		RefObject<Integer> k = new RefObject<>(0);
-		for (int i = 1; i < highI; i++) {
-			OffsetPoint(group, path, i, k);
+		for (int i = 1, k = 0; i < highI; i++) {
+			OffsetPoint(group, path, i, new RefObject<>(k)); // NOTE creating new ref object correct?
 		}
-
 		// reverse normals ...
 		for (int i = highI; i > 0; i--) {
 			normals.set(i, new PointD(-normals.get(i - 1).x, -normals.get(i - 1).y));
 		}
 		normals.set(0, normals.get(highI));
-
 		if (deltaCallback != null) {
 			groupDelta = deltaCallback.calculate(path, normals, highI, highI);
 		}
 		// do the line end cap
 		if (Math.abs(groupDelta) < TOLERANCE) {
-			group.outPath.add(path.get(highI));
+			pathOut.add(path.get(highI));
 		} else {
-			switch (this.endType) {
+			switch (endType) {
 				case Butt :
-					group.outPath.add(new Point64(path.get(highI).x - normals.get(highI).x * groupDelta,
-							path.get(highI).y - normals.get(highI).y * groupDelta));
-					group.outPath.add(GetPerpendic(path.get(highI), normals.get(highI)));
+					DoBevel(path, highI, highI);
 					break;
 				case Round :
-					DoRound(group, path, highI, highI, Math.PI);
+					DoRound(path, highI, highI, Math.PI);
 					break;
 				default :
-					DoSquare(group, path, highI, highI);
+					DoSquare(path, highI, highI);
 					break;
 			}
 		}
-
 		// offset the left side going back
-		k.argValue = 0;
-		for (int i = highI; i > 0; i--) {
-			OffsetPoint(group, path, i, k);
+		for (int i = highI, k = 0; i > 0; i--) {
+			OffsetPoint(group, path, i, new RefObject<>(k)); // NOTE creating new ref object correct?
 		}
-
-		group.outPaths.add(group.outPath);
+		solution.add(pathOut);
 	}
 
 	private void DoGroupOffset(Group group) {
 		if (group.endType == EndType.Polygon) {
-			/*
-			 * The lowermost polygon must be an outer polygon. So we can use that as the
-			 * designated orientation for outer polygons (needed for tidy-up clipping)
-			 */
-			OutObject<Integer> lowestIdx = new OutObject<>();
-			OutObject<Rect64> grpBounds = new OutObject<>();
-			GetBoundsAndLowestPolyIdx(group.inPaths, lowestIdx, grpBounds);
-			if (lowestIdx.argValue < 0) {
+			if (group.lowestPathIdx < 0) {
 				return;
 			}
-			double area = Clipper.Area(group.inPaths.get(lowestIdx.argValue));
-			// if (area == 0) return; // this is probably unhelpful (#430)
-			group.pathsReversed = (area < 0);
-			if (group.pathsReversed) {
-				this.groupDelta = -this.delta;
-			} else {
-				this.groupDelta = this.delta;
-			}
+			// if (area == 0) return; // probably unhelpful (#430)
+			groupDelta = (group.pathsReversed) ? -delta : delta;
 		} else {
-			group.pathsReversed = false;
-			this.groupDelta = Math.abs(this.delta) * 0.5;
+			groupDelta = Math.abs(delta) * 0.5;
 		}
-		double absDelta = Math.abs(this.groupDelta);
-		this.joinType = group.joinType;
-		this.endType = group.endType;
 
-		// calculate a sensible number of steps (for 360 deg for the given offset
-		if (deltaCallback == null && (group.joinType == JoinType.Round || group.endType == EndType.Round)) {
-			/*
-			 * arcTol - when fArcTolerance is undefined (0), the amount of curve imprecision
-			 * that's allowed is based on the size of the offset (delta). Obviously very
-			 * large offsets will almost always require much less precision. See also
-			 * offset_triginometry2.svg
-			 */
-			double arcTol = arcTolerance > TOLERANCE ? arcTolerance : Math.log10(2 + absDelta) * DEFAULT_ARC_TOLERANCE;
+		double absDelta = Math.abs(groupDelta);
+		if (!ValidateBounds(group.boundsList, absDelta)) {
+			throw new RuntimeException(COORD_RANGE_ERROR);
+		}
+
+		joinType = group.joinType;
+		endType = group.endType;
+
+		if (group.joinType == JoinType.Round || group.endType == EndType.Round) {
+			// calculate a sensible number of steps (for 360 deg for the given offset
+			// arcTol - when fArcTolerance is undefined (0), the amount of
+			// curve imprecision that's allowed is based on the size of the
+			// offset (delta). Obviously very large offsets will almost always
+			// require much less precision.
+			double arcTol = arcTolerance > 0.01 ? arcTolerance : Math.log10(2 + absDelta) * InternalClipper.DEFAULT_ARC_TOLERANCE;
 			double stepsPer360 = Math.PI / Math.acos(1 - arcTol / absDelta);
 			stepSin = Math.sin((2 * Math.PI) / stepsPer360);
 			stepCos = Math.cos((2 * Math.PI) / stepsPer360);
@@ -656,48 +667,65 @@ public class ClipperOffset {
 			stepsPerRad = stepsPer360 / (2 * Math.PI);
 		}
 
-		boolean isJoined = (group.endType == EndType.Joined) || (group.endType == EndType.Polygon);
-
+		int i = 0;
 		for (Path64 p : group.inPaths) {
-			Path64 path = Clipper.StripDuplicates(p, isJoined);
-			int cnt = path.size();
-			if ((cnt == 0) || ((cnt < 3) && (this.endType == EndType.Polygon))) {
+			Rect64 pathBounds = group.boundsList.get(i++);
+			if (!pathBounds.IsValid()) {
+				continue;
+			}
+			int cnt = p.size();
+			if ((cnt == 0) || ((cnt < 3) && (endType == EndType.Polygon))) {
 				continue;
 			}
 
+			pathOut = new Path64();
 			if (cnt == 1) {
-				group.outPath = new Path64();
+				Point64 pt = p.get(0);
+
 				// single vertex so build a circle or square ...
 				if (group.endType == EndType.Round) {
 					double r = absDelta;
 					int steps = (int) Math.ceil(stepsPerRad * 2 * Math.PI);
-					group.outPath = Clipper.Ellipse(path.get(0), r, r, steps);
+					pathOut = Clipper.Ellipse(pt, r, r, steps);
 				} else {
-					int d = (int) Math.ceil(this.groupDelta);
-					Rect64 r = new Rect64(path.get(0).x - d, path.get(0).y - d, path.get(0).x - d, path.get(0).y - d);
-					group.outPath = r.AsPath();
+					int d = (int) Math.ceil(groupDelta);
+					Rect64 r = new Rect64(pt.x - d, pt.y - d, pt.x + d, pt.y + d);
+					pathOut = r.AsPath();
 				}
-				group.outPaths.add(group.outPath);
+				solution.add(pathOut);
+				continue;
+			} // end of offsetting a single (open path) point
+
+			// when shrinking, then make sure the path can shrink that far (#593)
+			if (groupDelta < 0 && Math.min(pathBounds.getWidth(), pathBounds.getHeight()) < -groupDelta * 2) {
+				continue;
+			}
+
+			if (cnt == 2 && group.endType == EndType.Joined) {
+				endType = (group.joinType == JoinType.Round) ? EndType.Round : EndType.Square;
+			}
+
+			BuildNormals(p);
+			if (endType == EndType.Polygon) {
+				OffsetPolygon(group, p);
+			} else if (endType == EndType.Joined) {
+				OffsetOpenJoined(group, p);
 			} else {
-				if (cnt == 2 && group.endType == EndType.Joined) {
-					if (group.joinType == JoinType.Round) {
-						this.endType = EndType.Round;
-					} else {
-						this.endType = EndType.Square;
-					}
-				}
-				BuildNormals(path);
-				if (this.endType == EndType.Polygon) {
-					OffsetPolygon(group, path);
-				} else if (this.endType == EndType.Joined) {
-					OffsetOpenJoined(group, path);
-				} else {
-					OffsetOpenPath(group, path);
-				}
+				OffsetOpenPath(group, p);
 			}
 		}
-		solution.addAll(group.outPaths);
-		group.outPaths.clear();
+	}
+
+	private static boolean ValidateBounds(List<Rect64> boundsList, double delta) {
+		int intDelta = (int) delta;
+		for (Rect64 r : boundsList) {
+			if (!r.IsValid()) {
+				continue; // ignore invalid paths
+			} else if (r.left < MIN_COORD + intDelta || r.right > MAX_COORD + intDelta || r.top < MIN_COORD + intDelta || r.bottom > MAX_COORD + intDelta) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 }
