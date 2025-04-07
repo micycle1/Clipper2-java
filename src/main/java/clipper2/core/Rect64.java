@@ -71,6 +71,10 @@ public final class Rect64 {
 		return bottom <= top || right <= left;
 	}
 
+	public boolean IsValid() {
+		return left < Long.MAX_VALUE;
+	}
+
 	public Point64 MidPoint() {
 		return new Point64((left + right) / 2, (top + bottom) / 2);
 	}

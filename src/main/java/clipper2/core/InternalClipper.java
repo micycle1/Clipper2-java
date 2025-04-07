@@ -4,9 +4,8 @@ import clipper2.engine.PointInPolygonResult;
 
 public final class InternalClipper {
 
-	private static final long MAXCOORD = Long.MAX_VALUE / 4;
-	private static final double MAX_COORD = MAXCOORD;
-	private static final double MIN_COORD = -MAXCOORD;
+	public static final double MAX_COORD = Long.MAX_VALUE >> 2;
+	public static final double MIN_COORD = -MAX_COORD;
 	private static final long Invalid64 = Long.MAX_VALUE;
 
 	public static final double DEFAULT_ARC_TOLERANCE = 0.25;
