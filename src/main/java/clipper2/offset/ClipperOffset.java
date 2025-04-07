@@ -231,7 +231,7 @@ public class ClipperOffset {
 		c.setPreserveCollinear(preserveCollinear);
 		// the solution should retain the orientation of the input
 		c.setReverseSolution(reverseSolution != pathsReversed);
-		c.AddSubject(solution);
+		c.AddSubject(this.solution);
 		c.Execute(ClipType.Union, fillRule, solution);
 	}
 

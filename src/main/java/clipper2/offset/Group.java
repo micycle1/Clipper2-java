@@ -1,6 +1,7 @@
 package clipper2.offset;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import clipper2.Clipper;
@@ -13,6 +14,7 @@ class Group {
 
 	Paths64 inPaths;
 	List<Rect64> boundsList;
+	List<Boolean> isHoleList;
 	JoinType joinType;
 	EndType endType;
 	boolean pathsReversed;
@@ -23,7 +25,6 @@ class Group {
 	}
 
 	Group(Paths64 paths, JoinType joinType, EndType endType) {
-		inPaths = new Paths64(paths);
 		this.joinType = joinType;
 		this.endType = endType;
 
@@ -34,12 +35,31 @@ class Group {
 			inPaths.add(Clipper.StripDuplicates(path, isJoined));
 		}
 
-		boundsList = new ArrayList<>();
+		// get bounds of each path --> boundsList
+		boundsList = new ArrayList<>(inPaths.size());
 		GetMultiBounds(inPaths, boundsList, endType);
-		lowestPathIdx = GetLowestPathIdx(boundsList);
-		pathsReversed = false;
+
 		if (endType == EndType.Polygon) {
-			pathsReversed = Clipper.Area(inPaths.get(lowestPathIdx)) < 0;
+			lowestPathIdx = GetLowestPathIdx(boundsList);
+			isHoleList = new ArrayList<>(inPaths.size());
+
+			for (Path64 path : inPaths) {
+				isHoleList.add(Clipper.Area(path) < 0);
+			}
+
+			// the lowermost path must be an outer path, so if its orientation is negative,
+			// then flag that the whole group is 'reversed' (will negate delta etc.)
+			// as this is much more efficient than reversing every path.
+			pathsReversed = (lowestPathIdx >= 0) && isHoleList.get(lowestPathIdx);
+			if (pathsReversed) {
+				for (int i = 0; i < isHoleList.size(); i++) {
+					isHoleList.set(i, !isHoleList.get(i));
+				}
+			}
+		} else {
+			lowestPathIdx = -1;
+			isHoleList = new ArrayList<>(Collections.nCopies(inPaths.size(), false));
+			pathsReversed = false;
 		}
 	}
 
