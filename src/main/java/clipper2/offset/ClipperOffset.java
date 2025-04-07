@@ -537,19 +537,11 @@ public class ClipperOffset {
 			// path reversals are fully cleaned with the trailing clipper
 			pathOut.add(path.get(j)); // (#405)
 			pathOut.add(GetPerpendic(path.get(j), normals.get(j)));
-		} else if (cosA > 0.999) {
-			//  with ::Round, preserving near exact delta is more important than simpler paths
-	        //  See also Issues #424, #526 #482
-	        if (joinType == JoinType.Round)
-	        {
-	          pathOut.add(GetPerpendic(path.get(j), normals.get(k.argValue)));
-	          pathOut.add(GetPerpendic(path.get(j), normals.get(j)));
-	        }
-	        else {
-	          DoMiter(group, path, j, k.argValue, cosA);
-	        }
+		} else if (cosA > 0.999 && joinType != JoinType.Round) {
+			// almost straight - less than 2.5 degree (#424, #482, #526 & #724)
+	        DoMiter(group, path, j, k.argValue, cosA);
 		} else if (joinType == JoinType.Miter) {
-			// miter unless the angle is so acute the miter would exceeds ML
+			// miter unless the angle is sufficiently acute to exceed ML
 			if (cosA > mitLimSqr - 1) {
 				DoMiter(group, path, j, k.argValue, cosA);
 			} else {
@@ -557,9 +549,7 @@ public class ClipperOffset {
 			}
 		} else if (joinType == JoinType.Round) {
 			DoRound(path, j, k.argValue, Math.atan2(sinA, cosA));
-		} else if (/*cosA > 0.99 ||*/ joinType == JoinType.Bevel) {
-			// cosA > 0.99 here improves performance with extremely minor reduction in accuracy
-	        // acos(0.99) == 8.1 deg. still a small angle but not as small as cos_a > 0.999 (see above)
+		} else if (joinType == JoinType.Bevel) {
 			DoBevel(path, j, k.argValue);
 		} else {
 			DoSquare(path, j, k.argValue);
