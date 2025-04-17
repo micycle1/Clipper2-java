@@ -55,25 +55,32 @@ public final class InternalClipper {
 		double dx1 = (ln1b.x - ln1a.x);
 		double dy2 = (ln2b.y - ln2a.y);
 		double dx2 = (ln2b.x - ln2a.x);
+
 		double det = dy1 * dx2 - dy2 * dx1;
+
 		if (det == 0.0) {
-			ip.setX(0);
-			ip.setY(0);
+			ip.x = 0;
+			ip.y = 0;
 			return false;
 		}
 
+		// Calculate the intersection parameter 't' along the first line segment
 		double t = ((ln1a.x - ln2a.x) * dy2 - (ln1a.y - ln2a.y) * dx2) / det;
+
+		// Determine the intersection point based on 't'
 		if (t <= 0.0) {
-			ip = ln1a;
-		}
-		else if (t >= 1.0) {
-			ip = ln1b;
+			ip.x = ln1a.x;
+			ip.y = ln1a.y;
+		} else if (t >= 1.0) {
+			ip.x = ln1b.x;
+			ip.y = ln1b.y;
 		} else {
-			// NB: truncate the result instead of rounding it, to make the C# version work
-			// similarly to the C++ and Delphi versions
+			// avoid using constructor (and rounding too) as they affect performance //664
 			ip.x = (long) (ln1a.x + t * dx1);
 			ip.y = (long) (ln1a.y + t * dy1);
 		}
+
+		// Intersection found (even if clamped to endpoints)
 		return true;
 	}
 
