@@ -2253,11 +2253,12 @@ abstract class ClipperBase {
 			return;
 		}
 
-		if ((pt.y < e.top.y + 2 || pt.y < prev.top.y + 2) && // avoid trivial joins
-				((e.bot.y > pt.y) || (prev.bot.y > pt.y))) {
-			return; // (#490)
+		// Trivial join check (#490)
+		if ((pt.y < e.top.y + 2 || pt.y < prev.top.y + 2) && ((e.bot.y > pt.y) || (prev.bot.y > pt.y))) {
+			return;
 		}
 
+		// Position and Collinearity checks
 		if (checkCurrX) {
 			if (Clipper.PerpendicDistFromLineSqrd(pt, prev.bot, prev.top) > 0.25) {
 				return;
@@ -2269,6 +2270,7 @@ abstract class ClipperBase {
 			return;
 		}
 
+		// Join/Split logic
 		if (e.outrec.idx == prev.outrec.idx) {
 			AddLocalMaxPoly(prev, e, pt);
 		} else if (e.outrec.idx < prev.outrec.idx) {
@@ -2287,14 +2289,16 @@ abstract class ClipperBase {
 	private void CheckJoinRight(Active e, Point64 pt, boolean checkCurrX) {
 		@Nullable
 		Active next = e.nextInAEL;
-		if (IsOpen(e) || !IsHotEdge(e) || IsJoined(e) || next == null || IsOpen(next) || !IsHotEdge(next)) {
+		if (next == null || IsOpen(e) || IsOpen(next) || !IsHotEdge(e) || !IsHotEdge(next) || IsJoined(e)) {
 			return;
 		}
-		if ((pt.y < e.top.y + 2 || pt.y < next.top.y + 2) && // avoid trivial joins
-				((e.bot.y > pt.y) || (next.bot.y > pt.y))) {
-			return; // (#490)
+
+		// Trivial join check (#490)
+		if ((pt.y < e.top.y + 2 || pt.y < next.top.y + 2) && ((e.bot.y > pt.y) || (next.bot.y > pt.y))) {
+			return;
 		}
 
+		// Position and Collinearity checks
 		if (checkCurrX) {
 			if (Clipper.PerpendicDistFromLineSqrd(pt, next.bot, next.top) > 0.25) {
 				return;
@@ -2306,6 +2310,7 @@ abstract class ClipperBase {
 			return;
 		}
 
+		// Join/Split logic
 		if (e.outrec.idx == next.outrec.idx) {
 			AddLocalMaxPoly(e, next, pt);
 		} else if (e.outrec.idx < next.outrec.idx) {
@@ -2586,10 +2591,11 @@ abstract class ClipperBase {
 			op2b.next = op1b;
 
 			if (or1 == or2) { // 'join' is really a split
-				or2 = new OutRec();
+				or2 = NewOutRec();
 				or2.pts = op1b;
 				FixOutRecPts(or2);
-				// if or1->pts has moved to or2 then update or1->pts!!
+
+				// if or1->pts has moved to or2 then update or1->pts
 				if (or1.pts.outrec == or2) {
 					or1.pts = j.op1;
 					or1.pts.outrec = or1;
@@ -2598,9 +2604,9 @@ abstract class ClipperBase {
 				if (usingPolytree) { // #498, #520, #584, D#576, #618
 					if (Path1InsidePath2(or1.pts, or2.pts)) {
 						// swap or1's & or2's pts
-						OutPt tmp = or1.pts;
-						or1.pts = or2.pts;
-						or2.pts = tmp;
+						OutPt temp = or2.pts;
+						or2.pts = or1.pts;
+						or1.pts = temp;
 						FixOutRecPts(or1);
 						FixOutRecPts(or2);
 						// or2 is now inside or1
@@ -2610,6 +2616,7 @@ abstract class ClipperBase {
 					} else {
 						or2.owner = or1.owner;
 					}
+
 					if (or1.splits == null) {
 						or1.splits = new ArrayList<>();
 					}
@@ -2617,7 +2624,6 @@ abstract class ClipperBase {
 				} else {
 					or2.owner = or1;
 				}
-//				outrecList.add(or2); // NOTE removed in 6e15ba0, but then fails tests
 			} else {
 				or2.pts = null;
 				if (usingPolytree) {
@@ -2924,29 +2930,6 @@ abstract class ClipperBase {
 			outrec.polypath = outrec.owner.polypath.AddChild(outrec.path);
 		} else {
 			outrec.polypath = polypath.AddChild(outrec.path);
-		}
-	}
-
-	private void DeepCheckOwners(OutRec outrec, PolyPathBase polypath) {
-		RecursiveCheckOwners(outrec, polypath);
-
-		while (outrec.owner != null && outrec.owner.splits != null) {
-			@Nullable
-			OutRec split = null;
-			for (int i : outrec.owner.splits) {
-				split = GetRealOutRec(outrecList.get(i));
-				if (split != null && split != outrec && split != outrec.owner && CheckBounds(split) && split.bounds.Contains(outrec.bounds)
-						&& Path1InsidePath2(outrec.pts, split.pts)) {
-					RecursiveCheckOwners(split, polypath);
-					outrec.owner = split; // found in split
-					break; // inner 'for' loop
-				} else {
-					split = null;
-				}
-			}
-			if (split == null) {
-				break;
-			}
 		}
 	}
 

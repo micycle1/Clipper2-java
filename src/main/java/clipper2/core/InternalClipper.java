@@ -28,11 +28,13 @@ public final class InternalClipper {
 	}
 
 	public static double CrossProduct(Point64 pt1, Point64 pt2, Point64 pt3) {
-		return ((pt2.x - pt1.x) * (pt3.y - pt2.y) - (pt2.y - pt1.y) * (pt3.x - pt2.x));
+		// typecast to double to avoid potential int overflow
+		return ((double) (pt2.x - pt1.x) * (pt3.y - pt2.y) - (double) (pt2.y - pt1.y) * (pt3.x - pt2.x));
 	}
 
 	public static double DotProduct(Point64 pt1, Point64 pt2, Point64 pt3) {
-		return ((pt2.x - pt1.x) * (pt3.x - pt2.x) + (pt2.y - pt1.y) * (pt3.y - pt2.y));
+		// typecast to double to avoid potential int overflow
+		return ((double) (pt2.x - pt1.x) * (pt3.x - pt2.x) + (double) (pt2.y - pt1.y) * (pt3.y - pt2.y));
 	}
 
 	public static double CrossProduct(PointD vec1, PointD vec2) {
