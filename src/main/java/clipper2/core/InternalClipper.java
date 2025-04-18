@@ -224,4 +224,75 @@ public final class InternalClipper {
 		return PointInPolygonResult.IsInside;
 	}
 
+	/**
+	 * Given three points, returns true if they are collinear.
+	 */
+	public static boolean IsCollinear(Point64 pt1, Point64 sharedPt, Point64 pt2) {
+		long a = sharedPt.x - pt1.x;
+		long b = pt2.y - sharedPt.y;
+		long c = sharedPt.y - pt1.y;
+		long d = pt2.x - sharedPt.x;
+		// use the exact‐arithmetic product test
+		return productsAreEqual(a, b, c, d);
+	}
+
+	/**
+	 * Holds the low‐ and high‐64 bits of a 128‐bit product.
+	 */
+	private static class MultiplyUInt64Result {
+		public final long lo64;
+		public final long hi64;
+
+		public MultiplyUInt64Result(long lo64, long hi64) {
+			this.lo64 = lo64;
+			this.hi64 = hi64;
+		}
+	}
+
+	/**
+	 * Multiply two unsigned 64‐bit quantities (given in signed longs) and return
+	 * the full 128‐bit result as hi/lo.
+	 */
+	private static MultiplyUInt64Result multiplyUInt64(long a, long b) {
+		// mask to extract low 32 bits
+		final long MASK_32 = 0xFFFFFFFFL;
+		long aLow = a & MASK_32;
+		long aHigh = a >>> 32;
+		long bLow = b & MASK_32;
+		long bHigh = b >>> 32;
+
+		long x1 = aLow * bLow;
+		long x2 = aHigh * bLow + (x1 >>> 32);
+		long x3 = aLow * bHigh + (x2 & MASK_32);
+
+		long lo64 = ((x3 & MASK_32) << 32) | (x1 & MASK_32);
+		long hi64 = aHigh * bHigh + (x2 >>> 32) + (x3 >>> 32);
+
+		return new MultiplyUInt64Result(lo64, hi64);
+	}
+
+	/**
+	 * Returns true iff a*b == c*d (as 128‐bit signed products). We compare both
+	 * magnitude (via unsigned 128‐bit) and sign.
+	 */
+	private static boolean productsAreEqual(long a, long b, long c, long d) {
+		// unsigned absolute values; note: -Long.MIN_VALUE == Long.MIN_VALUE
+		long absA = a < 0 ? -a : a;
+		long absB = b < 0 ? -b : b;
+		long absC = c < 0 ? -c : c;
+		long absD = d < 0 ? -d : d;
+
+		MultiplyUInt64Result p1 = multiplyUInt64(absA, absB);
+		MultiplyUInt64Result p2 = multiplyUInt64(absC, absD);
+
+		int signAB = triSign(a) * triSign(b);
+		int signCD = triSign(c) * triSign(d);
+
+		return p1.lo64 == p2.lo64 && p1.hi64 == p2.hi64 && signAB == signCD;
+	}
+
+	private static int triSign(long x) {
+		return x > 0 ? 1 : (x < 0 ? -1 : 0);
+	}
+
 }

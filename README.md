@@ -2,7 +2,7 @@
 
 
 # Clipper2-java
-A Java port of _[Clipper2](https://github.com/AngusJohnson/Clipper2)_.
+A Java port of _[Clipper2](https://github.com/AngusJohnson/Clipper2)_, an open source freeware software library that performs line and polygon clipping, and offsetting.
 
 ## Usage
 

@@ -9,6 +9,9 @@ package tangible;
 public final class RefObject<T> extends OutObject<T> {
 	public T argValue;
 
+	public RefObject() {
+	}
+
 	public RefObject(T refArg) {
 		argValue = refArg;
 	}

@@ -1,7 +1,6 @@
 package clipper2.rectclip;
 
 import clipper2.Clipper;
-import clipper2.Nullable;
 import clipper2.core.Path64;
 import clipper2.core.Paths64;
 import clipper2.core.Point64;
@@ -25,119 +24,102 @@ public class RectClipLines64 extends RectClip64 {
 	}
 
 	public Paths64 Execute(Paths64 paths) {
-		Paths64 result = new Paths64();
-		if (rect.IsEmpty()) {
-			return result;
+		Paths64 res = new Paths64();
+		if (rect_.IsEmpty()) {
+			return res;
 		}
 		for (Path64 path : paths) {
 			if (path.size() < 2) {
 				continue;
 			}
-			pathBounds = Clipper.GetBounds(path);
-			if (!rect.Intersects(pathBounds)) {
-				continue; // the path must be completely outside fRect
-			}
-			// Apart from that, we can't be sure whether the path
-			// is completely outside or completed inside or intersects
-			// fRect, simply by comparing path bounds with fRect.
-			ExecuteInternal(path);
-
-			for (@Nullable
-			OutPt2 op : results) {
-				Path64 tmp = GetPath(op);
-				if (!tmp.isEmpty()) {
-					result.add(tmp);
-				}
-			}
-
-			// clean up after every loop
-			results.clear();
-			for (int i = 0; i < 8; i++) {
-				edges[i].clear();
-			}
-		}
-		return result;
-	}
-
-	private Path64 GetPath(@Nullable OutPt2 op) {
-		Path64 result = new Path64();
-		if (op == null || op == op.next) {
-			return result;
-		}
-		op = op.next; // starting at path beginning
-		result.add(op.pt);
-		OutPt2 op2 = op.next;
-		while (op2 != op) {
-			result.add(op2.pt);
-			op2 = op2.next;
-		}
-		return result;
-	}
-
-	private void ExecuteInternal(Path64 path) {
-		results.clear();
-		if (path.size() < 2 || rect.IsEmpty()) {
-			return;
-		}
-
-		RefObject<Location> prev = new RefObject<>(Location.INSIDE);
-		RefObject<Integer> i = new RefObject<>(1);
-		int highI = path.size() - 1;
-		RefObject<Location> loc = new RefObject<>(null);
-		if (!GetLocation(rect, path.get(0), loc)) {
-			while (i.argValue <= highI && !GetLocation(rect, path.get(i.argValue), prev)) {
-				i.argValue++;
-			}
-			if (i.argValue > highI) {
-				for (Point64 pt : path) {
-					Add(pt);
-				}
-			}
-			if (prev.argValue == Location.INSIDE) {
-				loc.argValue = Location.INSIDE;
-			}
-			i.argValue = 1;
-		}
-		if (loc.argValue == Location.INSIDE) {
-			Add(path.get(0));
-		}
-
-		///////////////////////////////////////////////////
-		while (i.argValue <= highI) {
-			prev.argValue = loc.argValue;
-			GetNextLocation(path, loc, i, highI);
-			if (i.argValue > highI) {
-				break;
-			}
-			Point64 prevPt = path.get(i.argValue - 1);
-
-			RefObject<Location> crossingLoc = new RefObject<>(loc.argValue);
-			Point64 ip = new Point64();
-			if (!GetIntersection(rectPath, path.get(i.argValue), prevPt, crossingLoc, ip)) {
-				// ie remaining outside (& crossingLoc still == loc)
-				++i.argValue;
+			pathBounds_ = Clipper.GetBounds(path);
+			if (!rect_.Intersects(pathBounds_)) {
 				continue;
 			}
-
-			////////////////////////////////////////////////////
-			// we must be crossing the rect boundary to get here
-			////////////////////////////////////////////////////
-
-			if (loc.argValue == Location.INSIDE) { // path must be entering rect
-				Add(ip, true);
-			} else if (prev.argValue != Location.INSIDE) {
-				// passing right through rect. 'ip' here will be the second
-				// intersect pt but we'll also need the first intersect pt (ip2)
-				crossingLoc.argValue = prev.argValue;
-				Point64 ip2 = new Point64();
-				GetIntersection(rectPath, prevPt, path.get(i.argValue), crossingLoc, ip2);
-				Add(ip2);
-				Add(ip);
-			} else // path must be exiting rect
-			{
-				Add(ip);
+			executeInternal(path);
+			for (OutPt2 op : results_) {
+				Path64 tmp = getPath(op);
+				if (!tmp.isEmpty()) {
+					res.add(tmp);
+				}
+			}
+			results_.clear();
+			for (int i = 0; i < 8; i++) {
+				edges_[i].clear();
 			}
 		}
+		return res;
 	}
 
+	private static Path64 getPath(OutPt2 op) {
+		Path64 res = new Path64();
+		if (op == null || op == op.next) {
+			return res;
+		}
+		op = op.next;
+		res.add(op.pt);
+		OutPt2 p2 = op.next;
+		while (p2 != op) {
+			res.add(p2.pt);
+			p2 = p2.next;
+		}
+		return res;
+	}
+
+	@Override
+	protected void executeInternal(Path64 path) {
+		results_.clear();
+		if (path.size() < 2 || rect_.IsEmpty()) {
+			return;
+		}
+		RefObject<Location> locRefObject = new RefObject<>(Location.inside);
+		int i = 1, highI = path.size() - 1;
+		if (!getLocation(rect_, path.get(0), locRefObject)) {
+			RefObject<Location> prevRefObject = new RefObject<>(locRefObject.argValue);
+			while (i <= highI && !getLocation(rect_, path.get(i), prevRefObject)) {
+				i++;
+			}
+			if (i > highI) {
+				for (Point64 pt : path) {
+					add(pt);
+				}
+				return;
+			}
+			if (prevRefObject.argValue == Location.inside) {
+				locRefObject.argValue = Location.inside;
+			}
+			i = 1;
+		}
+		if (locRefObject.argValue == Location.inside) {
+			add(path.get(0));
+		}
+		while (i <= highI) {
+			Location prev = locRefObject.argValue;
+			RefObject<Integer> iRefObject = new RefObject<>(i);
+			getNextLocation(path, locRefObject, iRefObject, highI);
+			i = iRefObject.argValue;
+			if (i > highI) {
+				break;
+			}
+			Point64 prevPt = path.get(i - 1);
+			RefObject<Location> crossRefObject = new RefObject<>(locRefObject.argValue);
+			Point64 ipRefObject = new Point64();
+			if (!getIntersection(rectPath_, path.get(i), prevPt, crossRefObject, ipRefObject)) {
+				i++;
+				continue;
+			}
+			Point64 ip = ipRefObject;
+			if (locRefObject.argValue == Location.inside) {
+				add(ip, true);
+			} else if (prev != Location.inside) {
+				Point64 ip2RefObject = new Point64();
+				getIntersection(rectPath_, prevPt, path.get(i), new RefObject<>(prev), ip2RefObject);
+				add(ip2RefObject, true);
+				add(ip, true);
+			} else {
+				add(ip);
+			}
+			i++;
+		}
+	}
 }
