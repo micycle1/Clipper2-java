@@ -15,7 +15,7 @@ import clipper2.offset.ClipperOffset;
 import clipper2.offset.EndType;
 import clipper2.offset.JoinType;
 
-public class TestOffsets {
+class TestOffsets {
 
 	@Test
 	void TestOffsets2() { // see #448 & #456

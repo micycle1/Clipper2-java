@@ -23,9 +23,6 @@ class TestPolygons {
 	@MethodSource("testCases")
 	@ParameterizedTest(name = "{1}: {2} {3}")
 	final void RunPolygonsTestCase(TestCase test, int testNum, Object o, Object o1) {
-		if (testNum == 168) {
-			return; // NOTE this singular test fails in the Java port -- skipping for now... 
-		}
 		Clipper64 c64 = new Clipper64();
 		Paths64 solution = new Paths64();
 		Paths64 solution_open = new Paths64();
@@ -45,8 +42,8 @@ class TestPolygons {
 
 		// check polygon counts
 		if (storedCount > 0) {
-			if (Arrays.asList(140, 150, 165, 166, 172, 173, 176, 177, 179).contains(testNum)) {
-				assertTrue(countDiff <= 9);
+			if (Arrays.asList(140, 150, 165, 166, 168, 172, 173, 176, 177, 179).contains(testNum)) {
+				assertTrue(countDiff <= 7, "Diff=" + countDiff);
 			} else if (testNum >= 120) {
 				assertTrue(countDiff <= 6);
 			} else if (Arrays.asList(27, 121, 126).contains(testNum)) {
