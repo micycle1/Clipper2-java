@@ -1,6 +1,5 @@
 package clipper2.offset;
 
-import static clipper2.core.InternalClipper.DEFAULT_ARC_TOLERANCE;
 import static clipper2.core.InternalClipper.MAX_COORD;
 import static clipper2.core.InternalClipper.MIN_COORD;
 
@@ -20,7 +19,6 @@ import clipper2.core.PointD;
 import clipper2.core.Rect64;
 import clipper2.engine.Clipper64;
 import clipper2.engine.PolyTree64;
-import tangible.OutObject;
 import tangible.RefObject;
 
 /**
@@ -580,9 +578,26 @@ public class ClipperOffset {
 	private void OffsetOpenPath(Group group, Path64 path) {
 		pathOut = new Path64();
 		int highI = path.size() - 1;
+		if (highI < 1) { // A path with 0 or 1 points can't be offset this way.
+			if (highI == 0)
+				solution.add(new Path64(path));
+			return;
+		}
+
+		// Overwrite the polygon-based normals with normals for an open path
+		normals.clear();
+		for (int i = 0; i < highI; ++i) {
+			normals.add(GetUnitNormal(path.get(i), path.get(i + 1)));
+		}
+		// The C# version uses a clever trick by calculating n normals and then
+		// overwriting them. A clearer approach in Java is to build the correct
+		// n-1 normals first, and then add a temporary one for the logic to work.
+		normals.add(new PointD(normals.get(highI - 1)));
+
 		if (deltaCallback != null) {
 			groupDelta = deltaCallback.calculate(path, normals, 0, 0);
 		}
+
 		// do the line start cap
 		if (Math.abs(groupDelta) < TOLERANCE) {
 			pathOut.add(path.get(0));
@@ -599,18 +614,23 @@ public class ClipperOffset {
 					break;
 			}
 		}
+
 		// offset the left side going forward
-		for (int i = 1, k = 0; i < highI; i++) {
-			OffsetPoint(group, path, i, new RefObject<>(k)); // NOTE creating new ref object correct?
+		RefObject<Integer> kRef = new RefObject<>(0);
+		for (int i = 1; i < highI; i++) {
+			OffsetPoint(group, path, i, kRef);
 		}
+
 		// reverse normals ...
 		for (int i = highI; i > 0; i--) {
 			normals.set(i, new PointD(-normals.get(i - 1).x, -normals.get(i - 1).y));
 		}
-		normals.set(0, normals.get(highI));
+		normals.set(0, new PointD(normals.get(highI)));
+
 		if (deltaCallback != null) {
 			groupDelta = deltaCallback.calculate(path, normals, highI, highI);
 		}
+
 		// do the line end cap
 		if (Math.abs(groupDelta) < TOLERANCE) {
 			pathOut.add(path.get(highI));
@@ -627,10 +647,15 @@ public class ClipperOffset {
 					break;
 			}
 		}
+
 		// offset the left side going back
-		for (int i = highI, k = 0; i > 0; i--) {
-			OffsetPoint(group, path, i, new RefObject<>(k)); // NOTE creating new ref object correct?
+		kRef.argValue = highI; // Initialize k to the last point index
+		for (int i = highI - 1; i > 0; i--) {
+			OffsetPoint(group, path, i, kRef);
 		}
+		// Add the final point on the reversed side
+		pathOut.add(GetPerpendic(path.get(0), normals.get(1)));
+
 		solution.add(pathOut);
 	}
 
