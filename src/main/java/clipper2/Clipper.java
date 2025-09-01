@@ -1011,7 +1011,7 @@ public final class Clipper {
 		if (len < 5) {
 			return path;
 		}
-		List<Boolean> flags = new ArrayList<>(Arrays.asList(new Boolean[len]));
+		List<Boolean> flags = new ArrayList<>(Collections.nCopies(len, false));
 		flags.set(0, true);
 		flags.set(len - 1, true);
 		RDP(path, 0, len - 1, Sqr(epsilon), flags);
