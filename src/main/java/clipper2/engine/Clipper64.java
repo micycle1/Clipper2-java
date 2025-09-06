@@ -98,7 +98,7 @@ public class Clipper64 extends ClipperBase {
 
 	@Override
 	public void AddReuseableData(ReuseableDataContainer64 reuseableData) {
-		this.AddReuseableData(reuseableData);
+		super.AddReuseableData(reuseableData);
 	}
 
 }

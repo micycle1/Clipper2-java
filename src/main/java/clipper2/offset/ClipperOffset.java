@@ -579,8 +579,9 @@ public class ClipperOffset {
 		pathOut = new Path64();
 		int highI = path.size() - 1;
 		if (highI < 1) { // A path with 0 or 1 points can't be offset this way.
-			if (highI == 0)
+			if (highI == 0) {
 				solution.add(new Path64(path));
+			}
 			return;
 		}
 

@@ -1082,7 +1082,7 @@ public final class Clipper {
 		if (len < 5) {
 			return path;
 		}
-		List<Boolean> flags = new ArrayList<>(Arrays.asList(new Boolean[len]));
+		List<Boolean> flags = new ArrayList<>(Collections.nCopies(len, false));
 		flags.set(0, true);
 		flags.set(len - 1, true);
 		RDP(path, 0, len - 1, Sqr(epsilon), flags);
@@ -1482,7 +1482,7 @@ public final class Clipper {
 		double co = Math.cos(2 * Math.PI / steps);
 		double dx = co, dy = si;
 		Path64 result = new Path64(steps);
-		result.add(new Point64(center.x + radiusX, center.x));
+		result.add(new Point64(center.x + radiusX, center.y));
 		for (int i = 1; i < steps; ++i) {
 			result.add(new Point64(center.x + radiusX * dx, center.y + radiusY * dy));
 			double x = dx * co - dy * si;
