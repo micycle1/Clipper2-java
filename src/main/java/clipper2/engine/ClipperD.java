@@ -108,7 +108,7 @@ public class ClipperD extends ClipperBase {
 
 	public boolean Execute(ClipType clipType, FillRule fillRule, PolyTreeD polytree, PathsD openPaths) {
 		polytree.Clear();
-		polytree.setScale(scale);
+		polytree.setScale(invScale);
 		openPaths.clear();
 		Paths64 oPaths = new Paths64();
 		boolean success = true;
