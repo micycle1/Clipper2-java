@@ -1,32 +1,38 @@
 [![](https://jitpack.io/v/micycle1/Clipper2-java.svg)](https://jitpack.io/#micycle1/Clipper2-java)
 
-
 # Clipper2-java
-A Java port of _[Clipper2](https://github.com/AngusJohnson/Clipper2)_, an open source freeware software library that performs line and polygon clipping, and offsetting.
+A Java port of _[Clipper2](https://github.com/AngusJohnson/Clipper2)_, an open source freeware library that performs robust 2D line and polygon clipping, and offsetting.
+
+## What is Clipper2-java?
+
+Clipper2-java is a fast planar geometry library for:
+
+- **Boolean clipping** of polygons and polylines: `Intersection`, `Union`, `Difference`, `Xor`
+- **Offsetting / buffering** (inflate/deflate) of closed polygons and open polylines (`ClipperOffset` / `Clipper.InflatePaths`)
+- **Rectangle clipping** for polygons and polylines (`RectClip`, `RectClipLines`)
+- **Minkowski sum/difference**
+- Utilities: area, bounds, orientation, simplification (RDP), trimming duplicates/collinear vertices
 
 ## Usage
 
 ### Overview
 
-The interface of *Clipper2-java* is identical to the original C# version.
+The interface of *Clipper2-java* aims to match the original C# version closely.
 
-The `Clipper` class provides static methods for clipping, path-offsetting, minkowski-sums and path simplification.
-For more complex clipping operations (e.g. when clipping open paths or when outputs are expected to include polygons nested within holes of others), use the `Clipper64` or `ClipperD` classes directly.
+For simple use cases, the static methods in `clipper2.Clipper` are sufficient.
 
-### Maven
-*Clipper2-java* is available as Maven/Gradle artifact via [Jitpack](https://jitpack.io/#micycle1/Clipper2-java).
+For advanced scenarios (open paths, PolyTree nesting, reusing engines), use `Clipper64` / `ClipperD` directly.
 
-### Example
+### Coordinates & precision
 
-```java
-Paths64 subj = new Paths64();
-Paths64 clip = new Paths64();
-subj.add(Clipper.MakePath(new int[] { 100, 50, 10, 79, 65, 2, 65, 98, 10, 21 }));
-clip.add(Clipper.MakePath(new int[] { 98, 63, 4, 68, 77, 8, 52, 100, 19, 12 }));
-Paths64 solution = Clipper.Union(subj, clip, FillRule.NonZero);
-solution.get(0).forEach(p -> System.out.println(p.toString()));
-```
+Clipper2’s core algorithms operate on **integer coordinates** for numerical robustness.
 
+- Use **`Path64` / `Paths64`** (with `long` coordinates) for best performance and robustness.
+- Use **`PathD` / `PathsD`** (with `double` coordinates) for convenience. These are **scaled and rounded to integers internally** using a user-specified precision.
+
+### Installation (Maven / Gradle)
+
+*Clipper2-java* is available as a Maven/Gradle artifact via [Jitpack](https://jitpack.io/#micycle1/Clipper2-java).
 
 ## Port Info
 * _tangiblesoftwaresolutions_' C# to Java Converter did the heavy lifting (but then a lot of manual work was required).
