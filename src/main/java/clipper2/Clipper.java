@@ -560,8 +560,8 @@ public final class Clipper {
 
 	public static Point64 ScalePoint64(Point64 pt, double scale) {
 		Point64 result = new Point64();
-		result.x = (long) (pt.x * scale);
-		result.y = (long) (pt.y * scale);
+		result.x = (long) Math.rint(pt.x * scale);
+		result.y = (long) Math.rint(pt.y * scale);
 		return result;
 	}
 
