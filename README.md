@@ -25,10 +25,21 @@ For advanced scenarios (open paths, PolyTree nesting, reusing engines), use `Cli
 
 ### Coordinates & precision
 
-Clipper2’s core algorithms operate on **integer coordinates** for numerical robustness.
+Note Clipper2’s core algorithms operate on **integer coordinates** for numerical robustness.
 
 - Use **`Path64` / `Paths64`** (with `long` coordinates) for best performance and robustness.
 - Use **`PathD` / `PathsD`** (with `double` coordinates) for convenience. These are **scaled and rounded to integers internally** using a user-specified precision.
+
+### Example
+
+```java
+Paths64 subj = new Paths64();
+Paths64 clip = new Paths64();
+subj.add(Clipper.MakePath(new int[] { 100, 50, 10, 79, 65, 2, 65, 98, 10, 21 }));
+clip.add(Clipper.MakePath(new int[] { 98, 63, 4, 68, 77, 8, 52, 100, 19, 12 }));
+Paths64 solution = Clipper.Union(subj, clip, FillRule.NonZero);
+solution.get(0).forEach(p -> System.out.println(p.toString()));
+```
 
 ### Installation (Maven / Gradle)
 
