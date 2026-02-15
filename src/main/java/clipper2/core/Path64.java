@@ -34,11 +34,11 @@ public class Path64 extends ArrayList<Point64> {
 
 	@Override
 	public String toString() {
-		String s = "";
+		StringBuilder s = new StringBuilder();
 		for (Point64 p : this) {
-			s = s + p.toString() + " ";
+			s.append(p.toString()).append(" ");
 		}
-		return s;
+		return s.toString();
 	}
 
 }

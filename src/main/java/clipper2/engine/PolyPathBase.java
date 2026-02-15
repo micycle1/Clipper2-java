@@ -63,26 +63,28 @@ public abstract class PolyPathBase implements Iterable<PolyPathBase> {
 
 	private String toStringInternal(int idx, int level) {
 		int count = children.size();
-		String result = "", padding = "", plural = "s";
+		StringBuilder result = new StringBuilder();
+		StringBuilder padding = new StringBuilder();
+		String plural = "s";
 		if (children.size() == 1) {
 			plural = "";
 		}
 		// Create padding by concatenating spaces
 		for (int i = 0; i < level * 2; i++) {
-			padding += " ";
+			padding.append(" ");
 		}
 
 		if ((level & 1) == 0) {
-			result += String.format("%s+- hole (%d) contains %d nested polygon%s.\n", padding, idx, children.size(), plural);
+			result.append(String.format("%s+- hole (%d) contains %d nested polygon%s.\n", padding, idx, children.size(), plural));
 		} else {
-			result += String.format("%s+- polygon (%d) contains %d hole%s.\n", padding, idx, children.size(), plural);
+			result.append(String.format("%s+- polygon (%d) contains %d hole%s.\n", padding, idx, children.size(), plural));
 		}
 		for (int i = 0; i < count; i++) {
 			if (children.get(i).getCount() > 0) {
-				result += children.get(i).toStringInternal(i, level + 1);
+				result.append(children.get(i).toStringInternal(i, level + 1));
 			}
 		}
-		return result;
+		return result.toString();
 	}
 
 	@Override
@@ -95,13 +97,13 @@ public abstract class PolyPathBase implements Iterable<PolyPathBase> {
 		if (children.size() == 1) {
 			plural = "";
 		}
-		String result = String.format("Polytree with %d polygon%s.\n", children.size(), plural);
+		StringBuilder result = new StringBuilder(String.format("Polytree with %d polygon%s.\n", children.size(), plural));
 		for (int i = 0; i < count; i++) {
 			if (children.get(i).getCount() > 0) {
-				result += children.get(i).toStringInternal(i, 1);
+				result.append(children.get(i).toStringInternal(i, 1));
 			}
 		}
-		return result + '\n';
+		return result.append('\n').toString();
 	}
 
 }
