@@ -623,6 +623,10 @@ public class RectClip64 {
 				// passing all the way through
 				Point64 ip2RefObject = new Point64();
 				IntersectionResult loc2Res = getIntersection(rectPath_, prevPt, path.get(i), prev, ip2RefObject);
+				if (!loc2Res.intersects) {
+					i++;
+					continue;
+				}
 				Location newLoc = loc2Res.location;
 
 				if (prevCrossLoc != Location.inside && prevCrossLoc != newLoc) {
@@ -682,7 +686,7 @@ public class RectClip64 {
 				loc = prev;
 			}
 			if (loc != firstCross) {
-				addCorner(loc, headingClockwise(loc, firstCross));
+				loc = addCorner(loc, headingClockwise(loc, firstCross));
 			}
 		}
 	}

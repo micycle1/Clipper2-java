@@ -118,8 +118,10 @@ public class RectClipLines64 extends RectClip64 {
 				add(ip, true);
 			} else if (prev != Location.inside) {
 				Point64 ip2RefObject = new Point64();
-				getIntersection(rectPath_, prevPt, path.get(i), prev, ip2RefObject);
-				add(ip2RefObject, true);
+				IntersectionResult crossRes2 = getIntersection(rectPath_, prevPt, path.get(i), prev, ip2RefObject);
+				if (crossRes2.intersects) {
+					add(ip2RefObject, true);
+				}
 				add(ip, true);
 			} else {
 				add(ip);
