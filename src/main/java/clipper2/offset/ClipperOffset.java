@@ -19,7 +19,6 @@ import clipper2.core.PointD;
 import clipper2.core.Rect64;
 import clipper2.engine.Clipper64;
 import clipper2.engine.PolyTree64;
-import tangible.RefObject;
 
 /**
  * Manages the process of offsetting (inflating/deflating) both open and closed
@@ -505,14 +504,14 @@ public class ClipperOffset {
 		normals.add(GetUnitNormal(path.get(cnt - 1), path.get(0)));
 	}
 
-	private void OffsetPoint(Group group, Path64 path, int j, RefObject<Integer> k) {
+	private int OffsetPoint(Group group, Path64 path, int j, int k) {
 		// Let A = change in angle where edges join
 		// A == 0: ie no change in angle (flat join)
 		// A == PI: edges 'spike'
 		// sin(A) < 0: right turning
 		// cos(A) < 0: change in angle is more than 90 degree
-		double sinA = InternalClipper.CrossProduct(normals.get(j), normals.get(k.argValue));
-		double cosA = InternalClipper.DotProduct(normals.get(j), normals.get(k.argValue));
+		double sinA = InternalClipper.CrossProduct(normals.get(j), normals.get(k));
+		double cosA = InternalClipper.DotProduct(normals.get(j), normals.get(k));
 		if (sinA > 1.0) {
 			sinA = 1.0;
 		} else if (sinA < -1.0) {
@@ -520,50 +519,50 @@ public class ClipperOffset {
 		}
 
 		if (deltaCallback != null) {
-			groupDelta = deltaCallback.calculate(path, normals, j, k.argValue);
+			groupDelta = deltaCallback.calculate(path, normals, j, k);
 			if (group.pathsReversed) {
 				groupDelta = -groupDelta;
 			}
 		}
 		if (Math.abs(groupDelta) < TOLERANCE) {
 			pathOut.add(path.get(j));
-			return;
+			return j;
 		}
 
 		if (cosA > -0.99 && (sinA * groupDelta < 0)) { // test for concavity first (#593)
 			// is concave
-			pathOut.add(GetPerpendic(path.get(j), normals.get(k.argValue)));
+			pathOut.add(GetPerpendic(path.get(j), normals.get(k)));
 			// this extra point is the only (simple) way to ensure that
 			// path reversals are fully cleaned with the trailing clipper
 			pathOut.add(path.get(j)); // (#405)
 			pathOut.add(GetPerpendic(path.get(j), normals.get(j)));
 		} else if (cosA > 0.999 && joinType != JoinType.Round) {
 			// almost straight - less than 2.5 degree (#424, #482, #526 & #724)
-			DoMiter(group, path, j, k.argValue, cosA);
+			DoMiter(group, path, j, k, cosA);
 		} else if (joinType == JoinType.Miter) {
 			// miter unless the angle is sufficiently acute to exceed ML
 			if (cosA > mitLimSqr - 1) {
-				DoMiter(group, path, j, k.argValue, cosA);
+				DoMiter(group, path, j, k, cosA);
 			} else {
-				DoSquare(path, j, k.argValue);
+				DoSquare(path, j, k);
 			}
 		} else if (joinType == JoinType.Round) {
-			DoRound(path, j, k.argValue, Math.atan2(sinA, cosA));
+			DoRound(path, j, k, Math.atan2(sinA, cosA));
 		} else if (joinType == JoinType.Bevel) {
-			DoBevel(path, j, k.argValue);
+			DoBevel(path, j, k);
 		} else {
-			DoSquare(path, j, k.argValue);
+			DoSquare(path, j, k);
 		}
 
-		k.argValue = j;
+		return j;
 	}
 
 	private void OffsetPolygon(Group group, Path64 path) {
 		pathOut = new Path64();
 		int cnt = path.size();
-		RefObject<Integer> prev = new RefObject<Integer>(cnt - 1);
+		int prev = cnt - 1;
 		for (int i = 0; i < cnt; i++) {
-			OffsetPoint(group, path, i, prev);
+			prev = OffsetPoint(group, path, i, prev);
 		}
 		solution.add(pathOut);
 	}
@@ -617,9 +616,9 @@ public class ClipperOffset {
 		}
 
 		// offset the left side going forward
-		RefObject<Integer> kRef = new RefObject<>(0);
+		int k = 0;
 		for (int i = 1; i < highI; i++) {
-			OffsetPoint(group, path, i, kRef);
+			k = OffsetPoint(group, path, i, k);
 		}
 
 		// reverse normals ...
@@ -650,9 +649,9 @@ public class ClipperOffset {
 		}
 
 		// offset the left side going back
-		kRef.argValue = highI; // Initialize k to the last point index
+		k = highI; // Initialize k to the last point index
 		for (int i = highI - 1; i > 0; i--) {
-			OffsetPoint(group, path, i, kRef);
+			k = OffsetPoint(group, path, i, k);
 		}
 		// Add the final point on the reversed side
 		pathOut.add(GetPerpendic(path.get(0), normals.get(1)));
