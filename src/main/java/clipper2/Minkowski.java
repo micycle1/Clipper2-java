@@ -7,7 +7,10 @@ import clipper2.core.Paths64;
 import clipper2.core.PathsD;
 import clipper2.core.Point64;
 
-public class Minkowski {
+public final class Minkowski {
+
+	private Minkowski() {
+	}
 
 	public static Paths64 Sum(Path64 pattern, Path64 path, boolean isClosed) {
 		return Clipper.Union(MinkowskiInternal(pattern, path, true, isClosed), FillRule.NonZero);

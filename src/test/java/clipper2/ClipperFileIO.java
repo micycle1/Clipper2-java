@@ -87,7 +87,7 @@ class ClipperFileIO {
 		lines.add("");
 
 		String caption = "";
-		ClipType ct = ClipType.None;
+		ClipType ct = ClipType.NoClip;
 		FillRule fillRule = FillRule.EvenOdd;
 		long area = 0;
 		int count = 0;

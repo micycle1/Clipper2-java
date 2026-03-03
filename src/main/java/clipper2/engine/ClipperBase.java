@@ -25,7 +25,7 @@ import clipper2.core.Rect64;
  */
 abstract class ClipperBase {
 
-	private ClipType cliptype = ClipType.None;
+	private ClipType cliptype = ClipType.NoClip;
 	private FillRule fillrule = FillRule.EvenOdd;
 	private Active actives = null;
 	private Active sel = null;
@@ -1670,7 +1670,7 @@ abstract class ClipperBase {
 	}
 
 	protected final void ExecuteInternal(ClipType ct, FillRule fillRule) {
-		if (ct == ClipType.None) {
+		if (ct == ClipType.NoClip) {
 			return;
 		}
 		fillrule = fillRule;
@@ -2723,25 +2723,36 @@ abstract class ClipperBase {
 			prevOp.next = newOp2;
 		}
 
-		if (absArea2 > 1 && (absArea2 > absArea1 || ((area2 > 0) == (area1 > 0)))) {
-			OutRec newOutRec = NewOutRec();
-			newOutRec.owner = outrec.owner;
-			splitOp.outrec = newOutRec;
-			splitOp.next.outrec = newOutRec;
+		if (absArea2 <= 1 || (!(absArea2 > absArea1) && ((area2 > 0) != (area1 > 0)))) {
+			return;
+		}
 
-			if (usingPolytree) {
-				if (outrec.splits == null) {
-					outrec.splits = new ArrayList<>();
-				}
-				outrec.splits.add(newOutRec.idx);
+		OutRec newOutRec = NewOutRec();
+		newOutRec.owner = outrec.owner;
+		splitOp.outrec = newOutRec;
+		splitOp.next.outrec = newOutRec;
+
+		OutPt newOp = new OutPt(ip, newOutRec);
+		newOp.prev = splitOp.next;
+		newOp.next = splitOp;
+		newOutRec.pts = newOp;
+		splitOp.prev = newOp;
+		splitOp.next.next = newOp;
+
+		if (!usingPolytree) {
+			return;
+		}
+
+		if (Path1InsidePath2(prevOp, newOp)) {
+			if (newOutRec.splits == null) {
+				newOutRec.splits = new ArrayList<>();
 			}
-
-			OutPt newOp = new OutPt(ip, newOutRec);
-			newOp.prev = splitOp.next;
-			newOp.next = splitOp;
-			newOutRec.pts = newOp;
-			splitOp.prev = newOp;
-			splitOp.next.next = newOp;
+			newOutRec.splits.add(outrec.idx);
+		} else {
+			if (outrec.splits == null) {
+				outrec.splits = new ArrayList<>();
+			}
+			outrec.splits.add(newOutRec.idx);
 		}
 		// else { splitOp = null; splitOp.next = null; }
 	}
