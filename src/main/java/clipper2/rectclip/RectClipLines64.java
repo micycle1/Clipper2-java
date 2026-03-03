@@ -5,7 +5,6 @@ import clipper2.core.Path64;
 import clipper2.core.Paths64;
 import clipper2.core.Point64;
 import clipper2.core.Rect64;
-import tangible.RefObject;
 
 /**
  * RectClipLines64 intersects subject open paths (polylines) with the specified
@@ -72,11 +71,17 @@ public class RectClipLines64 extends RectClip64 {
 		if (path.size() < 2 || rect_.IsEmpty()) {
 			return;
 		}
-		RefObject<Location> locRefObject = new RefObject<>(Location.inside);
+		Location loc = Location.inside;
 		int i = 1, highI = path.size() - 1;
-		if (!getLocation(rect_, path.get(0), locRefObject)) {
-			RefObject<Location> prevRefObject = new RefObject<>(locRefObject.argValue);
-			while (i <= highI && !getLocation(rect_, path.get(i), prevRefObject)) {
+		LocationResult locRes = getLocation(rect_, path.get(0));
+		loc = locRes.location;
+		if (!locRes.outside) {
+			LocationResult prevLocRes = new LocationResult(false, loc);
+			while (i <= highI) {
+				prevLocRes = getLocation(rect_, path.get(i));
+				if (prevLocRes.outside) {
+					break;
+				}
 				i++;
 			}
 			if (i > highI) {
@@ -85,36 +90,38 @@ public class RectClipLines64 extends RectClip64 {
 				}
 				return;
 			}
-			if (prevRefObject.argValue == Location.inside) {
-				locRefObject.argValue = Location.inside;
+			if (prevLocRes.location == Location.inside) {
+				loc = Location.inside;
 			}
 			i = 1;
 		}
-		if (locRefObject.argValue == Location.inside) {
+		if (loc == Location.inside) {
 			add(path.get(0));
 		}
 		while (i <= highI) {
-			Location prev = locRefObject.argValue;
-			RefObject<Integer> iRefObject = new RefObject<>(i);
-			getNextLocation(path, locRefObject, iRefObject, highI);
-			i = iRefObject.argValue;
+			Location prev = loc;
+			NextLocationResult nextLoc = getNextLocation(path, loc, i, highI);
+			loc = nextLoc.location;
+			i = nextLoc.index;
 			if (i > highI) {
 				break;
 			}
 			Point64 prevPt = path.get(i - 1);
-			RefObject<Location> crossRefObject = new RefObject<>(locRefObject.argValue);
 			Point64 ipRefObject = new Point64();
-			if (!getIntersection(rectPath_, path.get(i), prevPt, crossRefObject, ipRefObject)) {
+			IntersectionResult crossRes = getIntersection(rectPath_, path.get(i), prevPt, loc, ipRefObject);
+			if (!crossRes.intersects) {
 				i++;
 				continue;
 			}
 			Point64 ip = ipRefObject;
-			if (locRefObject.argValue == Location.inside) {
+			if (loc == Location.inside) {
 				add(ip, true);
 			} else if (prev != Location.inside) {
 				Point64 ip2RefObject = new Point64();
-				getIntersection(rectPath_, prevPt, path.get(i), new RefObject<>(prev), ip2RefObject);
-				add(ip2RefObject, true);
+				IntersectionResult crossRes2 = getIntersection(rectPath_, prevPt, path.get(i), prev, ip2RefObject);
+				if (crossRes2.intersects) {
+					add(ip2RefObject, true);
+				}
 				add(ip, true);
 			} else {
 				add(ip);

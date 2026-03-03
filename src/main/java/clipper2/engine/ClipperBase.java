@@ -17,8 +17,6 @@ import clipper2.core.PathType;
 import clipper2.core.Paths64;
 import clipper2.core.Point64;
 import clipper2.core.Rect64;
-import tangible.OutObject;
-import tangible.RefObject;
 
 /**
  * Subject and Clip paths are passed to a Clipper object via AddSubject,
@@ -453,12 +451,6 @@ abstract class ClipperBase {
 
 	private static boolean IsHeadingLeftHorz(Active ae) {
 		return Double.POSITIVE_INFINITY == ae.dx;
-	}
-
-	private static void SwapActives(RefObject<Active> ae1, RefObject<Active> ae2) {
-		Active temp = ae1.argValue;
-		ae1.argValue = ae2.argValue;
-		ae2.argValue = temp;
 	}
 
 	private static PathType GetPolyType(Active ae) {
@@ -1097,26 +1089,20 @@ abstract class ClipperBase {
 			if (leftBound != null && rightBound != null) {
 				if (IsHorizontal(leftBound)) {
 					if (IsHeadingRightHorz(leftBound)) {
-						RefObject<Active> tempRefleftBound = new RefObject<>(leftBound);
-						RefObject<Active> tempRefrightBound = new RefObject<>(rightBound);
-						SwapActives(tempRefleftBound, tempRefrightBound);
-						rightBound = tempRefrightBound.argValue;
-						leftBound = tempRefleftBound.argValue;
+						Active tmp = leftBound;
+						leftBound = rightBound;
+						rightBound = tmp;
 					}
 				} else if (IsHorizontal(rightBound)) {
 					if (IsHeadingLeftHorz(rightBound)) {
-						RefObject<Active> tempRefleftBound2 = new RefObject<>(leftBound);
-						RefObject<Active> tempRefrightBound2 = new RefObject<>(rightBound);
-						SwapActives(tempRefleftBound2, tempRefrightBound2);
-						rightBound = tempRefrightBound2.argValue;
-						leftBound = tempRefleftBound2.argValue;
+						Active tmp = leftBound;
+						leftBound = rightBound;
+						rightBound = tmp;
 					}
 				} else if (leftBound.dx < rightBound.dx) {
-					RefObject<Active> tempRefleftBound3 = new RefObject<>(leftBound);
-					RefObject<Active> tempRefrightBound3 = new RefObject<>(rightBound);
-					SwapActives(tempRefleftBound3, tempRefrightBound3);
-					rightBound = tempRefrightBound3.argValue;
-					leftBound = tempRefleftBound3.argValue;
+					Active tmp = leftBound;
+					leftBound = rightBound;
+					rightBound = tmp;
 				}
 				// so when leftBound has windDx == 1, the polygon will be oriented
 				// counter-clockwise in Cartesian coords (clockwise with inverted y).
@@ -1177,13 +1163,12 @@ abstract class ClipperBase {
 		sel = ae;
 	}
 
-	private boolean PopHorz(OutObject<Active> ae) {
-		ae.argValue = sel;
-		if (sel == null) {
-			return false;
+	private @Nullable Active PopHorz() {
+		Active ae = sel;
+		if (ae != null) {
+			sel = sel.nextInSEL;
 		}
-		sel = sel.nextInSEL;
-		return true;
+		return ae;
 	}
 
 	private OutPt AddLocalMinPoly(Active ae1, Active ae2, Point64 pt) {
@@ -1441,11 +1426,9 @@ abstract class ClipperBase {
 			}
 			// the following line avoids duplicating quite a bit of code
 			if (IsOpen(ae2)) {
-				RefObject<Active> tempRefae1 = new RefObject<>(ae1);
-				RefObject<Active> tempRefae2 = new RefObject<>(ae2);
-				SwapActives(tempRefae1, tempRefae2);
-				ae2 = tempRefae2.argValue;
-				ae1 = tempRefae1.argValue;
+				Active temp = ae1;
+				ae1 = ae2;
+				ae2 = temp;
 			}
 			if (IsJoined(ae2)) {
 				Split(ae2, pt); // needed for safety
@@ -1706,10 +1689,8 @@ abstract class ClipperBase {
 		long y = scanlineSet.pollLast();
 		while (succeeded) {
 			InsertLocalMinimaIntoAEL(y);
-			Active ae = null;
-			OutObject<Active> tempOutae = new OutObject<>();
-			while (PopHorz(tempOutae)) {
-				ae = tempOutae.argValue;
+			Active ae;
+			while ((ae = PopHorz()) != null) {
 				DoHorizontal(ae);
 			}
 			if (!horzSegList.isEmpty()) {
@@ -1723,9 +1704,7 @@ abstract class ClipperBase {
 			y = scanlineSet.pollLast();
 			DoIntersections(y);
 			DoTopOfScanbeam(y);
-			OutObject<Active> tempOutae2 = new OutObject<>();
-			while (PopHorz(tempOutae2)) {
-				ae = tempOutae2.argValue;
+			while ((ae = PopHorz()) != null) {
 				DoHorizontal(ae);
 			}
 		}
@@ -1921,26 +1900,34 @@ abstract class ClipperBase {
 		}
 	}
 
-	private static boolean ResetHorzDirection(Active horz, @Nullable Vertex vertexMax, OutObject<Long> leftX, OutObject<Long> rightX) {
+	private static final class HorzDirection {
+		final boolean leftToRight;
+		final long leftX;
+		final long rightX;
+
+		HorzDirection(boolean leftToRight, long leftX, long rightX) {
+			this.leftToRight = leftToRight;
+			this.leftX = leftX;
+			this.rightX = rightX;
+		}
+	}
+
+	private static HorzDirection ResetHorzDirection(Active horz, @Nullable Vertex vertexMax) {
 		if (horz.bot.x == horz.top.x) {
 			// the horizontal edge is going nowhere ...
-			leftX.argValue = horz.curX;
-			rightX.argValue = horz.curX;
+			long leftX = horz.curX;
+			long rightX = horz.curX;
 			Active ae = horz.nextInAEL;
 			while (ae != null && ae.vertexTop != vertexMax) {
 				ae = ae.nextInAEL;
 			}
-			return ae != null;
+			return new HorzDirection(ae != null, leftX, rightX);
 		}
 
 		if (horz.curX < horz.top.x) {
-			leftX.argValue = horz.curX;
-			rightX.argValue = horz.top.x;
-			return true;
+			return new HorzDirection(true, horz.curX, horz.top.x);
 		}
-		leftX.argValue = horz.top.x;
-		rightX.argValue = horz.curX;
-		return false; // right to left
+		return new HorzDirection(false, horz.top.x, horz.curX); // right to left
 	}
 
 	private void TrimHorz(Active horzEdge, boolean preserveCollinear) {
@@ -2002,13 +1989,10 @@ abstract class ClipperBase {
 		@Nullable
 		Vertex vertexMax = horzIsOpen ? GetCurrYMaximaVertex_Open(horz) : GetCurrYMaximaVertex(horz);
 
-		long leftX;
-		OutObject<Long> tempOutleftX = new OutObject<>();
-		long rightX;
-		OutObject<Long> tempOutrightX = new OutObject<>();
-		boolean isLeftToRight = ResetHorzDirection(horz, vertexMax, tempOutleftX, tempOutrightX);
-		rightX = tempOutrightX.argValue;
-		leftX = tempOutleftX.argValue;
+		HorzDirection direction = ResetHorzDirection(horz, vertexMax);
+		boolean isLeftToRight = direction.leftToRight;
+		long rightX = direction.rightX;
+		long leftX = direction.leftX;
 
 		if (IsHotEdge(horz)) {
 			OutPt op = AddOutPt(horz, new Point64(horz.curX, Y));
@@ -2120,11 +2104,10 @@ abstract class ClipperBase {
 
 			UpdateEdgeIntoAEL(horz);
 
-			OutObject<Long> tempOutleftX2 = new OutObject<>();
-			OutObject<Long> tempOutrightX2 = new OutObject<>();
-			isLeftToRight = ResetHorzDirection(horz, vertexMax, tempOutleftX2, tempOutrightX2);
-			rightX = tempOutrightX2.argValue;
-			leftX = tempOutleftX2.argValue;
+			direction = ResetHorzDirection(horz, vertexMax);
+			isLeftToRight = direction.leftToRight;
+			rightX = direction.rightX;
+			leftX = direction.leftX;
 
 		} // end for loop and end of (possible consecutive) horizontals
 

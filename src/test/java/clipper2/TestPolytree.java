@@ -22,7 +22,6 @@ import clipper2.engine.PointInPolygonResult;
 import clipper2.engine.PolyPath64;
 import clipper2.engine.PolyPathBase;
 import clipper2.engine.PolyTree64;
-import tangible.RefObject;
 
 class TestPolytree {
 
@@ -119,26 +118,25 @@ class TestPolytree {
 		int counter = 0;
 		for (int i = 0; i < pp.getCount(); i++) {
 			PolyPath64 child = pp.get(i);
-			tangible.RefObject<Integer> tempRef_counter = new RefObject<>(counter);
-			PolyPathContainsPoint(child, pt, tempRef_counter);
-			counter = tempRef_counter.argValue;
+			counter = PolyPathContainsPoint(child, pt, counter);
 		}
 		assertTrue(counter >= 0, "Polytree has too many holes");
 		return counter != 0;
 	}
 
-	private static void PolyPathContainsPoint(PolyPath64 pp, Point64 pt, RefObject<Integer> counter) {
+	private static int PolyPathContainsPoint(PolyPath64 pp, Point64 pt, int counter) {
 		if (Clipper.PointInPolygon(pt, pp.getPolygon()) != PointInPolygonResult.IsOutside) {
 			if (pp.getIsHole()) {
-				counter.argValue--;
+				counter--;
 			} else {
-				counter.argValue++;
+				counter++;
 			}
 		}
 		for (int i = 0; i < pp.getCount(); i++) {
 			PolyPath64 child = pp.get(i);
-			PolyPathContainsPoint(child, pt, counter);
+			counter = PolyPathContainsPoint(child, pt, counter);
 		}
+		return counter;
 	}
 
 }

@@ -10,7 +10,6 @@ import clipper2.core.Paths64;
 import clipper2.core.Point64;
 import clipper2.core.Rect64;
 import clipper2.engine.PointInPolygonResult;
-import tangible.RefObject;
 
 /**
  * RectClip64 intersects subject polygons with the specified rectangular
@@ -28,6 +27,36 @@ public class RectClip64 {
 
 	protected enum Location {
 		left, top, right, bottom, inside
+	}
+
+	protected static final class LocationResult {
+		final boolean outside;
+		final Location location;
+
+		LocationResult(boolean outside, Location location) {
+			this.outside = outside;
+			this.location = location;
+		}
+	}
+
+	protected static final class IntersectionResult {
+		final boolean intersects;
+		final Location location;
+
+		IntersectionResult(boolean intersects, Location location) {
+			this.intersects = intersects;
+			this.location = location;
+		}
+	}
+
+	protected static final class NextLocationResult {
+		final Location location;
+		final int index;
+
+		NextLocationResult(Location location, int index) {
+			this.location = location;
+			this.index = index;
+		}
 	}
 
 	protected final Rect64 rect_;
@@ -208,33 +237,30 @@ public class RectClip64 {
 		add(headingClockwise(prev, curr) ? rectPath_.get(prev.ordinal()) : rectPath_.get(curr.ordinal()));
 	}
 
-	private void addCorner(RefObject<Location> locRefObject, boolean cw) {
+	private Location addCorner(Location loc, boolean cw) {
 		if (cw) {
-			add(rectPath_.get(locRefObject.argValue.ordinal()));
-			locRefObject.argValue = getAdjacentLocation(locRefObject.argValue, true);
+			add(rectPath_.get(loc.ordinal()));
+			return getAdjacentLocation(loc, true);
 		} else {
-			locRefObject.argValue = getAdjacentLocation(locRefObject.argValue, false);
-			add(rectPath_.get(locRefObject.argValue.ordinal()));
+			Location nextLoc = getAdjacentLocation(loc, false);
+			add(rectPath_.get(nextLoc.ordinal()));
+			return nextLoc;
 		}
 	}
 
-	protected static boolean getLocation(Rect64 r, Point64 pt, RefObject<Location> locRefObject) {
+	protected static LocationResult getLocation(Rect64 r, Point64 pt) {
 		Location loc;
 		if (pt.x == r.left && pt.y >= r.top && pt.y <= r.bottom) {
-			locRefObject.argValue = Location.left;
-			return false;
+			return new LocationResult(false, Location.left);
 		}
 		if (pt.x == r.right && pt.y >= r.top && pt.y <= r.bottom) {
-			locRefObject.argValue = Location.right;
-			return false;
+			return new LocationResult(false, Location.right);
 		}
 		if (pt.y == r.top && pt.x >= r.left && pt.x <= r.right) {
-			locRefObject.argValue = Location.top;
-			return false;
+			return new LocationResult(false, Location.top);
 		}
 		if (pt.y == r.bottom && pt.x >= r.left && pt.x <= r.right) {
-			locRefObject.argValue = Location.bottom;
-			return false;
+			return new LocationResult(false, Location.bottom);
 		}
 		if (pt.x < r.left) {
 			loc = Location.left;
@@ -247,8 +273,7 @@ public class RectClip64 {
 		} else {
 			loc = Location.inside;
 		}
-		locRefObject.argValue = loc;
-		return true;
+		return new LocationResult(true, loc);
 	}
 
 	private static boolean isHorizontal(Point64 a, Point64 b) {
@@ -314,85 +339,71 @@ public class RectClip64 {
 		return InternalClipper.GetIntersectPoint(p1, p2, p3, p4, ipRefObject);
 	}
 
-	protected static boolean getIntersection(Path64 rectPath, Point64 p, Point64 p2, RefObject<Location> locRefObject, Point64 ipRefObject) {
+	protected static IntersectionResult getIntersection(Path64 rectPath, Point64 p, Point64 p2, Location loc, Point64 ipRefObject) {
 		ipRefObject.set(new Point64(0, 0));
-		switch (locRefObject.argValue) {
+		switch (loc) {
 			case left :
 				if (getSegmentIntersection(p, p2, rectPath.get(0), rectPath.get(3), ipRefObject)) {
-					return true;
+					return new IntersectionResult(true, loc);
 				}
 				if (p.y < rectPath.get(0).y && getSegmentIntersection(p, p2, rectPath.get(0), rectPath.get(1), ipRefObject)) {
-					locRefObject.argValue = Location.top;
-					return true;
+					return new IntersectionResult(true, Location.top);
 				}
 				if (!getSegmentIntersection(p, p2, rectPath.get(2), rectPath.get(3), ipRefObject)) {
-					return false;
+					return new IntersectionResult(false, loc);
 				}
-				locRefObject.argValue = Location.bottom;
-				return true;
+				return new IntersectionResult(true, Location.bottom);
 			case right :
 				if (getSegmentIntersection(p, p2, rectPath.get(1), rectPath.get(2), ipRefObject)) {
-					return true;
+					return new IntersectionResult(true, loc);
 				}
 				if (p.y < rectPath.get(0).y && getSegmentIntersection(p, p2, rectPath.get(0), rectPath.get(1), ipRefObject)) {
-					locRefObject.argValue = Location.top;
-					return true;
+					return new IntersectionResult(true, Location.top);
 				}
 				if (!getSegmentIntersection(p, p2, rectPath.get(2), rectPath.get(3), ipRefObject)) {
-					return false;
+					return new IntersectionResult(false, loc);
 				}
-				locRefObject.argValue = Location.bottom;
-				return true;
+				return new IntersectionResult(true, Location.bottom);
 			case top :
 				if (getSegmentIntersection(p, p2, rectPath.get(0), rectPath.get(1), ipRefObject)) {
-					return true;
+					return new IntersectionResult(true, loc);
 				}
 				if (p.x < rectPath.get(0).x && getSegmentIntersection(p, p2, rectPath.get(0), rectPath.get(3), ipRefObject)) {
-					locRefObject.argValue = Location.left;
-					return true;
+					return new IntersectionResult(true, Location.left);
 				}
 				if (p.x <= rectPath.get(1).x || !getSegmentIntersection(p, p2, rectPath.get(1), rectPath.get(2), ipRefObject)) {
-					return false;
+					return new IntersectionResult(false, loc);
 				}
-				locRefObject.argValue = Location.right;
-				return true;
+				return new IntersectionResult(true, Location.right);
 			case bottom :
 				if (getSegmentIntersection(p, p2, rectPath.get(2), rectPath.get(3), ipRefObject)) {
-					return true;
+					return new IntersectionResult(true, loc);
 				}
 				if (p.x < rectPath.get(3).x && getSegmentIntersection(p, p2, rectPath.get(0), rectPath.get(3), ipRefObject)) {
-					locRefObject.argValue = Location.left;
-					return true;
+					return new IntersectionResult(true, Location.left);
 				}
 				if (p.x <= rectPath.get(2).x || !getSegmentIntersection(p, p2, rectPath.get(1), rectPath.get(2), ipRefObject)) {
-					return false;
+					return new IntersectionResult(false, loc);
 				}
-				locRefObject.argValue = Location.right;
-				return true;
+				return new IntersectionResult(true, Location.right);
 			default :
 				if (getSegmentIntersection(p, p2, rectPath.get(0), rectPath.get(3), ipRefObject)) {
-					locRefObject.argValue = Location.left;
-					return true;
+					return new IntersectionResult(true, Location.left);
 				}
 				if (getSegmentIntersection(p, p2, rectPath.get(0), rectPath.get(1), ipRefObject)) {
-					locRefObject.argValue = Location.top;
-					return true;
+					return new IntersectionResult(true, Location.top);
 				}
 				if (getSegmentIntersection(p, p2, rectPath.get(1), rectPath.get(2), ipRefObject)) {
-					locRefObject.argValue = Location.right;
-					return true;
+					return new IntersectionResult(true, Location.right);
 				}
 				if (!getSegmentIntersection(p, p2, rectPath.get(2), rectPath.get(3), ipRefObject)) {
-					return false;
+					return new IntersectionResult(false, loc);
 				}
-				locRefObject.argValue = Location.bottom;
-				return true;
+				return new IntersectionResult(true, Location.bottom);
 		}
 	}
 
-	protected void getNextLocation(Path64 path, RefObject<Location> locRefObject, RefObject<Integer> iRefObject, int highI) {
-		Location loc = locRefObject.argValue;
-		int i = iRefObject.argValue;
+	protected NextLocationResult getNextLocation(Path64 path, Location loc, int i, int highI) {
 		switch (loc) {
 			case left :
 				while (i <= highI && path.get(i).x <= rect_.left) {
@@ -481,8 +492,7 @@ public class RectClip64 {
 				}
 				break;
 		}
-		locRefObject.argValue = loc;
-		iRefObject.argValue = i;
+		return new NextLocationResult(loc, i);
 	}
 
 	private static boolean startLocsAreClockwise(List<Location> locs) {
@@ -519,14 +529,20 @@ public class RectClip64 {
 		Location prev = Location.inside;
 
 		int highI = path.size() - 1;
-		RefObject<Location> locRefObject = new RefObject<>();
+		Location loc = Location.inside;
 
 		// find the location of the last point
-		if (!getLocation(rect_, path.get(highI), locRefObject)) {
-			prev = locRefObject.argValue;
+		LocationResult locRes = getLocation(rect_, path.get(highI));
+		loc = locRes.location;
+		if (!locRes.outside) {
+			prev = loc;
 			int j = highI - 1;
-			RefObject<Location> prevRefObject = new RefObject<>(prev);
-			while (j >= 0 && !getLocation(rect_, path.get(j), prevRefObject)) {
+			LocationResult prevLocRes = new LocationResult(false, prev);
+			while (j >= 0) {
+				prevLocRes = getLocation(rect_, path.get(j));
+				if (prevLocRes.outside) {
+					break;
+				}
 				j--;
 			}
 			if (j < 0) {
@@ -536,53 +552,51 @@ public class RectClip64 {
 				}
 				return;
 			}
-			prev = prevRefObject.argValue;
+			prev = prevLocRes.location;
 			if (prev == Location.inside) {
-				locRefObject.argValue = Location.inside;
+				loc = Location.inside;
 			}
 		}
 
 		// **capture the very first loc** for the tail‐end test
-		Location startingLoc = locRefObject.argValue;
+		Location startingLoc = loc;
 
 		// ––– main loop
 		int i = 0;
 		while (i <= highI) {
-			prev = locRefObject.argValue;
+			prev = loc;
 			Location prevCrossLoc = crossingLoc;
 
 			// advance i to the next index where the rect‐location changes
-			RefObject<Integer> iRefObject = new RefObject<>(i);
-			getNextLocation(path, locRefObject, iRefObject, highI);
-			i = iRefObject.argValue;
+			NextLocationResult nextLoc = getNextLocation(path, loc, i, highI);
+			loc = nextLoc.location;
+			i = nextLoc.index;
 			if (i > highI) {
 				break;
 			}
 
 			// current segment runs from path[i-1] to path[i]
 			Point64 prevPt = (i == 0) ? path.get(highI) : path.get(i - 1);
-			crossingLoc = locRefObject.argValue;
+			crossingLoc = loc;
 
 			// see if that segment hits the rectangle boundary
-			RefObject<Location> crossRefObject = new RefObject<>(crossingLoc);
 			Point64 ipRefObject = new Point64();
-			if (!getIntersection(rectPath_, path.get(i), prevPt, crossRefObject, ipRefObject)) {
+			IntersectionResult crossRes = getIntersection(rectPath_, path.get(i), prevPt, crossingLoc, ipRefObject);
+			if (!crossRes.intersects) {
 				// still entirely outside
-				crossingLoc = crossRefObject.argValue;
+				crossingLoc = crossRes.location;
 				if (prevCrossLoc == Location.inside) {
-					boolean cw = isClockwise(prev, locRefObject.argValue, prevPt, path.get(i), mp_);
+					boolean cw = isClockwise(prev, loc, prevPt, path.get(i), mp_);
 					do {
 						startLocs.add(prev);
 						prev = getAdjacentLocation(prev, cw);
-					} while (prev != locRefObject.argValue);
+					} while (prev != loc);
 					crossingLoc = prevCrossLoc;
-				} else if (prev != Location.inside && prev != locRefObject.argValue) {
-					boolean cw = isClockwise(prev, locRefObject.argValue, prevPt, path.get(i), mp_);
-					RefObject<Location> pRefObject = new RefObject<>(prev);
+				} else if (prev != Location.inside && prev != loc) {
+					boolean cw = isClockwise(prev, loc, prevPt, path.get(i), mp_);
 					do {
-						addCorner(pRefObject, cw);
-						prev = pRefObject.argValue;
-					} while (prev != locRefObject.argValue);
+						prev = addCorner(prev, cw);
+					} while (prev != loc);
 				}
 
 				// **only place we increment i in the no‐intersection case**
@@ -591,28 +605,29 @@ public class RectClip64 {
 			}
 
 			// we *did* intersect
-			crossingLoc = crossRefObject.argValue;
+			crossingLoc = crossRes.location;
 			Point64 ip = ipRefObject;
 
-			if (locRefObject.argValue == Location.inside) {
+			if (loc == Location.inside) {
 				// entering rectangle
 				if (firstCross == Location.inside) {
 					firstCross = crossingLoc;
 					startLocs.add(prev);
 				} else if (prev != crossingLoc) {
 					boolean cw = isClockwise(prev, crossingLoc, prevPt, path.get(i), mp_);
-					RefObject<Location> pRefObject = new RefObject<>(prev);
 					do {
-						addCorner(pRefObject, cw);
-						prev = pRefObject.argValue;
+						prev = addCorner(prev, cw);
 					} while (prev != crossingLoc);
 				}
 			} else if (prev != Location.inside) {
 				// passing all the way through
-				RefObject<Location> loc2RefObject = new RefObject<>(prev);
 				Point64 ip2RefObject = new Point64();
-				getIntersection(rectPath_, prevPt, path.get(i), loc2RefObject, ip2RefObject);
-				Location newLoc = loc2RefObject.argValue;
+				IntersectionResult loc2Res = getIntersection(rectPath_, prevPt, path.get(i), prev, ip2RefObject);
+				if (!loc2Res.intersects) {
+					i++;
+					continue;
+				}
+				Location newLoc = loc2Res.location;
 
 				if (prevCrossLoc != Location.inside && prevCrossLoc != newLoc) {
 					addCorner(prevCrossLoc, newLoc);
@@ -621,22 +636,19 @@ public class RectClip64 {
 					firstCross = newLoc;
 					startLocs.add(prev);
 				}
-				locRefObject.argValue = crossingLoc;
+				loc = crossingLoc;
 				add(ip2RefObject);
 
 				if (ip.equals(ip2RefObject)) {
-					RefObject<Location> tmpRefObject = new RefObject<>(crossingLoc);
-					RefObject<Location> onRectRefObject = new RefObject<>();
-					getLocation(rect_, path.get(i), onRectRefObject);
-					addCorner(tmpRefObject, headingClockwise(tmpRefObject.argValue, onRectRefObject.argValue));
-					crossingLoc = tmpRefObject.argValue;
+					Location onRectLoc = getLocation(rect_, path.get(i)).location;
+					crossingLoc = addCorner(crossingLoc, headingClockwise(crossingLoc, onRectLoc));
 
 					i++;
 					continue;
 				}
 			} else {
 				// exiting rectangle
-				locRefObject.argValue = crossingLoc;
+				loc = crossingLoc;
 				if (firstCross == Location.inside) {
 					firstCross = crossingLoc;
 				}
@@ -661,23 +673,20 @@ public class RectClip64 {
 				add(rectPath_.get(k));
 				addToEdge(edges_[k * 2], results_.get(0));
 			}
-		} else if (locRefObject.argValue != Location.inside && (locRefObject.argValue != firstCross || startLocs.size() > 2)) {
+		} else if (loc != Location.inside && (loc != firstCross || startLocs.size() > 2)) {
 			if (!startLocs.isEmpty()) {
-				prev = locRefObject.argValue;
+				prev = loc;
 				for (Location loc2 : startLocs) {
 					if (prev == loc2) {
 						continue;
 					}
 					boolean c = headingClockwise(prev, loc2);
-					RefObject<Location> pRefObject = new RefObject<>(prev);
-					addCorner(pRefObject, c);
-					prev = pRefObject.argValue;
+					prev = addCorner(prev, c);
 				}
-				locRefObject.argValue = prev;
+				loc = prev;
 			}
-			if (locRefObject.argValue != firstCross) {
-				RefObject<Location> pRefObject = new RefObject<>(locRefObject.argValue);
-				addCorner(pRefObject, headingClockwise(locRefObject.argValue, firstCross));
+			if (loc != firstCross) {
+				loc = addCorner(loc, headingClockwise(loc, firstCross));
 			}
 		}
 	}
