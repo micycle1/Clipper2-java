@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import clipper2.core.Path64;
 import clipper2.core.Paths64;
+import clipper2.core.PathsD;
 import clipper2.core.Point64;
 import clipper2.core.PointD;
 import clipper2.offset.ClipperOffset;
@@ -235,6 +236,39 @@ class TestOffsets {
 
 		solution = Clipper.InflatePaths(subject, -15, JoinType.Miter, EndType.Polygon);
 		assertEquals(0, solution.size());
+	}
+
+	@Test
+	void TestOffsets10() { // see #715
+		Paths64 subjects = new Paths64(List.of(Clipper.MakePath(new long[] { 508685336, -435806096, 509492982, -434729201, 509615525, -434003092, 509615525,
+				493372891, 509206033, 494655198, 508129138, 495462844, 507403029, 495585387, -545800889, 495585387, -547083196, 495175895, -547890842,
+				494099000, -548013385, 493372891, -548013385, -434003092, -547603893, -435285399, -546526998, -436093045, -545800889, -436215588, 507403029,
+				-436215588 }), Clipper.MakePath(new long[] { 106954765, -62914568, 106795129, -63717113, 106340524, -64397478, 105660159, -64852084, 104857613,
+						-65011720, 104055068, -64852084, 103374703, -64397478, 102920097, -63717113, 102760461, -62914568, 102920097, -62112022, 103374703,
+						-61431657, 104055068, -60977052, 104857613, -60817416, 105660159, -60977052, 106340524, -61431657, 106795129, -62112022 })));
+
+		ClipperOffset offseter = new ClipperOffset(2, 104857.61318750000);
+		Paths64 solution = new Paths64();
+		offseter.AddPaths(subjects, JoinType.Round, EndType.Polygon);
+		offseter.Execute(-2212495.6382562499, solution);
+		assertEquals(2, solution.size());
+	}
+
+	@Test
+	void TestOffsets11() { // see #405
+		PathsD subject = new PathsD();
+		subject.add(Clipper.MakePath(new double[] { -1.0, -1.0, -1.0, 11.0, 11.0, 11.0, 11.0, -1.0 }));
+		// offset polygon
+		PathsD solution = Clipper.InflatePaths(subject, -50, JoinType.Miter, EndType.Polygon);
+		assertTrue(solution.isEmpty());
+	}
+
+	@Test
+	void TestOffsets12() { // see #873
+		Paths64 subject = new Paths64();
+		subject.add(Clipper.MakePath(new long[] { 667680768, -36382704, 737202688, -87034880, 742581888, -86055680, 747603968, -84684800 }));
+		Paths64 solution = Clipper.InflatePaths(subject, -249561088, JoinType.Miter, EndType.Polygon);
+		assertTrue(solution.isEmpty());
 	}
 
 	private static Point64 midPoint(Point64 p1, Point64 p2) {
