@@ -47,6 +47,10 @@ public final class PointD {
 		y = -y;
 	}
 
+	public void negate() {
+		Negate();
+	}
+
 	@Override
 	public final String toString() {
 		return String.format("(%1$f,%2$f) ", x, y);

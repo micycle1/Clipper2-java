@@ -67,28 +67,56 @@ public final class Rect64 {
 		return result;
 	}
 
+	public Path64 asPath() {
+		return AsPath();
+	}
+
 	public boolean IsEmpty() {
 		return bottom <= top || right <= left;
+	}
+
+	public boolean isEmpty() {
+		return IsEmpty();
 	}
 
 	public boolean IsValid() {
 		return left < Long.MAX_VALUE;
 	}
 
+	public boolean isValid() {
+		return IsValid();
+	}
+
 	public Point64 MidPoint() {
 		return new Point64((left + right) / 2, (top + bottom) / 2);
+	}
+
+	public Point64 midPoint() {
+		return MidPoint();
 	}
 
 	public boolean Contains(Point64 pt) {
 		return pt.x > left && pt.x < right && pt.y > top && pt.y < bottom;
 	}
 
+	public boolean contains(Point64 pt) {
+		return Contains(pt);
+	}
+
 	public boolean Intersects(Rect64 rec) {
 		return (Math.max(left, rec.left) <= Math.min(right, rec.right)) && (Math.max(top, rec.top) <= Math.min(bottom, rec.bottom));
 	}
 
+	public boolean intersects(Rect64 rec) {
+		return Intersects(rec);
+	}
+
 	public boolean Contains(Rect64 rec) {
 		return rec.left >= left && rec.right <= right && rec.top >= top && rec.bottom <= bottom;
+	}
+
+	public boolean contains(Rect64 rec) {
+		return Contains(rec);
 	}
 
 	@Override

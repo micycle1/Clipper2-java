@@ -64,26 +64,50 @@ public final class RectD {
 		return bottom <= top || right <= left;
 	}
 
+	public boolean isEmpty() {
+		return IsEmpty();
+	}
+
 	public PointD MidPoint() {
 		return new PointD((left + right) / 2, (top + bottom) / 2);
+	}
+
+	public PointD midPoint() {
+		return MidPoint();
 	}
 
 	public boolean Contains(PointD pt) {
 		return pt.x > left && pt.x < right && pt.y > top && pt.y < bottom;
 	}
 
+	public boolean contains(PointD pt) {
+		return Contains(pt);
+	}
+
 	public boolean Contains(RectD rec) {
 		return rec.left >= left && rec.right <= right && rec.top >= top && rec.bottom <= bottom;
+	}
+
+	public boolean contains(RectD rec) {
+		return Contains(rec);
 	}
 
 	public boolean Intersects(RectD rec) {
 		return (Math.max(left, rec.left) < Math.min(right, rec.right)) && (Math.max(top, rec.top) < Math.min(bottom, rec.bottom));
 	}
 
+	public boolean intersects(RectD rec) {
+		return Intersects(rec);
+	}
+
 	public PathD AsPath() {
 		PathD result = new PathD(
 				Arrays.asList(new PointD(left, top), new PointD(right, top), new PointD(right, bottom), new PointD(left, bottom)));
 		return result;
+	}
+
+	public PathD asPath() {
+		return AsPath();
 	}
 
 	@Override

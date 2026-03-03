@@ -50,7 +50,7 @@ solution.get(0).forEach(p -> System.out.println(p.toString()));
 * Wrapper objects are used to replicate C# `ref` (pass-by-reference) behaviour. This isn't very Java-esque but avoids an unmanageable refactoring effort.
 * Code passes all tests: polygon, line and polytree.
 * Uses lower-case (x, y) for point coordinates.
-* Private local variables have been renamed to their _camelCase_ variant but public methods (i.e. those of `Clipper.class`) retain their C# _PascalCase_ names (for now...).
+* Private local variables have been renamed to their _camelCase_ variant. Public methods on `Clipper.class` retain their C# _PascalCase_ names, while core geometry types expose Java-style `camelCase` aliases for common helpers.
 * Benchmarks can be run by including `jmh:benchmark` to the chosen maven goal.
 * `scanlineList` from `ClipperBase` uses Java `TreeSet` (variable renamed to `scanlineSet`).
 
