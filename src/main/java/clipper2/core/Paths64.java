@@ -32,7 +32,7 @@ public class Paths64 extends ArrayList<Path64> {
 	public String toString() {
 		StringBuilder s = new StringBuilder();
 		for (Path64 p : this) {
-			s.append(p.toString()).append("\n");
+			s.append(p).append("\n");
 		}
 		return s.toString();
 	}

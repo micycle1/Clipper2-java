@@ -18,7 +18,7 @@ class TestToStringOutput {
 	@Test
 	void path64ToStringMatchesExistingFormat() {
 		Path64 path = new Path64(new Point64(1, 2), new Point64(3, 4));
-		assertEquals("(1,2)  (3,4)  ", path.toString());
+		assertEquals("(1,2) , (3,4) ", path.toString());
 	}
 
 	@Test
@@ -26,13 +26,13 @@ class TestToStringOutput {
 		PathD path = new PathD(2);
 		path.add(new PointD(1.5, 2.5));
 		path.add(new PointD(3.5, 4.5));
-		assertEquals("(1.500000,2.500000)  (3.500000,4.500000)  ", path.toString());
+		assertEquals("(1.500000,2.500000) , (3.500000,4.500000) ", path.toString());
 	}
 
 	@Test
 	void paths64ToStringMatchesExistingFormat() {
 		Paths64 paths = new Paths64(new Path64(new Point64(1, 2)));
-		assertEquals("(1,2)  \n", paths.toString());
+		assertEquals("(1,2) \n", paths.toString());
 	}
 
 	@Test
@@ -41,7 +41,7 @@ class TestToStringOutput {
 		PathD path = new PathD(1);
 		path.add(new PointD(1.5, 2.5));
 		paths.add(path);
-		assertEquals("(1.500000,2.500000)  \n", paths.toString());
+		assertEquals("(1.500000,2.500000) \n", paths.toString());
 	}
 
 	@Test

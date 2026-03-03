@@ -92,9 +92,11 @@ public class ClipperD extends ClipperBase {
 			return false;
 		}
 
+		solutionClosed.ensureCapacity(solClosed64.size());
 		for (Path64 path : solClosed64) {
 			solutionClosed.add(Clipper.ScalePathD(path, invScale));
 		}
+		solutionOpen.ensureCapacity(solOpen64.size());
 		for (Path64 path : solOpen64) {
 			solutionOpen.add(Clipper.ScalePathD(path, invScale));
 		}
@@ -123,6 +125,7 @@ public class ClipperD extends ClipperBase {
 			return false;
 		}
 		if (!oPaths.isEmpty()) {
+			openPaths.ensureCapacity(oPaths.size());
 			for (Path64 path : oPaths) {
 				openPaths.add(Clipper.ScalePathD(path, invScale));
 			}
