@@ -2793,7 +2793,7 @@ abstract class ClipperBase {
 			}
 		}
 
-		if (path.size() == 3 && IsVerySmallTriangle(op2)) {
+		if (path.size() == 3 && !isOpen && IsVerySmallTriangle(op2)) {
 			return false;
 		} else {
 			return true;
