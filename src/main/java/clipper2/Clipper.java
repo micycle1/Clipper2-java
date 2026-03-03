@@ -808,7 +808,7 @@ public final class Clipper {
 				result.bottom = pt.y;
 			}
 		}
-		return result.left == Double.MAX_VALUE ? new RectD() : result;
+		return Math.abs(result.left - Double.MAX_VALUE) < InternalClipper.FLOATING_POINT_TOLERANCE ? new RectD() : result;
 	}
 
 	public static RectD GetBounds(PathsD paths) {
@@ -829,7 +829,7 @@ public final class Clipper {
 				}
 			}
 		}
-		return result.left == Double.MAX_VALUE ? new RectD() : result;
+		return Math.abs(result.left - Double.MAX_VALUE) < InternalClipper.FLOATING_POINT_TOLERANCE ? new RectD() : result;
 	}
 
 	public static Path64 MakePath(int[] arr) {
@@ -1366,10 +1366,10 @@ public final class Clipper {
 		int len = path.size();
 		int i = 0;
 		if (!isOpen) {
-			while (i < len - 1 && InternalClipper.CrossProduct(path.get(len - 1), path.get(i), path.get(i + 1)) == 0) {
+			while (i < len - 1 && InternalClipper.IsCollinear(path.get(len - 1), path.get(i), path.get(i + 1))) {
 				i++;
 			}
-			while (i < len - 1 && InternalClipper.CrossProduct(path.get(len - 2), path.get(len - 1), path.get(i)) == 0) {
+			while (i < len - 1 && InternalClipper.IsCollinear(path.get(len - 2), path.get(len - 1), path.get(i))) {
 				len--;
 			}
 		}
@@ -1385,7 +1385,7 @@ public final class Clipper {
 		Point64 last = path.get(i);
 		result.add(last);
 		for (i++; i < len - 1; i++) {
-			if (InternalClipper.CrossProduct(last, path.get(i), path.get(i + 1)) == 0) {
+			if (InternalClipper.IsCollinear(last, path.get(i), path.get(i + 1))) {
 				continue;
 			}
 			last = path.get(i);
@@ -1394,10 +1394,10 @@ public final class Clipper {
 
 		if (isOpen) {
 			result.add(path.get(len - 1));
-		} else if (InternalClipper.CrossProduct(last, path.get(len - 1), result.get(0)) != 0) {
+		} else if (!InternalClipper.IsCollinear(last, path.get(len - 1), result.get(0))) {
 			result.add(path.get(len - 1));
 		} else {
-			while (result.size() > 2 && InternalClipper.CrossProduct(result.get(result.size() - 1), result.get(result.size() - 2), result.get(0)) == 0) {
+			while (result.size() > 2 && InternalClipper.IsCollinear(result.get(result.size() - 1), result.get(result.size() - 2), result.get(0))) {
 				result.remove(result.size() - 1);
 			}
 			if (result.size() < 3) {

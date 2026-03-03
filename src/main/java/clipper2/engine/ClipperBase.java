@@ -1003,7 +1003,7 @@ abstract class ClipperBase {
 		if (resident.isLeftBound != newcomerIsLeft) {
 			return newcomerIsLeft;
 		}
-		if (InternalClipper.CrossProduct(PrevPrevVertex(resident).pt, resident.bot, resident.top) == 0) {
+		if (InternalClipper.IsCollinear(PrevPrevVertex(resident).pt, resident.bot, resident.top)) {
 			return true;
 		}
 		// compare turning direction of the alternate bound
@@ -1727,7 +1727,7 @@ abstract class ClipperBase {
 
 	private void AddNewIntersectNode(Active ae1, Active ae2, long topY) {
 		Point64 ip = new Point64();
-		if (!InternalClipper.GetIntersectPoint(ae1.bot, ae1.top, ae2.bot, ae2.top, ip)) {
+		if (!InternalClipper.GetSegmentIntersectPt(ae1.bot, ae1.top, ae2.bot, ae2.top, ip)) {
 			ip = new Point64(ae1.curX, topY);
 		}
 
@@ -2232,7 +2232,7 @@ abstract class ClipperBase {
 	private void CheckJoinLeft(Active e, Point64 pt, boolean checkCurrX) {
 		@Nullable
 		Active prev = e.prevInAEL;
-		if (prev == null || IsOpen(e) || IsOpen(prev) || !IsHotEdge(e) || !IsHotEdge(prev)) {
+		if (prev == null || !IsHotEdge(e) || !IsHotEdge(prev) || IsHorizontal(e) || IsHorizontal(prev) || IsOpen(e) || IsOpen(prev)) {
 			return;
 		}
 
@@ -2249,7 +2249,7 @@ abstract class ClipperBase {
 		} else if (e.curX != prev.curX) {
 			return;
 		}
-		if (InternalClipper.CrossProduct(e.top, pt, prev.top) != 0) {
+		if (!InternalClipper.IsCollinear(e.top, pt, prev.top)) {
 			return;
 		}
 
@@ -2272,7 +2272,7 @@ abstract class ClipperBase {
 	private void CheckJoinRight(Active e, Point64 pt, boolean checkCurrX) {
 		@Nullable
 		Active next = e.nextInAEL;
-		if (next == null || IsOpen(e) || IsOpen(next) || !IsHotEdge(e) || !IsHotEdge(next) || IsJoined(e)) {
+		if (next == null || !IsHotEdge(e) || !IsHotEdge(next) || IsHorizontal(e) || IsHorizontal(next) || IsOpen(e) || IsOpen(next)) {
 			return;
 		}
 
@@ -2289,7 +2289,7 @@ abstract class ClipperBase {
 		} else if (e.curX != next.curX) {
 			return;
 		}
-		if (InternalClipper.CrossProduct(e.top, pt, next.top) != 0) {
+		if (!InternalClipper.IsCollinear(e.top, pt, next.top)) {
 			return;
 		}
 
@@ -2656,7 +2656,7 @@ abstract class ClipperBase {
 		OutPt op2 = startOp;
 		for (;;) {
 			// NB if preserveCollinear == true, then only remove 180 deg. spikes
-			if ((InternalClipper.CrossProduct(op2.prev.pt, op2.pt, op2.next.pt) == 0) && ((op2.pt.opEquals(op2.prev.pt)) || (op2.pt.opEquals(op2.next.pt))
+			if (InternalClipper.IsCollinear(op2.prev.pt, op2.pt, op2.next.pt) && ((op2.pt.opEquals(op2.prev.pt)) || (op2.pt.opEquals(op2.next.pt))
 					|| !getPreserveCollinear() || (InternalClipper.DotProduct(op2.prev.pt, op2.pt, op2.next.pt) < 0))) {
 				if (op2.equals(outrec.pts)) {
 					outrec.pts = op2.prev;
@@ -2686,7 +2686,7 @@ abstract class ClipperBase {
 //		OutPt result = prevOp;
 
 		Point64 ip = new Point64(); // ip mutated by GetIntersectPoint()
-		InternalClipper.GetIntersectPoint(prevOp.pt, splitOp.pt, splitOp.next.pt, nextNextOp.pt, ip);
+		InternalClipper.GetSegmentIntersectPt(prevOp.pt, splitOp.pt, splitOp.next.pt, nextNextOp.pt, ip);
 
 		double area1 = Area(prevOp);
 		double absArea1 = Math.abs(area1);

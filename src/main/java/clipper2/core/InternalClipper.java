@@ -9,7 +9,7 @@ public final class InternalClipper {
 	private static final long Invalid64 = Long.MAX_VALUE;
 
 	public static final double DEFAULT_ARC_TOLERANCE = 0.25;
-	private static final double FLOATING_POINT_TOLERANCE = 1E-12;
+	public static final double FLOATING_POINT_TOLERANCE = 1E-12;
 //	private static final double DEFAULT_MIN_EDGE_LENGTH = 0.1;
 
 	private static final String PRECISION_RANGE_ERROR = "Error: Precision is out of range.";
@@ -52,7 +52,7 @@ public final class InternalClipper {
 		return (long) Math.rint(val);
 	}
 
-	public static boolean GetIntersectPoint(Point64 ln1a, Point64 ln1b, Point64 ln2a, Point64 ln2b, /* out */ Point64 ip) {
+	public static boolean GetSegmentIntersectPt(Point64 ln1a, Point64 ln1b, Point64 ln2a, Point64 ln2b, /* out */ Point64 ip) {
 		double dy1 = (ln1b.y - ln1a.y);
 		double dx1 = (ln1b.x - ln1a.x);
 		double dy2 = (ln2b.y - ln2a.y);
@@ -84,6 +84,10 @@ public final class InternalClipper {
 
 		// Intersection found (even if clamped to endpoints)
 		return true;
+	}
+
+	public static boolean GetIntersectPoint(Point64 ln1a, Point64 ln1b, Point64 ln2a, Point64 ln2b, /* out */ Point64 ip) {
+		return GetSegmentIntersectPt(ln1a, ln1b, ln2a, ln2b, ip);
 	}
 
 	public static boolean SegsIntersect(Point64 seg1a, Point64 seg1b, Point64 seg2a, Point64 seg2b) {
