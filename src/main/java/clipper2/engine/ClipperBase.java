@@ -1416,13 +1416,13 @@ abstract class ClipperBase {
 		return result;
 	}
 
-	private OutPt IntersectEdges(Active ae1, Active ae2, Point64 pt) {
+	private void IntersectEdges(Active ae1, Active ae2, Point64 pt) {
 		OutPt resultOp = null;
 
 		// MANAGE OPEN PATH INTERSECTIONS SEPARATELY ...
 		if (hasOpenPaths && (IsOpen(ae1) || IsOpen(ae2))) {
 			if (IsOpen(ae1) && IsOpen(ae2)) {
-				return null;
+				return;
 			}
 			// the following line avoids duplicating quite a bit of code
 			if (IsOpen(ae2)) {
@@ -1436,26 +1436,26 @@ abstract class ClipperBase {
 
 			if (cliptype == ClipType.Union) {
 				if (!IsHotEdge(ae2)) {
-					return null;
+					return;
 				}
 			} else if (ae2.localMin.polytype == PathType.Subject) {
-				return null;
+				return;
 			}
 
 			switch (fillrule) {
 				case Positive :
 					if (ae2.windCount != 1) {
-						return null;
+						return;
 					}
 					break;
 				case Negative :
 					if (ae2.windCount != -1) {
-						return null;
+						return;
 					}
 					break;
 				default :
 					if (Math.abs(ae2.windCount) != 1) {
-						return null;
+						return;
 					}
 					break;
 			}
@@ -1483,7 +1483,7 @@ abstract class ClipperBase {
 					} else {
 						SetSides(ae3.outrec, ae3, ae1);
 					}
-					return ae3.outrec.pts;
+					return;
 				}
 
 				resultOp = StartOpenPath(ae1, pt);
@@ -1491,7 +1491,7 @@ abstract class ClipperBase {
 				resultOp = StartOpenPath(ae1, pt);
 			}
 
-			return resultOp;
+			return;
 		}
 
 		// MANAGING CLOSED PATHS FROM HERE ON
@@ -1554,7 +1554,7 @@ abstract class ClipperBase {
 		boolean e2WindCountIs0or1 = oldE2WindCount == 0 || oldE2WindCount == 1;
 
 		if ((!IsHotEdge(ae1) && !e1WindCountIs0or1) || (!IsHotEdge(ae2) && !e2WindCountIs0or1)) {
-			return null;
+			return;
 		}
 
 		// NOW PROCESS THE INTERSECTION ...
@@ -1612,7 +1612,7 @@ abstract class ClipperBase {
 				switch (cliptype) {
 					case Union :
 						if (e1Wc2 > 0 && e2Wc2 > 0) {
-							return null;
+							return;
 						}
 						resultOp = AddLocalMinPoly(ae1, ae2, pt);
 						break;
@@ -1631,15 +1631,13 @@ abstract class ClipperBase {
 
 					default : // ClipType.Intersection:
 						if (e1Wc2 <= 0 || e2Wc2 <= 0) {
-							return null;
+							return;
 						}
 						resultOp = AddLocalMinPoly(ae1, ae2, pt);
 						break;
 				}
 			}
 		}
-
-		return resultOp;
 	}
 
 	private void DeleteFromAEL(Active ae) {
