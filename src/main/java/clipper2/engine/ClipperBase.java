@@ -2,7 +2,6 @@ package clipper2.engine;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.NavigableSet;
 import java.util.TreeSet;
@@ -71,22 +70,6 @@ abstract class ClipperBase {
 		OutRec recursiveSplit;
 	}
 
-	private static class HorzSegSorter implements Comparator<HorzSegment> {
-		@Override
-		public int compare(@Nullable HorzSegment hs1, @Nullable HorzSegment hs2) {
-			if (hs1 == null || hs2 == null) {
-				return 0;
-			}
-			if (hs1.rightOp == null) {
-				return hs2.rightOp == null ? 0 : 1;
-			} else if (hs2.rightOp == null) {
-				return -1;
-			} else {
-				return Long.compare(hs1.leftOp.pt.x, hs2.leftOp.pt.x);
-			}
-		}
-	}
-
 	private static class HorzSegment {
 
 		public @Nullable OutPt leftOp;
@@ -149,6 +132,12 @@ abstract class ClipperBase {
 
 	private static class ClipperEngine {
 
+		private static <T> void EnsureCapacity(List<T> list, int minCapacity) {
+			if (list instanceof ArrayList<?>) {
+				((ArrayList<T>) list).ensureCapacity(minCapacity);
+			}
+		}
+
 		private static void AddLocMin(Vertex vert, PathType polytype, boolean isOpen, List<LocalMinima> minimaList) {
 			// make sure the vertex is added only once ...
 			if ((vert.flags & VertexFlags.LocalMin) != VertexFlags.None) {
@@ -161,6 +150,12 @@ abstract class ClipperBase {
 		}
 
 		private static void AddPathsToVertexList(Paths64 paths, PathType polytype, boolean isOpen, List<LocalMinima> minimaList, List<Vertex> vertexList) {
+			int totalVertCnt = 0;
+			for (Path64 path : paths) {
+				totalVertCnt += path.size();
+			}
+			EnsureCapacity(vertexList, vertexList.size() + totalVertCnt);
+
 			for (Path64 path : paths) {
 				Vertex v0 = null, prevV = null, currV;
 				for (Point64 pt : path) {
@@ -1003,7 +998,7 @@ abstract class ClipperBase {
 		if (resident.isLeftBound != newcomerIsLeft) {
 			return newcomerIsLeft;
 		}
-		if (InternalClipper.CrossProduct(PrevPrevVertex(resident).pt, resident.bot, resident.top) == 0) {
+		if (InternalClipper.IsCollinear(PrevPrevVertex(resident).pt, resident.bot, resident.top)) {
 			return true;
 		}
 		// compare turning direction of the alternate bound
@@ -1416,13 +1411,13 @@ abstract class ClipperBase {
 		return result;
 	}
 
-	private OutPt IntersectEdges(Active ae1, Active ae2, Point64 pt) {
+	private void IntersectEdges(Active ae1, Active ae2, Point64 pt) {
 		OutPt resultOp = null;
 
 		// MANAGE OPEN PATH INTERSECTIONS SEPARATELY ...
 		if (hasOpenPaths && (IsOpen(ae1) || IsOpen(ae2))) {
 			if (IsOpen(ae1) && IsOpen(ae2)) {
-				return null;
+				return;
 			}
 			// the following line avoids duplicating quite a bit of code
 			if (IsOpen(ae2)) {
@@ -1436,26 +1431,26 @@ abstract class ClipperBase {
 
 			if (cliptype == ClipType.Union) {
 				if (!IsHotEdge(ae2)) {
-					return null;
+					return;
 				}
 			} else if (ae2.localMin.polytype == PathType.Subject) {
-				return null;
+				return;
 			}
 
 			switch (fillrule) {
 				case Positive :
 					if (ae2.windCount != 1) {
-						return null;
+						return;
 					}
 					break;
 				case Negative :
 					if (ae2.windCount != -1) {
-						return null;
+						return;
 					}
 					break;
 				default :
 					if (Math.abs(ae2.windCount) != 1) {
-						return null;
+						return;
 					}
 					break;
 			}
@@ -1483,7 +1478,7 @@ abstract class ClipperBase {
 					} else {
 						SetSides(ae3.outrec, ae3, ae1);
 					}
-					return ae3.outrec.pts;
+					return;
 				}
 
 				resultOp = StartOpenPath(ae1, pt);
@@ -1491,7 +1486,7 @@ abstract class ClipperBase {
 				resultOp = StartOpenPath(ae1, pt);
 			}
 
-			return resultOp;
+			return;
 		}
 
 		// MANAGING CLOSED PATHS FROM HERE ON
@@ -1554,7 +1549,7 @@ abstract class ClipperBase {
 		boolean e2WindCountIs0or1 = oldE2WindCount == 0 || oldE2WindCount == 1;
 
 		if ((!IsHotEdge(ae1) && !e1WindCountIs0or1) || (!IsHotEdge(ae2) && !e2WindCountIs0or1)) {
-			return null;
+			return;
 		}
 
 		// NOW PROCESS THE INTERSECTION ...
@@ -1612,7 +1607,7 @@ abstract class ClipperBase {
 				switch (cliptype) {
 					case Union :
 						if (e1Wc2 > 0 && e2Wc2 > 0) {
-							return null;
+							return;
 						}
 						resultOp = AddLocalMinPoly(ae1, ae2, pt);
 						break;
@@ -1631,15 +1626,13 @@ abstract class ClipperBase {
 
 					default : // ClipType.Intersection:
 						if (e1Wc2 <= 0 || e2Wc2 <= 0) {
-							return null;
+							return;
 						}
 						resultOp = AddLocalMinPoly(ae1, ae2, pt);
 						break;
 				}
 			}
 		}
-
-		return resultOp;
 	}
 
 	private void DeleteFromAEL(Active ae) {
@@ -1727,7 +1720,7 @@ abstract class ClipperBase {
 
 	private void AddNewIntersectNode(Active ae1, Active ae2, long topY) {
 		Point64 ip = new Point64();
-		if (!InternalClipper.GetIntersectPoint(ae1.bot, ae1.top, ae2.bot, ae2.top, ip)) {
+		if (!InternalClipper.GetSegmentIntersectPt(ae1.bot, ae1.top, ae2.bot, ae2.top, ip)) {
 			ip = new Point64(ae1.curX, topY);
 		}
 
@@ -2232,7 +2225,7 @@ abstract class ClipperBase {
 	private void CheckJoinLeft(Active e, Point64 pt, boolean checkCurrX) {
 		@Nullable
 		Active prev = e.prevInAEL;
-		if (prev == null || IsOpen(e) || IsOpen(prev) || !IsHotEdge(e) || !IsHotEdge(prev)) {
+		if (prev == null || !IsHotEdge(e) || !IsHotEdge(prev) || IsHorizontal(e) || IsHorizontal(prev) || IsOpen(e) || IsOpen(prev)) {
 			return;
 		}
 
@@ -2249,7 +2242,7 @@ abstract class ClipperBase {
 		} else if (e.curX != prev.curX) {
 			return;
 		}
-		if (InternalClipper.CrossProduct(e.top, pt, prev.top) != 0) {
+		if (!InternalClipper.IsCollinear(e.top, pt, prev.top)) {
 			return;
 		}
 
@@ -2272,7 +2265,7 @@ abstract class ClipperBase {
 	private void CheckJoinRight(Active e, Point64 pt, boolean checkCurrX) {
 		@Nullable
 		Active next = e.nextInAEL;
-		if (next == null || IsOpen(e) || IsOpen(next) || !IsHotEdge(e) || !IsHotEdge(next) || IsJoined(e)) {
+		if (next == null || !IsHotEdge(e) || !IsHotEdge(next) || IsHorizontal(e) || IsHorizontal(next) || IsOpen(e) || IsOpen(next)) {
 			return;
 		}
 
@@ -2289,7 +2282,7 @@ abstract class ClipperBase {
 		} else if (e.curX != next.curX) {
 			return;
 		}
-		if (InternalClipper.CrossProduct(e.top, pt, next.top) != 0) {
+		if (!InternalClipper.IsCollinear(e.top, pt, next.top)) {
 			return;
 		}
 
@@ -2377,6 +2370,19 @@ abstract class ClipperBase {
 		return result;
 	}
 
+	private int HorzSegSort(@Nullable HorzSegment hs1, @Nullable HorzSegment hs2) {
+		if (hs1 == null || hs2 == null) {
+			return 0;
+		}
+		if (hs1.rightOp == null) {
+			return hs2.rightOp == null ? 0 : 1;
+		} else if (hs2.rightOp == null) {
+			return -1;
+		} else {
+			return Long.compare(hs1.leftOp.pt.x, hs2.leftOp.pt.x);
+		}
+	}
+
 	private void ConvertHorzSegsToJoins() {
 		int k = 0;
 		for (HorzSegment hs : horzSegList) {
@@ -2387,7 +2393,7 @@ abstract class ClipperBase {
 		if (k < 2) {
 			return;
 		}
-		horzSegList.sort(new HorzSegSorter());
+		horzSegList.sort(this::HorzSegSort);
 
 		for (int i = 0; i < k - 1; i++) {
 			HorzSegment hs1 = horzSegList.get(i);
@@ -2656,7 +2662,7 @@ abstract class ClipperBase {
 		OutPt op2 = startOp;
 		for (;;) {
 			// NB if preserveCollinear == true, then only remove 180 deg. spikes
-			if ((InternalClipper.CrossProduct(op2.prev.pt, op2.pt, op2.next.pt) == 0) && ((op2.pt.opEquals(op2.prev.pt)) || (op2.pt.opEquals(op2.next.pt))
+			if ((InternalClipper.IsCollinear(op2.prev.pt, op2.pt, op2.next.pt)) && ((op2.pt.opEquals(op2.prev.pt)) || (op2.pt.opEquals(op2.next.pt))
 					|| !getPreserveCollinear() || (InternalClipper.DotProduct(op2.prev.pt, op2.pt, op2.next.pt) < 0))) {
 				if (op2.equals(outrec.pts)) {
 					outrec.pts = op2.prev;
@@ -2685,8 +2691,8 @@ abstract class ClipperBase {
 		outrec.pts = prevOp;
 //		OutPt result = prevOp;
 
-		Point64 ip = new Point64(); // ip mutated by GetIntersectPoint()
-		InternalClipper.GetIntersectPoint(prevOp.pt, splitOp.pt, splitOp.next.pt, nextNextOp.pt, ip);
+		Point64 ip = new Point64(); // ip mutated by GetSegmentIntersectPt()
+		InternalClipper.GetSegmentIntersectPt(prevOp.pt, splitOp.pt, splitOp.next.pt, nextNextOp.pt, ip);
 
 		double area1 = Area(prevOp);
 		double absArea1 = Math.abs(area1);
@@ -2793,7 +2799,7 @@ abstract class ClipperBase {
 			}
 		}
 
-		if (path.size() == 3 && IsVerySmallTriangle(op2)) {
+		if (path.size() == 3 && !isOpen && IsVerySmallTriangle(op2)) {
 			return false;
 		} else {
 			return true;
@@ -2803,6 +2809,8 @@ abstract class ClipperBase {
 	protected final boolean BuildPaths(Paths64 solutionClosed, Paths64 solutionOpen) {
 		solutionClosed.clear();
 		solutionOpen.clear();
+		solutionClosed.ensureCapacity(outrecList.size());
+		solutionOpen.ensureCapacity(outrecList.size());
 
 		int i = 0;
 		// outrecList.Count is not static here because
@@ -2919,6 +2927,9 @@ abstract class ClipperBase {
 	protected void BuildTree(PolyPathBase polytree, Paths64 solutionOpen) {
 		polytree.Clear();
 		solutionOpen.clear();
+		if (hasOpenPaths) {
+			solutionOpen.ensureCapacity(outrecList.size());
+		}
 
 		int i = 0;
 		// outrecList.Count is not static here because

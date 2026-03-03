@@ -336,7 +336,7 @@ public class RectClip64 {
 			ipRefObject.set(new Point64(0, 0));
 			return false;
 		}
-		return InternalClipper.GetIntersectPoint(p1, p2, p3, p4, ipRefObject);
+		return InternalClipper.GetSegmentIntersectPt(p1, p2, p3, p4, ipRefObject);
 	}
 
 	protected static IntersectionResult getIntersection(Path64 rectPath, Point64 p, Point64 p2, Location loc, Point64 ipRefObject) {

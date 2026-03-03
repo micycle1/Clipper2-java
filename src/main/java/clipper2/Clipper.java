@@ -808,7 +808,7 @@ public final class Clipper {
 				result.bottom = pt.y;
 			}
 		}
-		return result.left == Double.MAX_VALUE ? new RectD() : result;
+		return InternalClipper.IsAlmostZero(result.left - Double.MAX_VALUE) ? new RectD() : result;
 	}
 
 	public static RectD GetBounds(PathsD paths) {
@@ -829,7 +829,7 @@ public final class Clipper {
 				}
 			}
 		}
-		return result.left == Double.MAX_VALUE ? new RectD() : result;
+		return InternalClipper.IsAlmostZero(result.left - Double.MAX_VALUE) ? new RectD() : result;
 	}
 
 	public static Path64 MakePath(int[] arr) {
@@ -861,6 +861,36 @@ public final class Clipper {
 
 	public static double Sqr(double value) {
 		return value * value;
+	}
+
+	public static double Sqr(long value) {
+		return (double) value * (double) value;
+	}
+
+	public static double DistanceSqr(Point64 pt1, Point64 pt2) {
+		return Sqr(pt1.x - pt2.x) + Sqr(pt1.y - pt2.y);
+	}
+
+	public static Point64 MidPoint(Point64 pt1, Point64 pt2) {
+		return new Point64((pt1.x + pt2.x) / 2, (pt1.y + pt2.y) / 2);
+	}
+
+	public static PointD MidPoint(PointD pt1, PointD pt2) {
+		return new PointD((pt1.x + pt2.x) / 2, (pt1.y + pt2.y) / 2);
+	}
+
+	public static void InflateRect(Rect64 rec, int dx, int dy) {
+		rec.left -= dx;
+		rec.right += dx;
+		rec.top -= dy;
+		rec.bottom += dy;
+	}
+
+	public static void InflateRect(RectD rec, double dx, double dy) {
+		rec.left -= dx;
+		rec.right += dx;
+		rec.top -= dy;
+		rec.bottom += dy;
 	}
 
 	public static boolean PointsNearEqual(PointD pt1, PointD pt2, double distanceSqrd) {
@@ -1366,10 +1396,10 @@ public final class Clipper {
 		int len = path.size();
 		int i = 0;
 		if (!isOpen) {
-			while (i < len - 1 && InternalClipper.CrossProduct(path.get(len - 1), path.get(i), path.get(i + 1)) == 0) {
+			while (i < len - 1 && InternalClipper.IsCollinear(path.get(len - 1), path.get(i), path.get(i + 1))) {
 				i++;
 			}
-			while (i < len - 1 && InternalClipper.CrossProduct(path.get(len - 2), path.get(len - 1), path.get(i)) == 0) {
+			while (i < len - 1 && InternalClipper.IsCollinear(path.get(len - 2), path.get(len - 1), path.get(i))) {
 				len--;
 			}
 		}
@@ -1385,7 +1415,7 @@ public final class Clipper {
 		Point64 last = path.get(i);
 		result.add(last);
 		for (i++; i < len - 1; i++) {
-			if (InternalClipper.CrossProduct(last, path.get(i), path.get(i + 1)) == 0) {
+			if (InternalClipper.IsCollinear(last, path.get(i), path.get(i + 1))) {
 				continue;
 			}
 			last = path.get(i);
@@ -1394,10 +1424,10 @@ public final class Clipper {
 
 		if (isOpen) {
 			result.add(path.get(len - 1));
-		} else if (InternalClipper.CrossProduct(last, path.get(len - 1), result.get(0)) != 0) {
+		} else if (!InternalClipper.IsCollinear(last, path.get(len - 1), result.get(0))) {
 			result.add(path.get(len - 1));
 		} else {
-			while (result.size() > 2 && InternalClipper.CrossProduct(result.get(result.size() - 1), result.get(result.size() - 2), result.get(0)) == 0) {
+			while (result.size() > 2 && InternalClipper.IsCollinear(result.get(result.size() - 1), result.get(result.size() - 2), result.get(0))) {
 				result.remove(result.size() - 1);
 			}
 			if (result.size() < 3) {

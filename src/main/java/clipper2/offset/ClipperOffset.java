@@ -1,8 +1,5 @@
 package clipper2.offset;
 
-import static clipper2.core.InternalClipper.MAX_COORD;
-import static clipper2.core.InternalClipper.MIN_COORD;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -69,12 +66,12 @@ import clipper2.engine.PolyTree64;
 public class ClipperOffset {
 
 	private static double TOLERANCE = 1.0E-12;
-	private static final String COORD_RANGE_ERROR = "Error: Coordinate range.";
 
 	private final List<Group> groupList = new ArrayList<>();
 	private Path64 pathOut = new Path64();
 	private final PathD normals = new PathD();
-	private final Paths64 solution = new Paths64();
+	private Paths64 solution = new Paths64();
+	private PolyTree64 solutionTree;
 	private double groupDelta; // *0.5 for open paths; *-1.0 for negative areas
 	private double delta;
 	private double mitLimSqr;
@@ -205,7 +202,6 @@ public class ClipperOffset {
 	}
 
 	private void ExecuteInternal(double delta) {
-		solution.clear();
 		if (groupList.isEmpty()) {
 			return;
 		}
@@ -226,6 +222,24 @@ public class ClipperOffset {
 		for (Group group : groupList) {
 			DoGroupOffset(group);
 		}
+		if (groupList.isEmpty()) {
+			return;
+		}
+
+		boolean pathsReversed = CheckPathsReversed();
+		FillRule fillRule = pathsReversed ? FillRule.Negative : FillRule.Positive;
+
+		// clean up self-intersections ...
+		Clipper64 c = new Clipper64();
+		c.setPreserveCollinear(preserveCollinear);
+		// the solution should retain the orientation of the input
+		c.setReverseSolution(reverseSolution != pathsReversed);
+		c.AddSubject(this.solution);
+		if (solutionTree != null) {
+			c.Execute(ClipType.Union, fillRule, solutionTree);
+		} else {
+			c.Execute(ClipType.Union, fillRule, this.solution);
+		}
 	}
 
 	boolean CheckPathsReversed() {
@@ -242,21 +256,9 @@ public class ClipperOffset {
 
 	public final void Execute(double delta, Paths64 solution) {
 		solution.clear();
+		solutionTree = null;
+		this.solution = solution;
 		ExecuteInternal(delta);
-		if (groupList.isEmpty()) {
-			return;
-		}
-
-		boolean pathsReversed = CheckPathsReversed();
-		FillRule fillRule = pathsReversed ? FillRule.Negative : FillRule.Positive;
-
-		// clean up self-intersections ...
-		Clipper64 c = new Clipper64();
-		c.setPreserveCollinear(preserveCollinear);
-		// the solution should retain the orientation of the input
-		c.setReverseSolution(reverseSolution != pathsReversed);
-		c.AddSubject(this.solution);
-		c.Execute(ClipType.Union, fillRule, solution);
 	}
 
 	public void Execute(DeltaCallback64 deltaCallback64, Paths64 solution) {
@@ -266,20 +268,9 @@ public class ClipperOffset {
 
 	public void Execute(double delta, PolyTree64 solutionTree) {
 		solutionTree.Clear();
+		this.solutionTree = solutionTree;
+		solution.clear();
 		ExecuteInternal(delta);
-		if (groupList.isEmpty()) {
-			return;
-		}
-
-		boolean pathsReversed = CheckPathsReversed();
-		FillRule fillRule = pathsReversed ? FillRule.Negative : FillRule.Positive;
-		// clean up self-intersections ...
-		Clipper64 c = new Clipper64();
-		c.setPreserveCollinear(preserveCollinear);
-		// the solution should normally retain the orientation of the input
-		c.setReverseSolution(reverseSolution != pathsReversed);
-		c.AddSubject(this.solution);
-		c.Execute(ClipType.Union, fillRule, solutionTree);
 	}
 
 	public final double getArcTolerance() {
@@ -459,7 +450,7 @@ public class ClipperOffset {
 		}
 	}
 
-	private void DoMiter(Group group, Path64 path, int j, int k, double cosA) {
+	private void DoMiter(Path64 path, int j, int k, double cosA) {
 		final double q = groupDelta / (cosA + 1);
 		pathOut.add(new Point64(path.get(j).x + (normals.get(k).x + normals.get(j).x) * q, path.get(j).y + (normals.get(k).y + normals.get(j).y) * q));
 	}
@@ -497,6 +488,10 @@ public class ClipperOffset {
 	private void BuildNormals(Path64 path) {
 		int cnt = path.size();
 		normals.clear();
+		if (cnt == 0) {
+			return;
+		}
+		normals.ensureCapacity(cnt);
 
 		for (int i = 0; i < cnt - 1; i++) {
 			normals.add(GetUnitNormal(path.get(i), path.get(i + 1)));
@@ -505,6 +500,10 @@ public class ClipperOffset {
 	}
 
 	private int OffsetPoint(Group group, Path64 path, int j, int k) {
+		if (path.get(j).equals(path.get(k))) {
+			return j;
+		}
+
 		// Let A = change in angle where edges join
 		// A == 0: ie no change in angle (flat join)
 		// A == PI: edges 'spike'
@@ -529,20 +528,23 @@ public class ClipperOffset {
 			return j;
 		}
 
-		if (cosA > -0.99 && (sinA * groupDelta < 0)) { // test for concavity first (#593)
+		if (cosA > -0.999 && (sinA * groupDelta < 0)) { // test for concavity first (#593)
 			// is concave
 			pathOut.add(GetPerpendic(path.get(j), normals.get(k)));
-			// this extra point is the only (simple) way to ensure that
-			// path reversals are fully cleaned with the trailing clipper
-			pathOut.add(path.get(j)); // (#405)
+			// this extra point is the only simple way to ensure that path reversals
+			// (ie over-shrunk paths) are fully cleaned out with the trailing union op.
+			// However it's probably safe to skip this whenever an angle is almost flat.
+			if (cosA < 0.99) {
+				pathOut.add(path.get(j)); // (#405)
+			}
 			pathOut.add(GetPerpendic(path.get(j), normals.get(j)));
 		} else if (cosA > 0.999 && joinType != JoinType.Round) {
 			// almost straight - less than 2.5 degree (#424, #482, #526 & #724)
-			DoMiter(group, path, j, k, cosA);
+			DoMiter(path, j, k, cosA);
 		} else if (joinType == JoinType.Miter) {
 			// miter unless the angle is sufficiently acute to exceed ML
 			if (cosA > mitLimSqr - 1) {
-				DoMiter(group, path, j, k, cosA);
+				DoMiter(path, j, k, cosA);
 			} else {
 				DoSquare(path, j, k);
 			}
@@ -649,18 +651,12 @@ public class ClipperOffset {
 		}
 
 		// offset the left side going back
-		k = highI; // Initialize k to the last point index
+		k = highI;
 		for (int i = highI - 1; i > 0; i--) {
 			k = OffsetPoint(group, path, i, k);
 		}
-		// Add the final point on the reversed side
-		pathOut.add(GetPerpendic(path.get(0), normals.get(1)));
 
 		solution.add(pathOut);
-	}
-
-	private static boolean ToggleBoolIf(boolean val, boolean condition) {
-		return condition ? !val : val;
 	}
 
 	private void DoGroupOffset(Group group) {
@@ -676,19 +672,16 @@ public class ClipperOffset {
 		}
 
 		double absDelta = Math.abs(groupDelta);
-		if (!ValidateBounds(group.boundsList, absDelta)) {
-			throw new RuntimeException(COORD_RANGE_ERROR);
-		}
 
 		joinType = group.joinType;
 		endType = group.endType;
 
 		if (group.joinType == JoinType.Round || group.endType == EndType.Round) {
-			// calculate a sensible number of steps (for 360 deg for the given offset
-			// arcTol - when fArcTolerance is undefined (0), the amount of
-			// curve imprecision that's allowed is based on the size of the
-			// offset (delta). Obviously very large offsets will almost always
-			// require much less precision.
+			// calculate the number of steps required to approximate a circle
+			// (see http://www.angusj.com/clipper2/Docs/Trigonometry.htm)
+			// arcTol - when arcTolerance is undefined (0) then curve imprecision
+			// will be relative to the size of the offset (delta). Obviously very
+			// large offsets will almost always require much less precision.
 			double arcTol = arcTolerance > 0.01 ? arcTolerance : Math.log10(2 + absDelta) * InternalClipper.DEFAULT_ARC_TOLERANCE;
 			double stepsPer360 = Math.PI / Math.acos(1 - arcTol / absDelta);
 			stepSin = Math.sin((2 * Math.PI) / stepsPer360);
@@ -699,14 +692,7 @@ public class ClipperOffset {
 			stepsPerRad = stepsPer360 / (2 * Math.PI);
 		}
 
-		int i = 0;
 		for (Path64 p : group.inPaths) {
-			// NOTE use int i rather than 3 iterators
-			Rect64 pathBounds = group.boundsList.get(i);
-			boolean isHole = group.isHoleList.get(i++);
-			if (!pathBounds.IsValid()) {
-				continue;
-			}
 			int cnt = p.size();
 			if ((cnt == 0) || ((cnt < 3) && (endType == EndType.Polygon))) {
 				continue;
@@ -715,6 +701,13 @@ public class ClipperOffset {
 			pathOut = new Path64();
 			if (cnt == 1) {
 				Point64 pt = p.get(0);
+				if (deltaCallback != null) {
+					groupDelta = deltaCallback.calculate(p, normals, 0, 0);
+					if (group.pathsReversed) {
+						groupDelta = -groupDelta;
+					}
+					absDelta = Math.abs(groupDelta);
+				}
 
 				// single vertex so build a circle or square ...
 				if (group.endType == EndType.Round) {
@@ -730,11 +723,6 @@ public class ClipperOffset {
 				continue;
 			} // end of offsetting a single point
 
-			// when shrinking outer paths, make sure they can shrink this far (#593)
-			// also when shrinking holes, make sure they too can shrink this far (#715)
-			if (((groupDelta > 0) == ToggleBoolIf(isHole, group.pathsReversed)) && (Math.min(pathBounds.getWidth(), pathBounds.getHeight()) <= -groupDelta * 2))
-				continue;
-
 			if (cnt == 2 && group.endType == EndType.Joined) {
 				endType = (group.joinType == JoinType.Round) ? EndType.Round : EndType.Square;
 			}
@@ -748,18 +736,6 @@ public class ClipperOffset {
 				OffsetOpenPath(group, p);
 			}
 		}
-	}
-
-	private static boolean ValidateBounds(List<Rect64> boundsList, double delta) {
-		int intDelta = (int) delta;
-		for (Rect64 r : boundsList) {
-			if (!r.IsValid()) {
-				continue; // ignore invalid paths
-			} else if (r.left < MIN_COORD + intDelta || r.right > MAX_COORD + intDelta || r.top < MIN_COORD + intDelta || r.bottom > MAX_COORD + intDelta) {
-				return false;
-			}
-		}
-		return true;
 	}
 
 }

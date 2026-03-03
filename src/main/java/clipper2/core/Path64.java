@@ -36,7 +36,10 @@ public class Path64 extends ArrayList<Point64> {
 	public String toString() {
 		StringBuilder s = new StringBuilder();
 		for (Point64 p : this) {
-			s.append(p.toString()).append(" ");
+			s.append(p.toString()).append(", ");
+		}
+		if (!s.isEmpty()) {
+			s.setLength(s.length() - 2);
 		}
 		return s.toString();
 	}
