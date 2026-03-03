@@ -91,6 +91,17 @@ public final class Rect64 {
 		return rec.left >= left && rec.right <= right && rec.top >= top && rec.bottom <= bottom;
 	}
 
+	public static Rect64 opAdd(Rect64 lhs, Rect64 rhs) {
+		if (!lhs.IsValid()) {
+			return rhs.clone();
+		}
+		if (!rhs.IsValid()) {
+			return lhs.clone();
+		}
+		return new Rect64(Math.min(lhs.left, rhs.left), Math.min(lhs.top, rhs.top), Math.max(lhs.right, rhs.right),
+				Math.max(lhs.bottom, rhs.bottom));
+	}
+
 	@Override
 	public Rect64 clone() {
 		Rect64 varCopy = new Rect64();

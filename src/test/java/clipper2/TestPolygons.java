@@ -1,16 +1,20 @@
 package clipper2;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.stream.Stream;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import clipper2.ClipperFileIO.TestCase;
+import clipper2.core.ClipType;
+import clipper2.core.FillRule;
 import clipper2.core.Paths64;
 import clipper2.engine.Clipper64;
 
@@ -74,5 +78,20 @@ class TestPolygons {
 			}
 		}
 
+	}
+
+	@Test
+	void TestCollinearOnMacOs() { // #777
+		Paths64 subject = new Paths64();
+		subject.add(Clipper.MakePath(new long[] { 0, -453054451, 0, -433253797, -455550000, 0 }));
+		subject.add(Clipper.MakePath(new long[] { 0, -433253797, 0, 0, -455550000, 0 }));
+		Clipper64 clipper = new Clipper64();
+		clipper.setPreserveCollinear(false);
+		clipper.AddSubject(subject);
+		Paths64 solution = new Paths64();
+		clipper.Execute(ClipType.Union, FillRule.NonZero, solution);
+		assertEquals(1, solution.size());
+		assertEquals(3, solution.get(0).size());
+		assertEquals(Clipper.IsPositive(subject.get(0)), Clipper.IsPositive(solution.get(0)));
 	}
 }
