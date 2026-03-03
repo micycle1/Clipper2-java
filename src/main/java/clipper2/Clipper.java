@@ -226,7 +226,7 @@ public final class Clipper {
 	 * @see #InflatePaths(PathsD, double, JoinType, EndType, double, double, int)
 	 */
 	public static Paths64 InflatePaths(Paths64 paths, double delta, JoinType joinType, EndType endType) {
-		return InflatePaths(paths, delta, joinType, endType, 2.0, 0.25);
+		return InflatePaths(paths, delta, joinType, endType, 2.0, 0.0);
 	}
 
 	/**
@@ -244,14 +244,14 @@ public final class Clipper {
 	 * @see #InflatePaths(PathsD, double, JoinType, EndType, double, double, int)
 	 */
 	public static PathsD InflatePaths(PathsD paths, double delta, JoinType joinType, EndType endType, double miterLimit) {
-		return InflatePaths(paths, delta, joinType, endType, miterLimit, 0.25, 8);
+		return InflatePaths(paths, delta, joinType, endType, miterLimit, 0.0, 8);
 	}
 
 	/**
 	 * @see #InflatePaths(PathsD, double, JoinType, EndType, double, double, int)
 	 */
 	public static PathsD InflatePaths(PathsD paths, double delta, JoinType joinType, EndType endType) {
-		return InflatePaths(paths, delta, joinType, endType, 2.0, 0.25, 8);
+		return InflatePaths(paths, delta, joinType, endType, 2.0, 0.0, 8);
 	}
 
 	/**
@@ -992,29 +992,33 @@ public final class Clipper {
 	}
 
 	public static void RDP(Path64 path, int begin, int end, double epsSqrd, List<Boolean> flags) {
-		int idx = 0;
-		double maxD = 0;
-		while (end > begin && path.get(begin).equals(path.get(end))) {
-			flags.set(end--, false);
-		}
-		for (int i = begin + 1; i < end; ++i) {
-			// PerpendicDistFromLineSqrd - avoids expensive Sqrt()
-			double d = PerpendicDistFromLineSqrd(path.get(i), path.get(begin), path.get(end));
-			if (d <= maxD) {
+		while (true) {
+			int idx = 0;
+			double maxD = 0;
+			while (end > begin && path.get(begin).equals(path.get(end))) {
+				flags.set(end--, false);
+			}
+			for (int i = begin + 1; i < end; ++i) {
+				// PerpendicDistFromLineSqrd - avoids expensive Sqrt()
+				double d = PerpendicDistFromLineSqrd(path.get(i), path.get(begin), path.get(end));
+				if (d <= maxD) {
+					continue;
+				}
+				maxD = d;
+				idx = i;
+			}
+			if (maxD <= epsSqrd) {
+				return;
+			}
+			flags.set(idx, true);
+			if (idx > begin + 1) {
+				RDP(path, begin, idx, epsSqrd, flags);
+			}
+			if (idx < end - 1) {
+				begin = idx;
 				continue;
 			}
-			maxD = d;
-			idx = i;
-		}
-		if (maxD <= epsSqrd) {
-			return;
-		}
-		flags.set(idx, true);
-		if (idx > begin + 1) {
-			RDP(path, begin, idx, epsSqrd, flags);
-		}
-		if (idx < end - 1) {
-			RDP(path, idx, end, epsSqrd, flags);
+			break;
 		}
 	}
 
@@ -1081,29 +1085,33 @@ public final class Clipper {
 	}
 
 	public static void RDP(PathD path, int begin, int end, double epsSqrd, List<Boolean> flags) {
-		int idx = 0;
-		double maxD = 0;
-		while (end > begin && path.get(begin).equals(path.get(end))) {
-			flags.set(end--, false);
-		}
-		for (int i = begin + 1; i < end; ++i) {
-			// PerpendicDistFromLineSqrd - avoids expensive Sqrt()
-			double d = PerpendicDistFromLineSqrd(path.get(i), path.get(begin), path.get(end));
-			if (d <= maxD) {
+		while (true) {
+			int idx = 0;
+			double maxD = 0;
+			while (end > begin && path.get(begin).equals(path.get(end))) {
+				flags.set(end--, false);
+			}
+			for (int i = begin + 1; i < end; ++i) {
+				// PerpendicDistFromLineSqrd - avoids expensive Sqrt()
+				double d = PerpendicDistFromLineSqrd(path.get(i), path.get(begin), path.get(end));
+				if (d <= maxD) {
+					continue;
+				}
+				maxD = d;
+				idx = i;
+			}
+			if (maxD <= epsSqrd) {
+				return;
+			}
+			flags.set(idx, true);
+			if (idx > begin + 1) {
+				RDP(path, begin, idx, epsSqrd, flags);
+			}
+			if (idx < end - 1) {
+				begin = idx;
 				continue;
 			}
-			maxD = d;
-			idx = i;
-		}
-		if (maxD <= epsSqrd) {
-			return;
-		}
-		flags.set(idx, true);
-		if (idx > begin + 1) {
-			RDP(path, begin, idx, epsSqrd, flags);
-		}
-		if (idx < end - 1) {
-			RDP(path, idx, end, epsSqrd, flags);
+			break;
 		}
 	}
 

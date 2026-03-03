@@ -30,7 +30,7 @@ package clipper2.core;
  */
 public enum ClipType {
 
-	None,
+	NoClip,
 	/** Preserves regions covered by both subject and clip polygons */
 	Intersection,
 	/** Preserves regions covered by subject or clip polygons, or both polygons */

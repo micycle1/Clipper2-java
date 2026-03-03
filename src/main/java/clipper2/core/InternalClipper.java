@@ -8,7 +8,6 @@ public final class InternalClipper {
 	public static final double MIN_COORD = -MAX_COORD;
 	private static final long Invalid64 = Long.MAX_VALUE;
 
-	public static final double DEFAULT_ARC_TOLERANCE = 0.25;
 	private static final double FLOATING_POINT_TOLERANCE = 1E-12;
 //	private static final double DEFAULT_MIN_EDGE_LENGTH = 0.1;
 
@@ -297,7 +296,10 @@ public final class InternalClipper {
 	}
 
 	private static int triSign(long x) {
-		return x > 0 ? 1 : (x < 0 ? -1 : 0);
+		if (x < 0) {
+			return -1;
+		}
+		return x > 1 ? 1 : 0;
 	}
 
 }

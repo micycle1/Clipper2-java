@@ -16,6 +16,7 @@ import clipper2.core.PathsD;
  */
 public class ClipperD extends ClipperBase {
 
+	private static final String PRECISION_RANGE_ERROR = "Error: Precision is out of range.";
 	private double scale;
 	private double invScale;
 
@@ -28,7 +29,7 @@ public class ClipperD extends ClipperBase {
 	 */
 	public ClipperD(int roundingDecimalPrecision) {
 		if (roundingDecimalPrecision < -8 || roundingDecimalPrecision > 8) {
-			throw new IllegalArgumentException("Error - RoundingDecimalPrecision exceeds the allowed range.");
+			throw new IllegalArgumentException(PRECISION_RANGE_ERROR);
 		}
 		scale = Math.pow(10, roundingDecimalPrecision);
 		invScale = 1 / scale;
@@ -124,13 +125,13 @@ public class ClipperD extends ClipperBase {
 		if (!success) {
 			return false;
 		}
-		if (!oPaths.isEmpty()) {
-			openPaths.ensureCapacity(oPaths.size());
-			for (Path64 path : oPaths) {
-				openPaths.add(Clipper.ScalePathD(path, invScale));
-			}
+		if (oPaths.isEmpty()) {
+			return true;
 		}
-
+		openPaths.ensureCapacity(oPaths.size());
+		for (Path64 path : oPaths) {
+			openPaths.add(Clipper.ScalePathD(path, invScale));
+		}
 		return true;
 	}
 

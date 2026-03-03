@@ -65,7 +65,8 @@ import clipper2.engine.PolyTree64;
  */
 public class ClipperOffset {
 
-	private static double TOLERANCE = 1.0E-12;
+	private static final double TOLERANCE = 1.0E-12;
+	private static final double ARC_CONST = 0.002;
 
 	private final List<Group> groupList = new ArrayList<>();
 	private Path64 pathOut = new Path64();
@@ -105,7 +106,7 @@ public class ClipperOffset {
 	 * @see #ClipperOffset(double, double, boolean, boolean)
 	 */
 	public ClipperOffset(double miterLimit) {
-		this(miterLimit, 0.25, false, false);
+		this(miterLimit, 0.0, false, false);
 	}
 
 	/**
@@ -114,7 +115,7 @@ public class ClipperOffset {
 	 * @see #ClipperOffset(double, double, boolean, boolean)
 	 */
 	public ClipperOffset() {
-		this(2.0, 0.25, false, false);
+		this(2.0, 0.0, false, false);
 	}
 
 	/**
@@ -151,7 +152,8 @@ public class ClipperOffset {
 	 *                          {{@link #AddPath(Path64, JoinType, EndType)
 	 *                          AddPath()} and
 	 *                          {@link #AddPaths(Paths64, JoinType, EndType)
-	 *                          AddPaths()}. The default arcTolerance is 0.25.
+	 *                          AddPaths()}. The default arcTolerance is 0.0, which
+	 *                          enables automatic scaling (offset radius / 500).
 	 * @param preserveCollinear When adjacent edges are collinear in closed path
 	 *                          solutions, the common vertex can safely be removed
 	 *                          to simplify the solution without altering path
@@ -460,7 +462,7 @@ public class ClipperOffset {
 			// when deltaCallback is assigned, groupDelta won't be constant,
 			// so we'll need to do the following calculations for *every* vertex.
 			double absDelta = Math.abs(groupDelta);
-			double arcTol = arcTolerance > 0.01 ? arcTolerance : Math.log10(2 + absDelta) * InternalClipper.DEFAULT_ARC_TOLERANCE;
+			double arcTol = arcTolerance > 0.01 ? arcTolerance : absDelta * ARC_CONST;
 			double stepsPer360 = Math.PI / Math.acos(1 - arcTol / absDelta);
 			stepSin = Math.sin((2 * Math.PI) / stepsPer360);
 			stepCos = Math.cos((2 * Math.PI) / stepsPer360);
@@ -530,13 +532,10 @@ public class ClipperOffset {
 
 		if (cosA > -0.999 && (sinA * groupDelta < 0)) { // test for concavity first (#593)
 			// is concave
+			// Insert 3 points so concave joins create regions that the trailing union
+			// operation can cleanly remove, including over-shrunk path reversals.
 			pathOut.add(GetPerpendic(path.get(j), normals.get(k)));
-			// this extra point is the only simple way to ensure that path reversals
-			// (ie over-shrunk paths) are fully cleaned out with the trailing union op.
-			// However it's probably safe to skip this whenever an angle is almost flat.
-			if (cosA < 0.99) {
-				pathOut.add(path.get(j)); // (#405)
-			}
+			pathOut.add(path.get(j)); // (#405, #873, #916)
 			pathOut.add(GetPerpendic(path.get(j), normals.get(j)));
 		} else if (cosA > 0.999 && joinType != JoinType.Round) {
 			// almost straight - less than 2.5 degree (#424, #482, #526 & #724)
@@ -682,7 +681,7 @@ public class ClipperOffset {
 			// arcTol - when arcTolerance is undefined (0) then curve imprecision
 			// will be relative to the size of the offset (delta). Obviously very
 			// large offsets will almost always require much less precision.
-			double arcTol = arcTolerance > 0.01 ? arcTolerance : Math.log10(2 + absDelta) * InternalClipper.DEFAULT_ARC_TOLERANCE;
+			double arcTol = arcTolerance > 0.01 ? arcTolerance : absDelta * ARC_CONST;
 			double stepsPer360 = Math.PI / Math.acos(1 - arcTol / absDelta);
 			stepSin = Math.sin((2 * Math.PI) / stepsPer360);
 			stepCos = Math.cos((2 * Math.PI) / stepsPer360);
