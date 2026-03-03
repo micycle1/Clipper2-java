@@ -22,4 +22,3 @@ class TestCollinear {
 		assertEquals(3, trimmed.size());
 	}
 }
-
