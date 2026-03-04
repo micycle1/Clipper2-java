@@ -271,6 +271,25 @@ class TestOffsets {
 		assertTrue(solution.isEmpty());
 	}
 
+	@Test
+	void TestOffsets13() { // see #965
+		Path64 subject1 = new Path64(List.of(new Point64(0, 0), new Point64(0, 10), new Point64(10, 0)));
+		double delta = 2;
+
+		Paths64 subjects1 = new Paths64();
+		subjects1.add(subject1);
+		Paths64 solution1 = Clipper.InflatePaths(subjects1, delta, JoinType.Miter, EndType.Polygon);
+		long area1 = Math.round(Math.abs(Clipper.Area(solution1)));
+		assertEquals(122L, area1);
+
+		Paths64 subjects2 = new Paths64();
+		subjects2.add(subject1);
+		subjects2.add(new Path64(List.of(new Point64(0, 20)))); // single-point path should not change output
+		Paths64 solution2 = Clipper.InflatePaths(subjects2, delta, JoinType.Miter, EndType.Polygon);
+		long area2 = Math.round(Math.abs(Clipper.Area(solution2)));
+		assertEquals(122L, area2);
+	}
+
 	private static Point64 midPoint(Point64 p1, Point64 p2) {
 		Point64 result = new Point64();
 		result.setX((p1.x + p2.x) / 2);

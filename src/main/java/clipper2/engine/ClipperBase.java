@@ -1561,7 +1561,7 @@ abstract class ClipperBase {
 				resultOp = AddLocalMaxPoly(ae1, ae2, pt);
 			} else if (IsFront(ae1) || (ae1.outrec == ae2.outrec)) {
 				// this 'else if' condition isn't strictly needed but
-				// it's sensible to split polygons that ony touch at
+				// it's sensible to split polygons that only touch at
 				// a common vertex (not at common edges).
 				resultOp = AddLocalMaxPoly(ae1, ae2, pt);
 				AddLocalMinPoly(ae1, ae2, pt);
@@ -1659,11 +1659,9 @@ abstract class ClipperBase {
 			ae.prevInSEL = ae.prevInAEL;
 			ae.nextInSEL = ae.nextInAEL;
 			ae.jump = ae.nextInSEL;
-			if (ae.joinWith == JoinWith.Left) {
-				ae.curX = ae.prevInAEL.curX; // this also avoids complications
-			} else {
-				ae.curX = TopX(ae, topY);
-			}
+			// it's safe to ignore joined edges here because
+			// if necessary they get split in IntersectEdges()
+			ae.curX = TopX(ae, topY);
 			// NB don't update ae.curr.y yet (see AddNewIntersectNode)
 			ae = ae.nextInAEL;
 		}
@@ -2480,7 +2478,7 @@ abstract class ClipperBase {
 				break;
 			}
 
-			// must have touched or crossed the pt.y horizonal
+			// must have touched or crossed the pt.y horizontal
 			// and this must happen an even number of times
 
 			if (op2.pt.y == pt.y) // touching the horizontal
@@ -2532,25 +2530,29 @@ abstract class ClipperBase {
 	private static boolean Path1InsidePath2(OutPt op1, OutPt op2) {
 		// we need to make some accommodation for rounding errors
 		// so we won't jump if the first vertex is found outside
-		PointInPolygonResult result;
-		int outsideCnt = 0;
+		PointInPolygonResult pip = PointInPolygonResult.IsOn;
 		OutPt op = op1;
 		do {
-			result = PointInOpPolygon(op.pt, op2);
-			if (result == PointInPolygonResult.IsOutside) {
-				++outsideCnt;
-			} else if (result == PointInPolygonResult.IsInside) {
-				--outsideCnt;
+			switch (PointInOpPolygon(op.pt, op2)) {
+			case IsOutside:
+				if (pip == PointInPolygonResult.IsOutside) {
+					return false;
+				}
+				pip = PointInPolygonResult.IsOutside;
+				break;
+			case IsInside:
+				if (pip == PointInPolygonResult.IsInside) {
+					return true;
+				}
+				pip = PointInPolygonResult.IsInside;
+				break;
+			default:
+				break;
 			}
 			op = op.next;
-		} while (op != op1 && Math.abs(outsideCnt) < 2);
-		if (Math.abs(outsideCnt) > 1) {
-			return (outsideCnt < 0);
-		}
-		// since path1's location is still equivocal, check its midpoint
-		Point64 mp = GetBounds(GetCleanPath(op1)).MidPoint();
-		Path64 path2 = GetCleanPath(op2);
-		return InternalClipper.PointInPolygon(mp, path2) != PointInPolygonResult.IsOutside;
+		} while (op != op1);
+		// result is unclear, so try again using cleaned paths
+		return InternalClipper.Path2ContainsPath1(GetCleanPath(op1), GetCleanPath(op2)); // #973
 	}
 
 	private void MoveSplits(OutRec fromOr, OutRec toOr) {
@@ -2771,9 +2773,8 @@ abstract class ClipperBase {
 				}
 				op2 = outrec.pts;
 				continue;
-			} else {
-				op2 = op2.next;
 			}
+			op2 = op2.next;
 			if (op2 == outrec.pts) {
 				break;
 			}
@@ -2849,28 +2850,6 @@ abstract class ClipperBase {
 		return true;
 	}
 
-	public static Rect64 GetBounds(Path64 path) {
-		if (path.isEmpty()) {
-			return new Rect64();
-		}
-		Rect64 result = Clipper.InvalidRect64.clone();
-		for (Point64 pt : path) {
-			if (pt.x < result.left) {
-				result.left = pt.x;
-			}
-			if (pt.x > result.right) {
-				result.right = pt.x;
-			}
-			if (pt.y < result.top) {
-				result.top = pt.y;
-			}
-			if (pt.y > result.bottom) {
-				result.bottom = pt.y;
-			}
-		}
-		return result;
-	}
-
 	private boolean CheckBounds(OutRec outrec) {
 		if (outrec.pts == null) {
 			return false;
@@ -2882,16 +2861,17 @@ abstract class ClipperBase {
 		if (outrec.pts == null || !BuildPath(outrec.pts, getReverseSolution(), false, outrec.path)) {
 			return false;
 		}
-		outrec.bounds = GetBounds(outrec.path);
+		outrec.bounds = InternalClipper.GetBounds(outrec.path);
 		return true;
 	}
 
 	private boolean CheckSplitOwner(OutRec outrec, List<Integer> splits) {
-		if (outrec.owner == null || outrec.owner.splits == null) {
-			return false;
-		}
 		for (int i : splits) {
-			OutRec split = GetRealOutRec(outrecList.get(i));
+			OutRec split = outrecList.get(i);
+			if (split.pts == null && split.splits != null && CheckSplitOwner(outrec, split.splits)) {
+				return true; // #942
+			}
+			split = GetRealOutRec(split);
 			if (split == null || split == outrec || split.recursiveSplit == outrec) {
 				continue;
 			}
@@ -2899,10 +2879,15 @@ abstract class ClipperBase {
 			if (split.splits != null && CheckSplitOwner(outrec, split.splits)) {
 				return true;
 			}
-			if (IsValidOwner(outrec, split) && CheckBounds(split) && split.bounds.Contains(outrec.bounds) && Path1InsidePath2(outrec.pts, split.pts)) {
-				outrec.owner = split; // found in split
-				return true;
+			if (!CheckBounds(split) || !split.bounds.Contains(outrec.bounds) || !Path1InsidePath2(outrec.pts, split.pts)) {
+				continue;
 			}
+			if (!IsValidOwner(outrec, split)) {
+				// split is owned by outrec (#957)
+				split.owner = outrec.owner;
+			}
+			outrec.owner = split; // found in split
+			return true;
 		}
 		return false;
 	}

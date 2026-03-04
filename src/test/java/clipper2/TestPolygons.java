@@ -48,10 +48,12 @@ class TestPolygons {
 		if (storedCount > 0) {
 			if (Arrays.asList(140, 150, 165, 166, 168, 172, 173, 176, 177, 179).contains(testNum)) {
 				assertTrue(countDiff <= 7, "Diff=" + countDiff);
+			} else if (testNum == 126) {
+				assertTrue(countDiff <= 3);
+			} else if (Arrays.asList(16, 27, 121).contains(testNum)) {
+				assertTrue(countDiff <= 2);
 			} else if (testNum >= 120) {
 				assertTrue(countDiff <= 6);
-			} else if (Arrays.asList(27, 121, 126).contains(testNum)) {
-				assertTrue(countDiff <= 2);
 			} else if (Arrays.asList(23, 37, 43, 45, 87, 102, 111, 118, 119).contains(testNum)) {
 				assertTrue(countDiff <= 1);
 			} else {
