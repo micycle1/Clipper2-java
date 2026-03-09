@@ -45,6 +45,13 @@ solution.get(0).forEach(p -> System.out.println(p.toString()));
 
 *Clipper2-java* is available as a Maven/Gradle artifact via [Jitpack](https://jitpack.io/#micycle1/Clipper2-java).
 
+### Java version and modules
+
+The library targets **Java 8** bytecode. For Java 9+ consumers, the published JAR also exposes the stable module name **`clipper2`**:
+
+- via `module-info.class` in the multi-release `META-INF/versions/9` section for full JPMS support
+- via the `Automatic-Module-Name` manifest entry as a lightweight fallback for tooling that only inspects the manifest
+
 ## Benchmark
 _lightbringer's_ Java [port](https://github.com/lightbringer/clipper-java) of Clipper1 is benchmarked against this project in the benchmarks. *Clipper2-java* is faster, which becomes more pronounced input size grows.
 ```
