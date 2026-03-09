@@ -70,8 +70,8 @@ public class RectClip64 {
 	public RectClip64(Rect64 rect) {
 		currIdx_ = -1;
 		rect_ = rect;
-		mp_ = rect.MidPoint();
-		rectPath_ = rect.AsPath();
+		mp_ = rect.midPoint();
+		rectPath_ = rect.asPath();
 		results_ = new ArrayList<>();
 		edges_ = new ArrayList[8];
 		for (int i = 0; i < 8; i++) {
@@ -112,7 +112,7 @@ public class RectClip64 {
 	private static boolean path1ContainsPath2(Path64 p1, Path64 p2) {
 		int io = 0;
 		for (Point64 pt : p2) {
-			PointInPolygonResult pip = InternalClipper.PointInPolygon(pt, p1);
+			PointInPolygonResult pip = InternalClipper.pointInPolygon(pt, p1);
 			switch (pip) {
 				case IsInside :
 					io--;
@@ -130,7 +130,7 @@ public class RectClip64 {
 
 	private static boolean isClockwise(Location prev, Location curr, Point64 p1, Point64 p2, Point64 mid) {
 		if (areOpposites(prev, curr)) {
-			return InternalClipper.CrossProductSign(p1, mid, p2) < 0;
+			return InternalClipper.crossProductSign(p1, mid, p2) < 0;
 		}
 		return headingClockwise(prev, curr);
 	}
@@ -281,8 +281,8 @@ public class RectClip64 {
 	}
 
 	private static boolean getSegmentIntersection(Point64 p1, Point64 p2, Point64 p3, Point64 p4, Point64 ipRefObject) {
-		int r1 = InternalClipper.CrossProductSign(p1, p3, p4);
-		int r2 = InternalClipper.CrossProductSign(p2, p3, p4);
+		int r1 = InternalClipper.crossProductSign(p1, p3, p4);
+		int r2 = InternalClipper.crossProductSign(p2, p3, p4);
 		if (r1 == 0) {
 			ipRefObject.set(p1);
 			if (r2 == 0) {
@@ -310,8 +310,8 @@ public class RectClip64 {
 			ipRefObject.set(new Point64(0, 0));
 			return false;
 		}
-		int r3 = InternalClipper.CrossProductSign(p3, p1, p2);
-		int r4 = InternalClipper.CrossProductSign(p4, p1, p2);
+		int r3 = InternalClipper.crossProductSign(p3, p1, p2);
+		int r4 = InternalClipper.crossProductSign(p4, p1, p2);
 		if (r3 == 0) {
 			ipRefObject.set(p3);
 			if (p3.equals(p1) || p3.equals(p2)) {
@@ -336,7 +336,7 @@ public class RectClip64 {
 			ipRefObject.set(new Point64(0, 0));
 			return false;
 		}
-		return InternalClipper.GetLineIntersectPt(p1, p2, p3, p4, ipRefObject);
+		return InternalClipper.getLineIntersectPt(p1, p2, p3, p4, ipRefObject);
 	}
 
 	protected static IntersectionResult getIntersection(Path64 rectPath, Point64 p, Point64 p2, Location loc, Point64 ipRefObject) {
@@ -518,7 +518,7 @@ public class RectClip64 {
 	}
 
 	protected void executeInternal(Path64 path) {
-		if (path.size() < 3 || rect_.IsEmpty()) {
+		if (path.size() < 3 || rect_.isEmpty()) {
 			return;
 		}
 
@@ -663,7 +663,7 @@ public class RectClip64 {
 		// ––– tail‐end logic (unchanged)
 		if (firstCross == Location.inside) {
 			// never intersected
-			if (startingLoc == Location.inside || !pathBounds_.Contains(rect_) || !path1ContainsPath2(path, rectPath_)) {
+			if (startingLoc == Location.inside || !pathBounds_.contains(rect_) || !path1ContainsPath2(path, rectPath_)) {
 				return;
 			}
 
@@ -691,20 +691,20 @@ public class RectClip64 {
 		}
 	}
 
-	public Paths64 Execute(List<Path64> paths) {
+	public Paths64 execute(List<Path64> paths) {
 		Paths64 res = new Paths64();
-		if (rect_.IsEmpty()) {
+		if (rect_.isEmpty()) {
 			return res;
 		}
 		for (Path64 path : paths) {
 			if (path.size() < 3) {
 				continue;
 			}
-			pathBounds_ = Clipper.GetBounds(path);
-			if (!rect_.Intersects(pathBounds_)) {
+			pathBounds_ = Clipper.getBounds(path);
+			if (!rect_.intersects(pathBounds_)) {
 				continue;
 			}
-			if (rect_.Contains(pathBounds_)) {
+			if (rect_.contains(pathBounds_)) {
 				res.add(path);
 				continue;
 			}
@@ -735,7 +735,7 @@ public class RectClip64 {
 			}
 			OutPt2 o2 = op;
 			do {
-				if (InternalClipper.IsCollinear(o2.prev.pt, o2.pt, o2.next.pt)) {
+				if (InternalClipper.isCollinear(o2.prev.pt, o2.pt, o2.next.pt)) {
 					if (o2 == op) {
 						o2 = unlinkOpBack(o2);
 						if (o2 == null) {
@@ -909,7 +909,7 @@ public class RectClip64 {
 		}
 		OutPt2 start = op.next;
 		while (start != null && start != op) {
-			if (InternalClipper.IsCollinear(start.prev.pt, start.pt, start.next.pt)) {
+			if (InternalClipper.isCollinear(start.prev.pt, start.pt, start.next.pt)) {
 				op = start.prev;
 				start = unlinkOp(start);
 			} else {

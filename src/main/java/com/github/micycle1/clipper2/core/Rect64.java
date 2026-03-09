@@ -58,7 +58,7 @@ public final class Rect64 {
 		bottom = top + value;
 	}
 
-	public Path64 AsPath() {
+	public Path64 asPath() {
 		Path64 result = new Path64(4);
 		result.add(new Point64(left, top));
 		result.add(new Point64(right, top));
@@ -67,35 +67,35 @@ public final class Rect64 {
 		return result;
 	}
 
-	public boolean IsEmpty() {
+	public boolean isEmpty() {
 		return bottom <= top || right <= left;
 	}
 
-	public boolean IsValid() {
+	public boolean isValid() {
 		return left < Long.MAX_VALUE;
 	}
 
-	public Point64 MidPoint() {
+	public Point64 midPoint() {
 		return new Point64((left + right) / 2, (top + bottom) / 2);
 	}
 
-	public boolean Contains(Point64 pt) {
+	public boolean contains(Point64 pt) {
 		return pt.x > left && pt.x < right && pt.y > top && pt.y < bottom;
 	}
 
-	public boolean Intersects(Rect64 rec) {
+	public boolean intersects(Rect64 rec) {
 		return (Math.max(left, rec.left) <= Math.min(right, rec.right)) && (Math.max(top, rec.top) <= Math.min(bottom, rec.bottom));
 	}
 
-	public boolean Contains(Rect64 rec) {
+	public boolean contains(Rect64 rec) {
 		return rec.left >= left && rec.right <= right && rec.top >= top && rec.bottom <= bottom;
 	}
 
 	public static Rect64 opAdd(Rect64 lhs, Rect64 rhs) {
-		if (!lhs.IsValid()) {
+		if (!lhs.isValid()) {
 			return rhs.clone();
 		}
-		if (!rhs.IsValid()) {
+		if (!rhs.isValid()) {
 			return lhs.clone();
 		}
 		return new Rect64(Math.min(lhs.left, rhs.left), Math.min(lhs.top, rhs.top), Math.max(lhs.right, rhs.right),

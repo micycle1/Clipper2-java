@@ -19,10 +19,10 @@ public class PolyPathD extends PolyPathBase {
 	}
 
 	@Override
-	public PolyPathBase AddChild(Path64 p) {
+	public PolyPathBase addChild(Path64 p) {
 		PolyPathD newChild = new PolyPathD(this);
 		newChild.setScale(scale);
-		newChild.setPolygon(Clipper.ScalePathD(p, scale));
+		newChild.setPolygon(Clipper.scalePathD(p, scale));
 		children.add(newChild);
 		return newChild;
 	}
@@ -34,11 +34,11 @@ public class PolyPathD extends PolyPathBase {
 		return (PolyPathD) children.get(index);
 	}
 
-	public final double Area() {
-		double result = getPolygon() == null ? 0 : Clipper.Area(getPolygon());
+	public final double area() {
+		double result = getPolygon() == null ? 0 : Clipper.area(getPolygon());
 		for (PolyPathBase polyPathBase : children) {
 			PolyPathD child = (PolyPathD) polyPathBase;
-			result += child.Area();
+			result += child.area();
 		}
 		return result;
 	}

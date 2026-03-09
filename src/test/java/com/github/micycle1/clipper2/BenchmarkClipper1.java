@@ -58,7 +58,7 @@ public class BenchmarkClipper1 {
 
 	@Benchmark
 	@OutputTimeUnit(TimeUnit.SECONDS)
-	public void Intersection(BenchmarkState state) {
+	public void intersection(BenchmarkState state) {
 		DefaultClipper c = new DefaultClipper();
 		c.addPaths(state.subj, PolyType.SUBJECT, true);
 		c.addPaths(state.clip, PolyType.CLIP, true);

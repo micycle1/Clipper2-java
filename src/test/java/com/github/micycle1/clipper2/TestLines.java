@@ -28,13 +28,13 @@ class TestLines {
 		Paths64 solution = new Paths64();
 		Paths64 solution_open = new Paths64();
 
-		c64.AddSubject(test.subj());
-		c64.AddOpenSubject(test.subj_open());
-		c64.AddClip(test.clip());
-		c64.Execute(test.clipType(), test.fillRule(), solution, solution_open);
+		c64.addSubject(test.subj());
+		c64.addOpenSubject(test.subj_open());
+		c64.addClip(test.clip());
+		c64.execute(test.clipType(), test.fillRule(), solution, solution_open);
 
 		if (test.area() > 0) {
-			double area2 = Clipper.Area(solution);
+			double area2 = Clipper.area(solution);
 			assertEquals(test.area(), area2, test.area() * 0.005);
 		}
 

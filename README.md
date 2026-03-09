@@ -35,9 +35,9 @@ Note Clipper2’s core algorithms operate on **integer coordinates** for numeric
 ```java
 Paths64 subj = new Paths64();
 Paths64 clip = new Paths64();
-subj.add(Clipper.MakePath(new int[] { 100, 50, 10, 79, 65, 2, 65, 98, 10, 21 }));
-clip.add(Clipper.MakePath(new int[] { 98, 63, 4, 68, 77, 8, 52, 100, 19, 12 }));
-Paths64 solution = Clipper.Union(subj, clip, FillRule.NonZero);
+subj.add(Clipper.makePath(new int[] { 100, 50, 10, 79, 65, 2, 65, 98, 10, 21 }));
+clip.add(Clipper.makePath(new int[] { 98, 63, 4, 68, 77, 8, 52, 100, 19, 12 }));
+Paths64 solution = Clipper.union(subj, clip, FillRule.NonZero);
 solution.get(0).forEach(p -> System.out.println(p.toString()));
 ```
 

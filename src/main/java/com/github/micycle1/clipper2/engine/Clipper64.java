@@ -2,8 +2,6 @@ package com.github.micycle1.clipper2.engine;
 
 import com.github.micycle1.clipper2.core.ClipType;
 import com.github.micycle1.clipper2.core.FillRule;
-import com.github.micycle1.clipper2.core.Path64;
-import com.github.micycle1.clipper2.core.PathType;
 import com.github.micycle1.clipper2.core.Paths64;
 
 /**
@@ -13,39 +11,11 @@ import com.github.micycle1.clipper2.core.Paths64;
  */
 public class Clipper64 extends ClipperBase {
 
-	public final void addPath(Path64 path, PathType polytype) {
-		addPath(path, polytype, false);
-	}
-
-	public final void addPath(Path64 path, PathType polytype, boolean isOpen) {
-		super.AddPath(path, polytype, isOpen);
-	}
-
-	public final void addPaths(Paths64 paths, PathType polytype) {
-		addPaths(paths, polytype, false);
-	}
-
-	public final void addPaths(Paths64 paths, PathType polytype, boolean isOpen) {
-		super.AddPaths(paths, polytype, isOpen);
-	}
-
-	public final void addSubject(Paths64 paths) {
-		addPaths(paths, PathType.Subject);
-	}
-
-	public final void addOpenSubject(Paths64 paths) {
-		addPaths(paths, PathType.Subject, true);
-	}
-
-	public final void addClip(Paths64 paths) {
-		addPaths(paths, PathType.Clip);
-	}
-
 	/**
 	 * Once subject and clip paths have been assigned (via
 	 * {@link #addSubject(Paths64) addSubject()}, {@link #addOpenSubject(Paths64)
 	 * addOpenSubject()} and {@link #addClip(Paths64) addClip()} methods),
-	 * <code>Execute()</code> can then perform the specified clipping operation
+	 * <code>execute()</code> can then perform the specified clipping operation
 	 * (intersection, union, difference or XOR).
 	 * <p>
 	 * The solution parameter can be either a Paths64 or a PolyTree64, though since
@@ -59,7 +29,7 @@ public class Clipper64 extends ClipperBase {
 	 * preserve these parent-child relationships, these two PolyTree classes will be
 	 * very useful to some users.
 	 */
-	public final boolean Execute(ClipType clipType, FillRule fillRule, Paths64 solutionClosed, Paths64 solutionOpen) {
+	public final boolean execute(ClipType clipType, FillRule fillRule, Paths64 solutionClosed, Paths64 solutionOpen) {
 		solutionClosed.clear();
 		solutionOpen.clear();
 		try {
@@ -73,12 +43,12 @@ public class Clipper64 extends ClipperBase {
 		return succeeded;
 	}
 
-	public final boolean Execute(ClipType clipType, FillRule fillRule, Paths64 solutionClosed) {
-		return Execute(clipType, fillRule, solutionClosed, new Paths64());
+	public final boolean execute(ClipType clipType, FillRule fillRule, Paths64 solutionClosed) {
+		return execute(clipType, fillRule, solutionClosed, new Paths64());
 	}
 
-	public final boolean Execute(ClipType clipType, FillRule fillRule, PolyTree64 polytree, Paths64 openPaths) {
-		polytree.Clear();
+	public final boolean execute(ClipType clipType, FillRule fillRule, PolyTree64 polytree, Paths64 openPaths) {
+		polytree.clear();
 		openPaths.clear();
 		usingPolytree = true;
 		try {
@@ -92,13 +62,13 @@ public class Clipper64 extends ClipperBase {
 		return succeeded;
 	}
 
-	public final boolean Execute(ClipType clipType, FillRule fillRule, PolyTree64 polytree) {
-		return Execute(clipType, fillRule, polytree, new Paths64());
+	public final boolean execute(ClipType clipType, FillRule fillRule, PolyTree64 polytree) {
+		return execute(clipType, fillRule, polytree, new Paths64());
 	}
 
 	@Override
-	public void AddReuseableData(ReuseableDataContainer64 reuseableData) {
-		super.AddReuseableData(reuseableData);
+	public void addReuseableData(ReuseableDataContainer64 reuseableData) {
+		super.addReuseableData(reuseableData);
 	}
 
 }

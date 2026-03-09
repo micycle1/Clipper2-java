@@ -13,7 +13,7 @@ public final class InternalClipper {
 
 	private static final String PRECISION_RANGE_ERROR = "Error: Precision is out of range.";
 
-	public static void CheckPrecision(int precision) {
+	public static void checkPrecision(int precision) {
 		if (precision < -8 || precision > 8) {
 			throw new IllegalArgumentException(PRECISION_RANGE_ERROR);
 		}
@@ -22,16 +22,16 @@ public final class InternalClipper {
 	private InternalClipper() {
 	}
 
-	public static boolean IsAlmostZero(double value) {
+	public static boolean isAlmostZero(double value) {
 		return (Math.abs(value) <= FLOATING_POINT_TOLERANCE);
 	}
 
-	public static double CrossProduct(Point64 pt1, Point64 pt2, Point64 pt3) {
+	public static double crossProduct(Point64 pt1, Point64 pt2, Point64 pt3) {
 		// typecast to double to avoid potential int overflow
 		return ((double) (pt2.x - pt1.x) * (pt3.y - pt2.y) - (double) (pt2.y - pt1.y) * (pt3.x - pt2.x));
 	}
 
-	public static int CrossProductSign(Point64 pt1, Point64 pt2, Point64 pt3) {
+	public static int crossProductSign(Point64 pt1, Point64 pt2, Point64 pt3) {
 		long a = pt2.x - pt1.x;
 		long b = pt3.y - pt2.y;
 		long c = pt2.y - pt1.y;
@@ -56,27 +56,27 @@ public final class InternalClipper {
 		return signAB > signCD ? 1 : -1;
 	}
 
-	public static double DotProduct(Point64 pt1, Point64 pt2, Point64 pt3) {
+	public static double dotProduct(Point64 pt1, Point64 pt2, Point64 pt3) {
 		// typecast to double to avoid potential int overflow
 		return ((double) (pt2.x - pt1.x) * (pt3.x - pt2.x) + (double) (pt2.y - pt1.y) * (pt3.y - pt2.y));
 	}
 
-	public static double CrossProduct(PointD vec1, PointD vec2) {
+	public static double crossProduct(PointD vec1, PointD vec2) {
 		return (vec1.y * vec2.x - vec2.y * vec1.x);
 	}
 
-	public static double DotProduct(PointD vec1, PointD vec2) {
+	public static double dotProduct(PointD vec1, PointD vec2) {
 		return (vec1.x * vec2.x + vec1.y * vec2.y);
 	}
 
-	public static long CheckCastInt64(double val) {
+	public static long checkCastInt64(double val) {
 		if ((val >= MAX_COORD) || (val <= MIN_COORD)) {
 			return Invalid64;
 		}
 		return (long) Math.rint(val);
 	}
 
-	public static boolean GetLineIntersectPt(Point64 ln1a, Point64 ln1b, Point64 ln2a, Point64 ln2b, /* out */ Point64 ip) {
+	public static boolean getLineIntersectPt(Point64 ln1a, Point64 ln1b, Point64 ln2a, Point64 ln2b, /* out */ Point64 ip) {
 		double dy1 = (ln1b.y - ln1a.y);
 		double dx1 = (ln1b.x - ln1a.x);
 		double dy2 = (ln2b.y - ln2a.y);
@@ -110,7 +110,7 @@ public final class InternalClipper {
 		return true;
 	}
 
-	public static boolean GetLineIntersectPt(PointD ln1a, PointD ln1b, PointD ln2a, PointD ln2b, /* out */ PointD ip) {
+	public static boolean getLineIntersectPt(PointD ln1a, PointD ln1b, PointD ln2a, PointD ln2b, /* out */ PointD ip) {
 		double dy1 = (ln1b.y - ln1a.y);
 		double dx1 = (ln1b.x - ln1a.x);
 		double dy2 = (ln2b.y - ln2a.y);
@@ -137,38 +137,38 @@ public final class InternalClipper {
 		return true;
 	}
 
-	public static boolean GetSegmentIntersectPt(Point64 ln1a, Point64 ln1b, Point64 ln2a, Point64 ln2b, /* out */ Point64 ip) {
-		return GetLineIntersectPt(ln1a, ln1b, ln2a, ln2b, ip);
+	public static boolean getSegmentIntersectPt(Point64 ln1a, Point64 ln1b, Point64 ln2a, Point64 ln2b, /* out */ Point64 ip) {
+		return getLineIntersectPt(ln1a, ln1b, ln2a, ln2b, ip);
 	}
 
 	@Deprecated
-	public static boolean GetIntersectPoint(Point64 ln1a, Point64 ln1b, Point64 ln2a, Point64 ln2b, /* out */ Point64 ip) {
-		return GetLineIntersectPt(ln1a, ln1b, ln2a, ln2b, ip);
+	public static boolean getIntersectPoint(Point64 ln1a, Point64 ln1b, Point64 ln2a, Point64 ln2b, /* out */ Point64 ip) {
+		return getLineIntersectPt(ln1a, ln1b, ln2a, ln2b, ip);
 	}
 
-	public static boolean SegsIntersect(Point64 seg1a, Point64 seg1b, Point64 seg2a, Point64 seg2b) {
-		return SegsIntersect(seg1a, seg1b, seg2a, seg2b, false);
+	public static boolean segsIntersect(Point64 seg1a, Point64 seg1b, Point64 seg2a, Point64 seg2b) {
+		return segsIntersect(seg1a, seg1b, seg2a, seg2b, false);
 	}
 
-	public static boolean SegsIntersect(Point64 seg1a, Point64 seg1b, Point64 seg2a, Point64 seg2b, boolean inclusive) {
+	public static boolean segsIntersect(Point64 seg1a, Point64 seg1b, Point64 seg2a, Point64 seg2b, boolean inclusive) {
 		if (inclusive) {
-			double res1 = CrossProduct(seg1a, seg2a, seg2b);
-			double res2 = CrossProduct(seg1b, seg2a, seg2b);
+			double res1 = crossProduct(seg1a, seg2a, seg2b);
+			double res2 = crossProduct(seg1b, seg2a, seg2b);
 			if (res1 * res2 > 0) {
 				return false;
 			}
-			double res3 = CrossProduct(seg2a, seg1a, seg1b);
-			double res4 = CrossProduct(seg2b, seg1a, seg1b);
+			double res3 = crossProduct(seg2a, seg1a, seg1b);
+			double res4 = crossProduct(seg2b, seg1a, seg1b);
 			if (res3 * res4 > 0) {
 				return false;
 			}
 			return (res1 != 0 || res2 != 0 || res3 != 0 || res4 != 0);
 		}
-		return (CrossProduct(seg1a, seg2a, seg2b) * CrossProduct(seg1b, seg2a, seg2b) < 0)
-				&& (CrossProduct(seg2a, seg1a, seg1b) * CrossProduct(seg2b, seg1a, seg1b) < 0);
+		return (crossProduct(seg1a, seg2a, seg2b) * crossProduct(seg1b, seg2a, seg2b) < 0)
+				&& (crossProduct(seg2a, seg1a, seg1b) * crossProduct(seg2b, seg1a, seg1b) < 0);
 	}
 
-	public static Point64 GetClosestPtOnSegment(Point64 offPt, Point64 seg1, Point64 seg2) {
+	public static Point64 getClosestPtOnSegment(Point64 offPt, Point64 seg1, Point64 seg2) {
 		if (seg1.x == seg2.x && seg1.y == seg2.y) {
 			return seg1;
 		}
@@ -183,7 +183,7 @@ public final class InternalClipper {
 		return new Point64(seg1.x + Math.rint(q * dx), seg1.y + Math.rint(q * dy));
 	}
 
-	public static PointInPolygonResult PointInPolygon(Point64 pt, Path64 polygon) {
+	public static PointInPolygonResult pointInPolygon(Point64 pt, Path64 polygon) {
 		int len = polygon.size(), start = 0;
 		if (len < 3) {
 			return PointInPolygonResult.IsOutside;
@@ -246,7 +246,7 @@ public final class InternalClipper {
 			} else if (pt.x > prev.x && pt.x > curr.x) {
 				val = 1 - val; // toggle val
 			} else {
-				int cps = CrossProductSign(prev, curr, pt);
+				int cps = crossProductSign(prev, curr, pt);
 				if (cps == 0) {
 					return PointInPolygonResult.IsOn;
 				}
@@ -262,7 +262,7 @@ public final class InternalClipper {
 			if (i == len) {
 				i = 0;
 			}
-			int cps = (i == 0) ? CrossProductSign(polygon.get(len - 1), polygon.get(0), pt) : CrossProductSign(polygon.get(i - 1), polygon.get(i), pt);
+			int cps = (i == 0) ? crossProductSign(polygon.get(len - 1), polygon.get(0), pt) : crossProductSign(polygon.get(i - 1), polygon.get(i), pt);
 			if (cps == 0) {
 				return PointInPolygonResult.IsOn;
 			}
@@ -280,7 +280,7 @@ public final class InternalClipper {
 	/**
 	 * Given three points, returns true if they are collinear.
 	 */
-	public static boolean IsCollinear(Point64 pt1, Point64 sharedPt, Point64 pt2) {
+	public static boolean isCollinear(Point64 pt1, Point64 sharedPt, Point64 pt2) {
 		long a = sharedPt.x - pt1.x;
 		long b = pt2.y - sharedPt.y;
 		long c = sharedPt.y - pt1.y;
@@ -348,7 +348,7 @@ public final class InternalClipper {
 		return x < 0 ? -1 : (x > 0 ? 1 : 0);
 	}
 
-	public static Rect64 GetBounds(Path64 path) {
+	public static Rect64 getBounds(Path64 path) {
 		if (path.isEmpty()) {
 			return new Rect64();
 		}
@@ -370,11 +370,11 @@ public final class InternalClipper {
 		return result;
 	}
 
-	public static boolean Path2ContainsPath1(Path64 path1, Path64 path2) {
+	public static boolean path2ContainsPath1(Path64 path1, Path64 path2) {
 		// accommodate potential rounding error before deciding either way
 		PointInPolygonResult pip = PointInPolygonResult.IsOn;
 		for (Point64 pt : path1) {
-			switch (PointInPolygon(pt, path2)) {
+			switch (pointInPolygon(pt, path2)) {
 			case IsOutside:
 				if (pip == PointInPolygonResult.IsOutside) {
 					return false;
@@ -392,8 +392,8 @@ public final class InternalClipper {
 			}
 		}
 		// path1 is still equivocal, so test its midpoint
-		Point64 mp = GetBounds(path1).MidPoint();
-		return PointInPolygon(mp, path2) != PointInPolygonResult.IsOutside;
+		Point64 mp = getBounds(path1).midPoint();
+		return pointInPolygon(mp, path2) != PointInPolygonResult.IsOutside;
 	}
 
 }

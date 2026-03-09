@@ -57,11 +57,11 @@ public class BenchmarkClipper2 {
 
 	@Benchmark
 	@OutputTimeUnit(TimeUnit.SECONDS)
-	public void Intersection(BenchmarkState state) {
+	public void intersection(BenchmarkState state) {
 		Clipper64 c = new Clipper64();
-		c.AddSubject(state.subj); // closed
-		c.AddClip(state.clip); // closed
-		c.Execute(ClipType.Intersection, FillRule.NonZero, state.solution);
+		c.addSubject(state.subj); // closed
+		c.addClip(state.clip); // closed
+		c.execute(ClipType.Intersection, FillRule.NonZero, state.solution);
 	}
 
 	private static Point64 MakeRandomPt(int maxWidth, int maxHeight, Random rand) {

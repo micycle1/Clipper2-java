@@ -61,7 +61,7 @@ class ClipperFileIO {
 			return count;
 		}
 
-		public int GetIdx() {
+		public int getIdx() {
 			return GetIdx;
 		}
 

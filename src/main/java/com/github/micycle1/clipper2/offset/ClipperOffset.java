@@ -26,8 +26,8 @@ import com.github.micycle1.clipper2.engine.PolyTree64;
  * <p>
  * Library users will rarely need to access this class directly since it's
  * generally easier to use the
- * {@link Clipper#InflatePaths(Paths64, double, JoinType, EndType)
- * InflatePaths()} function for polygon offsetting.
+ * {@link Clipper#inflatePaths(Paths64, double, JoinType, EndType)
+ * inflatePaths()} function for polygon offsetting.
  * <p>
  * <b>Notes:</b>
  * <ul>
@@ -58,7 +58,7 @@ import com.github.micycle1.clipper2.engine.PolyTree64;
  * point coordinates, the <b>InflatePaths</b> function will accept paths with
  * floating point coordinates.</li>
  * <li>Redundant segments should be removed before offsetting (see
- * {@link Clipper#SimplifyPaths(Paths64, double) SimplifyPaths()}), and between
+ * {@link Clipper#simplifyPaths(Paths64, double) simplifyPaths()}), and between
  * offsetting operations too. These redundant segments not only slow down
  * offsetting, but they can cause unexpected blemishes in offset solutions.</li>
  * </ul>
@@ -149,10 +149,10 @@ public class ClipperOffset {
 	 *                          arcTolerance is only relevant when offsetting with
 	 *                          {@link JoinType#Round} and / or
 	 *                          {@link EndType#Round} (see
-	 *                          {{@link #AddPath(Path64, JoinType, EndType)
-	 *                          AddPath()} and
-	 *                          {@link #AddPaths(Paths64, JoinType, EndType)
-	 *                          AddPaths()}. The default arcTolerance is 0.0, which
+	 *                          {{@link #addPath(Path64, JoinType, EndType)
+	 *                          addPath()} and
+	 *                          {@link #addPaths(Paths64, JoinType, EndType)
+	 *                          addPaths()}. The default arcTolerance is 0.0, which
 	 *                          enables automatic scaling (offset radius / 500).
 	 * @param preserveCollinear When adjacent edges are collinear in closed path
 	 *                          solutions, the common vertex can safely be removed
@@ -174,20 +174,20 @@ public class ClipperOffset {
 		setReverseSolution(reverseSolution);
 	}
 
-	public final void Clear() {
+	public final void clear() {
 		groupList.clear();
 	}
 
-	public final void AddPath(Path64 path, JoinType joinType, EndType endType) {
+	public final void addPath(Path64 path, JoinType joinType, EndType endType) {
 		int cnt = path.size();
 		if (cnt == 0) {
 			return;
 		}
 		Paths64 pp = new Paths64(Arrays.asList(path));
-		AddPaths(pp, joinType, endType);
+		addPaths(pp, joinType, endType);
 	}
 
-	public final void AddPaths(Paths64 paths, JoinType joinType, EndType endType) {
+	public final void addPaths(Paths64 paths, JoinType joinType, EndType endType) {
 		int cnt = paths.size();
 		if (cnt == 0) {
 			return;
@@ -219,7 +219,7 @@ public class ClipperOffset {
 			return;
 		}
 		this.delta = delta;
-		this.mitLimSqr = (miterLimit <= 1 ? 2.0 : 2.0 / Clipper.Sqr(miterLimit));
+		this.mitLimSqr = (miterLimit <= 1 ? 2.0 : 2.0 / Clipper.sqr(miterLimit));
 
 		for (Group group : groupList) {
 			DoGroupOffset(group);
@@ -236,11 +236,11 @@ public class ClipperOffset {
 		c.setPreserveCollinear(preserveCollinear);
 		// the solution should retain the orientation of the input
 		c.setReverseSolution(reverseSolution != pathsReversed);
-		c.AddSubject(this.solution);
+		c.addSubject(this.solution);
 		if (solutionTree != null) {
-			c.Execute(ClipType.Union, fillRule, solutionTree);
+			c.execute(ClipType.Union, fillRule, solutionTree);
 		} else {
-			c.Execute(ClipType.Union, fillRule, this.solution);
+			c.execute(ClipType.Union, fillRule, this.solution);
 		}
 	}
 
@@ -256,20 +256,20 @@ public class ClipperOffset {
 		return result;
 	}
 
-	public final void Execute(double delta, Paths64 solution) {
+	public final void execute(double delta, Paths64 solution) {
 		solution.clear();
 		solutionTree = null;
 		this.solution = solution;
 		ExecuteInternal(delta);
 	}
 
-	public void Execute(DeltaCallback64 deltaCallback64, Paths64 solution) {
+	public void execute(DeltaCallback64 deltaCallback64, Paths64 solution) {
 		deltaCallback = deltaCallback64;
-		Execute(1.0, solution);
+		execute(1.0, solution);
 	}
 
-	public void Execute(double delta, PolyTree64 solutionTree) {
-		solutionTree.Clear();
+	public void execute(double delta, PolyTree64 solutionTree) {
+		solutionTree.clear();
 		this.solutionTree = solutionTree;
 		solution.clear();
 		ExecuteInternal(delta);
@@ -413,14 +413,14 @@ public class ClipperOffset {
 		if (j == k) {
 			PointD pt4 = new PointD(pt3.x + vec.x * groupDelta, pt3.y + vec.y * groupDelta);
 			PointD pt = new PointD();
-			InternalClipper.GetLineIntersectPt(pt1, pt2, pt3, pt4, pt);
+			InternalClipper.getLineIntersectPt(pt1, pt2, pt3, pt4, pt);
 			// get the second intersect point through reflecion
 			pathOut.add(new Point64(ReflectPoint(pt, ptQ)));
 			pathOut.add(new Point64(pt));
 		} else {
 			PointD pt4 = GetPerpendicD(path.get(j), normals.get(k));
 			PointD pt = new PointD();
-			InternalClipper.GetLineIntersectPt(pt1, pt2, pt3, pt4, pt);
+			InternalClipper.getLineIntersectPt(pt1, pt2, pt3, pt4, pt);
 			pathOut.add(new Point64(pt));
 			// get the second intersect point through reflecion
 			pathOut.add(new Point64(ReflectPoint(pt, ptQ)));
@@ -450,7 +450,7 @@ public class ClipperOffset {
 		final Point64 pt = path.get(j);
 		PointD offsetVec = new PointD(normals.get(k).x * groupDelta, normals.get(k).y * groupDelta);
 		if (j == k) {
-			offsetVec.Negate();
+			offsetVec.negate();
 		}
 		pathOut.add(new Point64(pt.x + offsetVec.x, pt.y + offsetVec.y));
 		int steps = (int) Math.ceil(stepsPerRad * Math.abs(angle)); // #448, #456
@@ -486,8 +486,8 @@ public class ClipperOffset {
 		// A == PI: edges 'spike'
 		// sin(A) < 0: right turning
 		// cos(A) < 0: change in angle is more than 90 degree
-		double sinA = InternalClipper.CrossProduct(normals.get(j), normals.get(k));
-		double cosA = InternalClipper.DotProduct(normals.get(j), normals.get(k));
+		double sinA = InternalClipper.crossProduct(normals.get(j), normals.get(k));
+		double cosA = InternalClipper.dotProduct(normals.get(j), normals.get(k));
 		if (sinA > 1.0) {
 			sinA = 1.0;
 		} else if (sinA < -1.0) {
@@ -545,7 +545,7 @@ public class ClipperOffset {
 
 	private void OffsetOpenJoined(Group group, Path64 path) {
 		OffsetPolygon(group, path);
-		path = Clipper.ReversePath(path);
+		path = Clipper.reversePath(path);
 		BuildNormals(path);
 		OffsetPolygon(group, path);
 	}
@@ -687,11 +687,11 @@ public class ClipperOffset {
 				if (group.endType == EndType.Round) {
 					double r = absDelta;
 					int steps = (int) Math.ceil(stepsPerRad * 2 * Math.PI);
-					pathOut = Clipper.Ellipse(pt, r, r, steps);
+					pathOut = Clipper.ellipse(pt, r, r, steps);
 				} else {
 					int d = (int) Math.ceil(groupDelta);
 					Rect64 r = new Rect64(pt.x - d, pt.y - d, pt.x + d, pt.y + d);
-					pathOut = r.AsPath();
+					pathOut = r.asPath();
 				}
 				solution.add(pathOut);
 				continue;

@@ -17,27 +17,27 @@ class TestOffsetOrientation {
 
 	@Test
 	void TestOffsettingOrientation1() {
-		Paths64 subject = new Paths64(Clipper.MakePath(new int[] { 0, 0, 0, 5, 5, 5, 5, 0 }));
+		Paths64 subject = new Paths64(Clipper.makePath(new int[] { 0, 0, 0, 5, 5, 5, 5, 0 }));
 
-		Paths64 solution = Clipper.InflatePaths(subject, 1, JoinType.Round, EndType.Polygon);
+		Paths64 solution = Clipper.inflatePaths(subject, 1, JoinType.Round, EndType.Polygon);
 
 		assertEquals(1, solution.size());
 		// when offsetting, output orientation should match input
-		assertTrue(Clipper.IsPositive(subject.get(0)) == Clipper.IsPositive(solution.get(0)));
+		assertTrue(Clipper.isPositive(subject.get(0)) == Clipper.isPositive(solution.get(0)));
 	}
 
 	@Test
 	void TestOffsettingOrientation2() {
-		Path64 s1 = Clipper.MakePath(new int[] { 20, 220, 280, 220, 280, 280, 20, 280 });
-		Path64 s2 = Clipper.MakePath(new int[] { 0, 200, 0, 300, 300, 300, 300, 200 });
+		Path64 s1 = Clipper.makePath(new int[] { 20, 220, 280, 220, 280, 280, 20, 280 });
+		Path64 s2 = Clipper.makePath(new int[] { 0, 200, 0, 300, 300, 300, 300, 200 });
 		Paths64 subject = new Paths64(List.of(s1, s2));
 
 		ClipperOffset co = new ClipperOffset();
 		co.setReverseSolution(true);
-		co.AddPaths(subject, JoinType.Round, EndType.Polygon);
+		co.addPaths(subject, JoinType.Round, EndType.Polygon);
 
 		Paths64 solution = new Paths64();
-		co.Execute(5, solution);
+		co.execute(5, solution);
 
 		assertEquals(2, solution.size());
 		/*
@@ -49,7 +49,7 @@ class TestOffsetOrientation {
 		 * sweep-line algorithm used, paths with larger Y coordinates will likely be
 		 * listed first.
 		 */
-		assertTrue(Clipper.IsPositive(subject.get(1)) != Clipper.IsPositive(solution.get(0)));
+		assertTrue(Clipper.isPositive(subject.get(1)) != Clipper.isPositive(solution.get(0)));
 
 	}
 
