@@ -26,9 +26,9 @@ public enum FillRule {
 	EvenOdd,
 	/** Only non-zero sub-regions are filled */
 	NonZero,
-	/** Only sub-regions with winding counts > 0 are filled */
+	/** Only sub-regions with winding counts &gt; 0 are filled */
 	Positive,
-	/** Only sub-regions with winding counts < 0 are filled */
+	/** Only sub-regions with winding counts &lt; 0 are filled */
 	Negative;
 
 }

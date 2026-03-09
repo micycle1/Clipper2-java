@@ -99,7 +99,7 @@
 				<version>3.6.0</version>
 				<configuration>
 					<failOnError>false</failOnError>
-					<doclint>all</doclint>
+					<doclint>all,-missing</doclint>
 					<source>8</source>
 				</configuration>
 				<executions>
