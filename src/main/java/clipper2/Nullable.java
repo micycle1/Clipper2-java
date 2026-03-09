@@ -13,10 +13,10 @@ import java.lang.annotation.Target;
  * determine when a null value is acceptable and whether it is necessary to
  * check for a null value.
  * <p>
- * This annotation is useful mostly for overriding a {@link Nonnull} annotation.
+ * This annotation is useful mostly for overriding a {@code Nonnull} annotation.
  * Static analysis tools should generally treat the annotated items as though
  * they had no annotation, unless they are configured to minimize false
- * negatives. Use {@link CheckForNull} to indicate that the element value should
+ * negatives. Use {@code CheckForNull} to indicate that the element value should
  * always be checked for a null value.
  * <p>
  * When this annotation is applied to a method it applies to the method return
