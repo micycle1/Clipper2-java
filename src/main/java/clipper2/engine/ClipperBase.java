@@ -971,7 +971,7 @@ abstract class ClipperBase {
 		}
 
 		// get the turning direction a1.top, a2.bot, a2.top
-		double d = InternalClipper.CrossProduct(resident.top, newcomer.bot, newcomer.top);
+		int d = InternalClipper.CrossProductSign(resident.top, newcomer.bot, newcomer.top);
 		if (d != 0) {
 			return (d < 0);
 		}
@@ -981,11 +981,11 @@ abstract class ClipperBase {
 		// for starting open paths, place them according to
 		// the direction they're about to turn
 		if (!IsMaxima(resident) && (resident.top.y > newcomer.top.y)) {
-			return InternalClipper.CrossProduct(newcomer.bot, resident.top, NextVertex(resident).pt) <= 0;
+			return InternalClipper.CrossProductSign(newcomer.bot, resident.top, NextVertex(resident).pt) <= 0;
 		}
 
 		if (!IsMaxima(newcomer) && (newcomer.top.y > resident.top.y)) {
-			return InternalClipper.CrossProduct(newcomer.bot, newcomer.top, NextVertex(newcomer).pt) >= 0;
+			return InternalClipper.CrossProductSign(newcomer.bot, newcomer.top, NextVertex(newcomer).pt) >= 0;
 		}
 
 		long y = newcomer.bot.y;
@@ -1002,7 +1002,7 @@ abstract class ClipperBase {
 			return true;
 		}
 		// compare turning direction of the alternate bound
-		return (InternalClipper.CrossProduct(PrevPrevVertex(resident).pt, newcomer.bot, PrevPrevVertex(newcomer).pt) > 0) == newcomerIsLeft;
+		return (InternalClipper.CrossProductSign(PrevPrevVertex(resident).pt, newcomer.bot, PrevPrevVertex(newcomer).pt) > 0) == newcomerIsLeft;
 	}
 
 	private void InsertLeftEdge(Active ae) {
@@ -1718,7 +1718,7 @@ abstract class ClipperBase {
 
 	private void AddNewIntersectNode(Active ae1, Active ae2, long topY) {
 		Point64 ip = new Point64();
-		if (!InternalClipper.GetSegmentIntersectPt(ae1.bot, ae1.top, ae2.bot, ae2.top, ip)) {
+		if (!InternalClipper.GetLineIntersectPt(ae1.bot, ae1.top, ae2.bot, ae2.top, ip)) {
 			ip = new Point64(ae1.curX, topY);
 		}
 
@@ -2497,7 +2497,7 @@ abstract class ClipperBase {
 				if ((op2.prev.pt.x < pt.x && op2.pt.x < pt.x)) {
 					val = 1 - val; // toggle val
 				} else {
-					double d = InternalClipper.CrossProduct(op2.prev.pt, op2.pt, pt);
+					int d = InternalClipper.CrossProductSign(op2.prev.pt, op2.pt, pt);
 					if (d == 0) {
 						return PointInPolygonResult.IsOn;
 					}
@@ -2511,7 +2511,7 @@ abstract class ClipperBase {
 		}
 
 		if (isAbove != startingAbove) {
-			double d = InternalClipper.CrossProduct(op2.prev.pt, op2.pt, pt);
+			int d = InternalClipper.CrossProductSign(op2.prev.pt, op2.pt, pt);
 			if (d == 0) {
 				return PointInPolygonResult.IsOn;
 			}
@@ -2563,7 +2563,9 @@ abstract class ClipperBase {
 			toOr.splits = new ArrayList<>();
 		}
 		for (int i : fromOr.splits) {
-			toOr.splits.add(i);
+			if (i != toOr.idx) {
+				toOr.splits.add(i);
+			}
 		}
 
 		fromOr.splits = null;
@@ -2693,8 +2695,8 @@ abstract class ClipperBase {
 		outrec.pts = prevOp;
 //		OutPt result = prevOp;
 
-		Point64 ip = new Point64(); // ip mutated by GetSegmentIntersectPt()
-		InternalClipper.GetSegmentIntersectPt(prevOp.pt, splitOp.pt, splitOp.next.pt, nextNextOp.pt, ip);
+		Point64 ip = new Point64();
+		InternalClipper.GetLineIntersectPt(prevOp.pt, splitOp.pt, splitOp.next.pt, nextNextOp.pt, ip);
 
 		double area1 = Area(prevOp);
 		double absArea1 = Math.abs(area1);
@@ -2866,8 +2868,8 @@ abstract class ClipperBase {
 	}
 
 	private boolean CheckSplitOwner(OutRec outrec, List<Integer> splits) {
-		for (int i : splits) {
-			OutRec split = outrecList.get(i);
+		for (int i = 0; i < splits.size(); i++) {
+			OutRec split = outrecList.get(splits.get(i));
 			if (split.pts == null && split.splits != null && CheckSplitOwner(outrec, split.splits)) {
 				return true; // #942
 			}

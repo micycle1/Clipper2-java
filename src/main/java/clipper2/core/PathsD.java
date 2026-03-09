@@ -26,8 +26,11 @@ public class PathsD extends ArrayList<PathD> {
 	@Override
 	public String toString() {
 		StringBuilder s = new StringBuilder();
-		for (PathD p : this) {
-			s.append(p.toString()).append("\n");
+		for (int i = 0; i < size(); i++) {
+			if (i > 0) {
+				s.append(System.lineSeparator());
+			}
+			s.append(get(i).toString());
 		}
 		return s.toString();
 	}

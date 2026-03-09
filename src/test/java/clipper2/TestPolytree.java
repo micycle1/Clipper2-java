@@ -15,6 +15,8 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import clipper2.ClipperFileIO.TestCase;
+import clipper2.core.ClipType;
+import clipper2.core.FillRule;
 import clipper2.core.Path64;
 import clipper2.core.Paths64;
 import clipper2.core.Point64;
@@ -210,6 +212,84 @@ class TestPolytree {
 		clipper.Execute(clipper2.core.ClipType.Union, clipper2.core.FillRule.NonZero, solutionTree);
 
 		assertTrue(solutionTree.getCount() == 1 && solutionTree.get(0).getCount() == 2);
+	}
+
+	@Test
+	void TestPolytreeUnion() {
+		Paths64 subject = new Paths64();
+		subject.add(Clipper.MakePath(new long[] { 0, 0, 0, 5, 5, 5, 5, 0 }));
+		subject.add(Clipper.MakePath(new long[] { 1, 1, 1, 6, 6, 6, 6, 1 }));
+
+		Clipper64 clipper = new Clipper64();
+		clipper.AddSubject(subject);
+
+		PolyTree64 solution = new PolyTree64();
+		Paths64 openPaths = new Paths64();
+		if (Clipper.IsPositive(subject.get(0))) {
+			clipper.Execute(ClipType.Union, FillRule.Positive, solution, openPaths);
+		} else {
+			clipper.setReverseSolution(true);
+			clipper.Execute(ClipType.Union, FillRule.Negative, solution, openPaths);
+		}
+
+		assertEquals(0, openPaths.size());
+		assertEquals(1, solution.getCount());
+		assertEquals(8, solution.get(0).getPolygon().size());
+		assertEquals(Clipper.IsPositive(subject.get(0)), Clipper.IsPositive(solution.get(0).getPolygon()));
+	}
+
+	@Test
+	void TestPolytreeUnion2() { // #987
+		Paths64 subject = new Paths64();
+		subject.add(Clipper.MakePath(new long[] { 534, 1024, 534, -800, 1026, -800, 1026, 1024 }));
+		subject.add(Clipper.MakePath(new long[] { 1, 1024, 8721, 1024, 8721, 1920, 1, 1920 }));
+		subject.add(Clipper.MakePath(new long[] { 30, 1024, 30, -800, 70, -800, 70, 1024 }));
+		subject.add(Clipper.MakePath(new long[] { 1, 1024, 1, -1024, 3841, -1024, 3841, 1024 }));
+		subject.add(Clipper.MakePath(new long[] { 3900, -1024, 6145, -1024, 6145, 1024, 3900, 1024 }));
+		subject.add(Clipper.MakePath(new long[] { 5884, 1024, 5662, 1024, 5662, -1024, 5884, -1024 }));
+		subject.add(Clipper.MakePath(new long[] { 534, 1024, 200, 1024, 200, -800, 534, -800 }));
+		subject.add(Clipper.MakePath(new long[] { 200, -800, 200, 1024, 70, 1024, 70, -800 }));
+		subject.add(Clipper.MakePath(new long[] { 1200, 1920, 1313, 1920, 1313, -800, 1200, -800 }));
+		subject.add(Clipper.MakePath(new long[] { 6045, -800, 6045, 1024, 5884, 1024, 5884, -800 }));
+
+		Clipper64 clipper = new Clipper64();
+		clipper.AddSubject(subject);
+		PolyTree64 solution = new PolyTree64();
+		Paths64 openPaths = new Paths64();
+		clipper.Execute(ClipType.Union, FillRule.EvenOdd, solution, openPaths);
+
+		assertEquals(1, solution.getCount());
+		assertEquals(1, solution.get(0).getCount());
+	}
+
+	@Test
+	void TestPolytreeUnion3() {
+		Paths64 subject = new Paths64();
+		subject.add(Clipper.MakePath(new long[] {
+				-120927680, 590077597,
+				-120919386, 590077307,
+				-120919432, 590077309,
+				-120919451, 590077309,
+				-120919455, 590077310,
+				-120099297, 590048669,
+				-120928004, 590077608,
+				-120902794, 590076728,
+				-120919444, 590077309,
+				-120919450, 590077309,
+				-120919842, 590077323,
+				-120922852, 590077428,
+				-120902452, 590076716,
+				-120902455, 590076716,
+				-120912590, 590077070,
+				11914491, 249689797
+		}));
+
+		Clipper64 clipper = new Clipper64();
+		clipper.AddSubject(subject);
+		PolyTree64 solution = new PolyTree64();
+		clipper.Execute(ClipType.Union, FillRule.EvenOdd, solution);
+
+		assertTrue(solution.getCount() >= 0);
 	}
 
 }
