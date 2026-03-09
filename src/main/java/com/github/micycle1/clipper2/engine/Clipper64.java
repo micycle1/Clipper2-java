@@ -13,8 +13,8 @@ public class Clipper64 extends ClipperBase {
 
 	/**
 	 * Once subject and clip paths have been assigned (via
-	 * {@link #addSubject(Paths64) addSubject()}, {@link #addOpenSubject(Paths64)
-	 * addOpenSubject()} and {@link #addClip(Paths64) addClip()} methods),
+	 * <code>addSubject()</code>, <code>addOpenSubject()</code> and
+	 * <code>addClip()</code> methods),
 	 * <code>execute()</code> can then perform the specified clipping operation
 	 * (intersection, union, difference or XOR).
 	 * <p>
