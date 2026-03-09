@@ -47,7 +47,7 @@ jobs:
       if: github.ref == 'refs/heads/master' && success()
       uses: actions/upload-pages-artifact@v3
       with:
-        path: target/site  # Change this to your docs/site output folder
+        path: target/apidocs
 
   deploy:
     environment:
