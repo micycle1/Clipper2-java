@@ -241,13 +241,13 @@ public final class InternalClipper {
 	}
 
 	/**
-	 * Holds the low‐ and high‐64 bits of a 128‐bit product.
+	 * Holds the low‐ and high‐64 bits of a 128‐bit unsigned product.
 	 */
-	private static class MultiplyUInt64Result {
+	private static class UInt128Struct {
 		public final long lo64;
 		public final long hi64;
 
-		public MultiplyUInt64Result(long lo64, long hi64) {
+		public UInt128Struct(long lo64, long hi64) {
 			this.lo64 = lo64;
 			this.hi64 = hi64;
 		}
@@ -257,7 +257,7 @@ public final class InternalClipper {
 	 * Multiply two unsigned 64‐bit quantities (given in signed longs) and return
 	 * the full 128‐bit result as hi/lo.
 	 */
-	private static MultiplyUInt64Result multiplyUInt64(long a, long b) {
+	private static UInt128Struct multiplyUInt64(long a, long b) {
 		// mask to extract low 32 bits
 		final long MASK_32 = 0xFFFFFFFFL;
 		long aLow = a & MASK_32;
@@ -272,7 +272,7 @@ public final class InternalClipper {
 		long lo64 = ((x3 & MASK_32) << 32) | (x1 & MASK_32);
 		long hi64 = aHigh * bHigh + (x2 >>> 32) + (x3 >>> 32);
 
-		return new MultiplyUInt64Result(lo64, hi64);
+		return new UInt128Struct(lo64, hi64);
 	}
 
 	/**
@@ -286,8 +286,8 @@ public final class InternalClipper {
 		long absC = c < 0 ? -c : c;
 		long absD = d < 0 ? -d : d;
 
-		MultiplyUInt64Result p1 = multiplyUInt64(absA, absB);
-		MultiplyUInt64Result p2 = multiplyUInt64(absC, absD);
+		UInt128Struct p1 = multiplyUInt64(absA, absB);
+		UInt128Struct p2 = multiplyUInt64(absC, absD);
 
 		int signAB = triSign(a) * triSign(b);
 		int signCD = triSign(c) * triSign(d);
@@ -300,6 +300,54 @@ public final class InternalClipper {
 			return -1;
 		}
 		return x > 1 ? 1 : 0;
+	}
+
+	public static Rect64 GetBounds(Path64 path) {
+		if (path.isEmpty()) {
+			return new Rect64();
+		}
+		Rect64 result = clipper2.Clipper.InvalidRect64.clone();
+		for (Point64 pt : path) {
+			if (pt.x < result.left) {
+				result.left = pt.x;
+			}
+			if (pt.x > result.right) {
+				result.right = pt.x;
+			}
+			if (pt.y < result.top) {
+				result.top = pt.y;
+			}
+			if (pt.y > result.bottom) {
+				result.bottom = pt.y;
+			}
+		}
+		return result;
+	}
+
+	public static boolean Path2ContainsPath1(Path64 path1, Path64 path2) {
+		// accommodate potential rounding error before deciding either way
+		PointInPolygonResult pip = PointInPolygonResult.IsOn;
+		for (Point64 pt : path1) {
+			switch (PointInPolygon(pt, path2)) {
+			case IsOutside:
+				if (pip == PointInPolygonResult.IsOutside) {
+					return false;
+				}
+				pip = PointInPolygonResult.IsOutside;
+				break;
+			case IsInside:
+				if (pip == PointInPolygonResult.IsInside) {
+					return true;
+				}
+				pip = PointInPolygonResult.IsInside;
+				break;
+			default:
+				break;
+			}
+		}
+		// path1 is still equivocal, so test its midpoint
+		Point64 mp = GetBounds(path1).MidPoint();
+		return PointInPolygon(mp, path2) != PointInPolygonResult.IsOutside;
 	}
 
 }
