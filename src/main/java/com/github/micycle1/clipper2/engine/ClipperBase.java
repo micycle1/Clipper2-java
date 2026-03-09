@@ -246,16 +246,30 @@ abstract class ClipperBase {
 		private final List<LocalMinima> minimaList;
 		private final List<Vertex> vertexList;
 
+		/**
+		 * Creates an empty container for reusable subject and clip path data.
+		 */
 		public ReuseableDataContainer64() {
 			minimaList = new ArrayList<>();
 			vertexList = new ArrayList<>();
 		}
 
+		/**
+		 * Removes all cached path data from this container.
+		 */
 		public void clear() {
 			minimaList.clear();
 			vertexList.clear();
 		}
 
+		/**
+		 * Adds paths that can later be loaded into a {@link Clipper64} instance via
+		 * {@link Clipper64#addReuseableData(ReuseableDataContainer64)}.
+		 * 
+		 * @param paths the paths to cache
+		 * @param pt the role these paths will play in the clipping operation
+		 * @param isOpen whether the cached paths should be treated as open paths
+		 */
 		public void addPaths(Paths64 paths, PathType pt, boolean isOpen) {
 			ClipperEngine.AddPathsToVertexList(paths, pt, isOpen, minimaList, vertexList);
 		}
@@ -342,6 +356,10 @@ abstract class ClipperBase {
 
 	}
 
+	/**
+	 * Creates a new clipping engine with {@linkplain #setPreserveCollinear(boolean)
+	 * collinear preservation} enabled by default.
+	 */
 	protected ClipperBase() {
 		minimaList = new ArrayList<>();
 		intersectList = new ArrayList<>();
@@ -353,6 +371,11 @@ abstract class ClipperBase {
 		setPreserveCollinear(true);
 	}
 
+	/**
+	 * Returns whether collinear vertices are preserved in closed-path solutions.
+	 * 
+	 * @return {@code true} when collinear vertices are preserved where possible
+	 */
 	public final boolean getPreserveCollinear() {
 		return preserveCollinear;
 	}
@@ -370,10 +393,21 @@ abstract class ClipperBase {
 		preserveCollinear = value;
 	}
 
+	/**
+	 * Returns whether solution path orientation is reversed before being output.
+	 * 
+	 * @return {@code true} when closed and open solution paths are returned in
+	 *         reverse order
+	 */
 	public final boolean getReverseSolution() {
 		return reverseSolution;
 	}
 
+	/**
+	 * Sets whether generated solution paths should use the reverse orientation.
+	 * 
+	 * @param value {@code true} to reverse the orientation of generated paths
+	 */
 	public final void setReverseSolution(boolean value) {
 		reverseSolution = value;
 	}
@@ -639,6 +673,10 @@ abstract class ClipperBase {
 		return (inode.edge1.nextInAEL == inode.edge2) || (inode.edge1.prevInAEL == inode.edge2);
 	}
 
+	/**
+	 * Clears the current solution state while leaving the loaded subject and clip
+	 * paths unchanged.
+	 */
 	protected final void ClearSolutionOnly() {
 		while (actives != null) {
 			DeleteFromAEL(actives);
@@ -650,6 +688,9 @@ abstract class ClipperBase {
 		horzJoinList.clear();
 	}
 
+	/**
+	 * Removes all loaded paths together with any current solution state.
+	 */
 	public final void clear() {
 		ClearSolutionOnly();
 		minimaList.clear();
@@ -659,6 +700,9 @@ abstract class ClipperBase {
 		hasOpenPaths = false;
 	}
 
+	/**
+	 * Prepares the loaded input paths so another clipping operation can be executed.
+	 */
 	protected final void Reset() {
 		if (!isSortedMinimaList) {
 			minimaList.sort((locMin1, locMin2) -> Long.compare(locMin2.vertex.pt.y, locMin1.vertex.pt.y));
@@ -705,6 +749,11 @@ abstract class ClipperBase {
 		return minimaList.get(currentLocMin++);
 	}
 
+	/**
+	 * Adds a closed subject path.
+	 * 
+	 * @param path the path to add
+	 */
 	public final void addSubject(Path64 path) {
 		addPath(path, PathType.Subject);
 	}
@@ -723,6 +772,11 @@ abstract class ClipperBase {
 		addPath(path, PathType.Subject, true);
 	}
 
+	/**
+	 * Adds one or more open subject paths (polylines) to the Clipper object.
+	 * 
+	 * @param paths the open subject paths to add
+	 */
 	public final void addOpenSubject(Paths64 paths) {
 		paths.forEach(path -> addPath(path, PathType.Subject, true));
 	}
@@ -734,24 +788,55 @@ abstract class ClipperBase {
 		addPath(path, PathType.Clip);
 	}
 
+	/**
+	 * Adds one or more clip polygons to the Clipper object.
+	 * 
+	 * @param paths the clip polygons to add
+	 */
 	public final void addClip(Paths64 paths) {
 		paths.forEach(path -> addPath(path, PathType.Clip));
 	}
 
+	/**
+	 * Adds a path as either a subject or clip polygon.
+	 * 
+	 * @param path the path to add
+	 * @param polytype the role the path will play in the clipping operation
+	 */
 	public final void addPath(Path64 path, PathType polytype) {
 		addPath(path, polytype, false);
 	}
 
+	/**
+	 * Adds a path as either a closed polygon or an open path.
+	 * 
+	 * @param path the path to add
+	 * @param polytype the role the path will play in the clipping operation
+	 * @param isOpen {@code true} when the path should be treated as open
+	 */
 	public final void addPath(Path64 path, PathType polytype, boolean isOpen) {
 		Paths64 tmp = new Paths64();
 		tmp.add(path);
 		addPaths(tmp, polytype, isOpen);
 	}
 
+	/**
+	 * Adds multiple closed subject or clip polygons.
+	 * 
+	 * @param paths the paths to add
+	 * @param polytype the role the paths will play in the clipping operation
+	 */
 	public final void addPaths(Paths64 paths, PathType polytype) {
 		addPaths(paths, polytype, false);
 	}
 
+	/**
+	 * Adds multiple subject or clip paths.
+	 * 
+	 * @param paths the paths to add
+	 * @param polytype the role the paths will play in the clipping operation
+	 * @param isOpen {@code true} when the paths should be treated as open
+	 */
 	public final void addPaths(Paths64 paths, PathType polytype, boolean isOpen) {
 		if (isOpen) {
 			hasOpenPaths = true;
@@ -760,6 +845,13 @@ abstract class ClipperBase {
 		ClipperEngine.AddPathsToVertexList(paths, polytype, isOpen, minimaList, vertexList);
 	}
 
+	/**
+	 * Loads preprocessed path data created in a {@link ReuseableDataContainer64}.
+	 * Reusing cached data avoids rebuilding the internal vertex structures when the
+	 * same inputs are clipped repeatedly.
+	 * 
+	 * @param reuseableData cached path data to load
+	 */
 	protected void addReuseableData(ReuseableDataContainer64 reuseableData) {
 		if (reuseableData.minimaList.isEmpty()) {
 			return;
@@ -1667,6 +1759,14 @@ abstract class ClipperBase {
 		}
 	}
 
+	/**
+	 * Executes the core clipping algorithm for the currently loaded input paths.
+	 * Subclasses call this before converting the generated solution into the desired
+	 * output format.
+	 * 
+	 * @param ct the clipping operation to perform
+	 * @param fillRule the fill rule used during clipping
+	 */
 	protected final void ExecuteInternal(ClipType ct, FillRule fillRule) {
 		if (ct == ClipType.NoClip) {
 			return;
@@ -2783,6 +2883,15 @@ abstract class ClipperBase {
 		}
 	}
 
+	/**
+	 * Converts a linked {@link OutPt} solution into a {@link Path64}.
+	 * 
+	 * @param op the linked solution points to convert
+	 * @param reverse whether to traverse the points in reverse order
+	 * @param isOpen whether the source path is open
+	 * @param path receives the converted path
+	 * @return {@code true} when a non-degenerate path was produced
+	 */
 	public static boolean buildPath(@Nullable OutPt op, boolean reverse, boolean isOpen, Path64 path) {
 		if (op == null || op.next == op || (!isOpen && op.next == op.prev)) {
 			return false;
@@ -2820,6 +2929,13 @@ abstract class ClipperBase {
 		}
 	}
 
+	/**
+	 * Builds closed and open path solutions from the current clipping result.
+	 * 
+	 * @param solutionClosed receives closed solution paths
+	 * @param solutionOpen receives open solution paths
+	 * @return always {@code true}
+	 */
 	protected final boolean BuildPaths(Paths64 solutionClosed, Paths64 solutionOpen) {
 		solutionClosed.clear();
 		solutionOpen.clear();
@@ -2922,6 +3038,13 @@ abstract class ClipperBase {
 		}
 	}
 
+	/**
+	 * Builds a polygon tree, preserving parent-child nesting information, and
+	 * collects any open solution paths.
+	 * 
+	 * @param polytree receives the closed solution hierarchy
+	 * @param solutionOpen receives open solution paths
+	 */
 	protected void BuildTree(PolyPathBase polytree, Paths64 solutionOpen) {
 		polytree.clear();
 		solutionOpen.clear();
@@ -2952,6 +3075,12 @@ abstract class ClipperBase {
 		}
 	}
 
+	/**
+	 * Returns the bounding rectangle of all currently loaded input paths.
+	 * 
+	 * @return the bounds of the loaded paths, or an empty rectangle when no paths
+	 *         have been added
+	 */
 	public final Rect64 getBounds() {
 		Rect64 bounds = Clipper.InvalidRect64.clone();
 		for (Vertex t : vertexList) {

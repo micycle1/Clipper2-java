@@ -28,6 +28,12 @@ public class Clipper64 extends ClipperBase {
 	 * polygons (to any level of nesting). And given that PolyTree64 and PolyTreeD
 	 * preserve these parent-child relationships, these two PolyTree classes will be
 	 * very useful to some users.
+	 * 
+	 * @param clipType the clipping operation to perform
+	 * @param fillRule the fill rule used during clipping
+	 * @param solutionClosed receives the closed solution paths
+	 * @param solutionOpen receives any open solution paths
+	 * @return {@code true} when clipping completed successfully
 	 */
 	public final boolean execute(ClipType clipType, FillRule fillRule, Paths64 solutionClosed, Paths64 solutionOpen) {
 		solutionClosed.clear();
@@ -43,10 +49,29 @@ public class Clipper64 extends ClipperBase {
 		return succeeded;
 	}
 
+	/**
+	 * Executes the requested clipping operation and returns only closed solution
+	 * paths.
+	 * 
+	 * @param clipType the clipping operation to perform
+	 * @param fillRule the fill rule used during clipping
+	 * @param solutionClosed receives the closed solution paths
+	 * @return {@code true} when clipping completed successfully
+	 */
 	public final boolean execute(ClipType clipType, FillRule fillRule, Paths64 solutionClosed) {
 		return execute(clipType, fillRule, solutionClosed, new Paths64());
 	}
 
+	/**
+	 * Executes the requested clipping operation and writes the nested closed-path
+	 * result to a {@link PolyTree64}.
+	 * 
+	 * @param clipType the clipping operation to perform
+	 * @param fillRule the fill rule used during clipping
+	 * @param polytree receives the closed solution hierarchy
+	 * @param openPaths receives any open solution paths
+	 * @return {@code true} when clipping completed successfully
+	 */
 	public final boolean execute(ClipType clipType, FillRule fillRule, PolyTree64 polytree, Paths64 openPaths) {
 		polytree.clear();
 		openPaths.clear();
@@ -62,10 +87,24 @@ public class Clipper64 extends ClipperBase {
 		return succeeded;
 	}
 
+	/**
+	 * Executes the requested clipping operation and writes the nested closed-path
+	 * result to a {@link PolyTree64}.
+	 * 
+	 * @param clipType the clipping operation to perform
+	 * @param fillRule the fill rule used during clipping
+	 * @param polytree receives the closed solution hierarchy
+	 * @return {@code true} when clipping completed successfully
+	 */
 	public final boolean execute(ClipType clipType, FillRule fillRule, PolyTree64 polytree) {
 		return execute(clipType, fillRule, polytree, new Paths64());
 	}
 
+	/**
+	 * Loads preprocessed reusable path data into this clipper instance.
+	 * 
+	 * @param reuseableData cached path data to load
+	 */
 	@Override
 	public void addReuseableData(ReuseableDataContainer64 reuseableData) {
 		super.addReuseableData(reuseableData);
