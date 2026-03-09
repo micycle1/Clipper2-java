@@ -19,7 +19,7 @@ Clipper2-java is a fast planar geometry library for:
 
 The interface of *Clipper2-java* aims to match the original C# version closely.
 
-For simple use cases, the static methods in `clipper2.Clipper` are sufficient.
+For simple use cases, the static methods in `Clipper` class are sufficient.
 
 For advanced scenarios (open paths, PolyTree nesting, reusing engines), use `Clipper64` / `ClipperD` directly.
 
@@ -44,15 +44,6 @@ solution.get(0).forEach(p -> System.out.println(p.toString()));
 ### Installation (Maven / Gradle)
 
 *Clipper2-java* is available as a Maven/Gradle artifact via [Jitpack](https://jitpack.io/#micycle1/Clipper2-java).
-
-## Port Info
-* _tangiblesoftwaresolutions_' C# to Java Converter did the heavy lifting (but then a lot of manual work was required).
-* Wrapper objects are used to replicate C# `ref` (pass-by-reference) behaviour. This isn't very Java-esque but avoids an unmanageable refactoring effort.
-* Code passes all tests: polygon, line and polytree.
-* Uses lower-case (x, y) for point coordinates.
-* Private local variables have been renamed to their _camelCase_ variant but public methods (i.e. those of `Clipper.class`) retain their C# _PascalCase_ names (for now...).
-* Benchmarks can be run by including `jmh:benchmark` to the chosen maven goal.
-* `scanlineList` from `ClipperBase` uses Java `TreeSet` (variable renamed to `scanlineSet`).
 
 ## Benchmark
 _lightbringer's_ Java [port](https://github.com/lightbringer/clipper-java) of Clipper1 is benchmarked against this project in the benchmarks. *Clipper2-java* is faster, which becomes more pronounced input size grows.

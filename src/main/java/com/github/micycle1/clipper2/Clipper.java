@@ -1,0 +1,1979 @@
+package com.github.micycle1.clipper2;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import com.github.micycle1.clipper2.core.ClipType;
+import com.github.micycle1.clipper2.core.FillRule;
+import com.github.micycle1.clipper2.core.InternalClipper;
+import com.github.micycle1.clipper2.core.Path64;
+import com.github.micycle1.clipper2.core.PathD;
+import com.github.micycle1.clipper2.core.PathType;
+import com.github.micycle1.clipper2.core.Paths64;
+import com.github.micycle1.clipper2.core.PathsD;
+import com.github.micycle1.clipper2.core.Point64;
+import com.github.micycle1.clipper2.core.PointD;
+import com.github.micycle1.clipper2.core.Rect64;
+import com.github.micycle1.clipper2.core.RectD;
+import com.github.micycle1.clipper2.engine.Clipper64;
+import com.github.micycle1.clipper2.engine.ClipperD;
+import com.github.micycle1.clipper2.engine.PointInPolygonResult;
+import com.github.micycle1.clipper2.engine.PolyPath64;
+import com.github.micycle1.clipper2.engine.PolyPathBase;
+import com.github.micycle1.clipper2.engine.PolyPathD;
+import com.github.micycle1.clipper2.engine.PolyTree64;
+import com.github.micycle1.clipper2.engine.PolyTreeD;
+import com.github.micycle1.clipper2.offset.ClipperOffset;
+import com.github.micycle1.clipper2.offset.EndType;
+import com.github.micycle1.clipper2.offset.JoinType;
+import com.github.micycle1.clipper2.rectclip.RectClip64;
+import com.github.micycle1.clipper2.rectclip.RectClipLines64;
+
+/**
+ * Line and polygon clipping, and offsetting.
+ * <p>
+ * This unit has been designed to hide the library's complexities behind a
+ * number of simple functions. However, not all of the library's features are
+ * accessible here. Less commonly needed features that provide more flexibility
+ * can still be accessed from the other units.
+ * <h2>Boolean operations for polygon clipping:</h2>
+ * <ul>
+ * <li><b>AND (intersection)</b> - regions covered by both subject and clip
+ * polygons</li>
+ * <li><b>OR (union)</b> - regions covered by subject or clip polygons, or both
+ * polygons</li>
+ * <li><b>NOT (difference)</b> - regions covered by subject, but not clip
+ * polygons</li>
+ * <li><b>XOR (exclusive or)</b> - regions covered by subject or clip polygons,
+ * but not both</li>
+ * </ul>
+ * Of these four operations, only <code>difference</code> is non-commutative.
+ * This means that <code>subject</code> and <code>clip</code> paths are
+ * interchangeable except when performing difference operations (and as long as
+ * subject paths are closed).
+ * <p>
+ * All polygon clipping is performed with a Clipper object with the specific
+ * boolean operation indicated by the <code>ClipType</code> parameter passed in
+ * its Execute method. With regard to <b>open</b> paths (polylines), clipping
+ * rules generally match those of closed paths (polygons). However, when there
+ * are both polyline and polygon subjects, the following clipping rules apply:
+ * </p>
+ * 
+ * <ul>
+ * <li><b>union operations</b> - polylines will be clipped by <b>any</b>
+ * overlapping polygons so that only non-overlapped portions will be returned in
+ * the solution, together with solution polygons</li>
+ * <li><b>intersection, difference and xor operations</b> - polylines will be
+ * clipped by 'clip' polygons, and there will be no interaction between
+ * polylines and any subject polygons</li>
+ * </ul>
+ * 
+ * <h2>Polygon Offsetting:</h2>
+ * <p>
+ * Geometric offsetting refers to the process of creating parallel curves that
+ * are offset a specified distance from their starting positions.
+ * <p>
+ * While all offsetting is performed by the <code>ClipperOffset</code> class in
+ * the <code>Clipper.Offset</code> unit, the complexities of constructing and
+ * using this class can usually be avoided by using instead the
+ * {@link #InflatePaths(PathsD, double, JoinType, EndType, double, double, int)
+ * InflatePaths()} function in this class. This function can both inflate and
+ * shrink polygons (using positive and negative offsets respectively).
+ * Offsetting can be performed using a number of JoinTypes and EndTypes. While
+ * both open paths and closed paths can be offset, logically only closed paths
+ * can be shrunk (ie with negative offsets).
+ * <p>
+ * Note: Offsetting shouldn't be confused with the process of polygon
+ * <i>translation</i>.
+ */
+public final class Clipper {
+
+	/**
+	 * Sentinel invalid {@link Rect64} used while computing integer bounds.
+	 */
+	public static final Rect64 InvalidRect64 = new Rect64(false);
+
+	/**
+	 * Sentinel invalid {@link RectD} used while computing floating-point bounds.
+	 */
+	public static final RectD InvalidRectD = new RectD(false);
+
+	/**
+	 * Intersects two sets of integer paths.
+	 *
+	 * @param subject the subject paths.
+	 * @param clip the clip paths.
+	 * @param fillRule the polygon fill rule to apply.
+	 * @return the intersected paths.
+	 */
+	public static Paths64 Intersect(Paths64 subject, Paths64 clip, FillRule fillRule) {
+		return BooleanOp(ClipType.Intersection, subject, clip, fillRule);
+	}
+
+	/**
+	 * Intersects two sets of floating-point paths using the default precision.
+	 *
+	 * @param subject the subject paths.
+	 * @param clip the clip paths.
+	 * @param fillRule the polygon fill rule to apply.
+	 * @return the intersected paths.
+	 */
+	public static PathsD Intersect(PathsD subject, PathsD clip, FillRule fillRule) {
+		return Intersect(subject, clip, fillRule, 2);
+	}
+
+	/**
+	 * Intersects two sets of floating-point paths.
+	 *
+	 * @param subject the subject paths.
+	 * @param clip the clip paths.
+	 * @param fillRule the polygon fill rule to apply.
+	 * @param precision the decimal precision to use when scaling coordinates.
+	 * @return the intersected paths.
+	 */
+	public static PathsD Intersect(PathsD subject, PathsD clip, FillRule fillRule, int precision) {
+		return BooleanOp(ClipType.Intersection, subject, clip, fillRule, precision);
+	}
+
+	/**
+	 * Unites the supplied integer subject paths.
+	 *
+	 * @param subject the subject paths.
+	 * @param fillRule the polygon fill rule to apply.
+	 * @return the unioned paths.
+	 */
+	public static Paths64 Union(Paths64 subject, FillRule fillRule) {
+		return BooleanOp(ClipType.Union, subject, null, fillRule);
+	}
+
+	/**
+	 * Unites two sets of integer paths.
+	 *
+	 * @param subject the subject paths.
+	 * @param clip the clip paths.
+	 * @param fillRule the polygon fill rule to apply.
+	 * @return the unioned paths.
+	 */
+	public static Paths64 Union(Paths64 subject, Paths64 clip, FillRule fillRule) {
+		return BooleanOp(ClipType.Union, subject, clip, fillRule);
+	}
+
+	/**
+	 * Unites the supplied floating-point subject paths using the default precision.
+	 *
+	 * @param subject the subject paths.
+	 * @param fillRule the polygon fill rule to apply.
+	 * @return the unioned paths.
+	 */
+	public static PathsD Union(PathsD subject, FillRule fillRule) {
+		return BooleanOp(ClipType.Union, subject, null, fillRule);
+	}
+
+	/**
+	 * Unites two sets of floating-point paths using the default precision.
+	 *
+	 * @param subject the subject paths.
+	 * @param clip the clip paths.
+	 * @param fillRule the polygon fill rule to apply.
+	 * @return the unioned paths.
+	 */
+	public static PathsD Union(PathsD subject, PathsD clip, FillRule fillRule) {
+		return Union(subject, clip, fillRule, 2);
+	}
+
+	/**
+	 * Unites two sets of floating-point paths.
+	 *
+	 * @param subject the subject paths.
+	 * @param clip the clip paths.
+	 * @param fillRule the polygon fill rule to apply.
+	 * @param precision the decimal precision to use when scaling coordinates.
+	 * @return the unioned paths.
+	 */
+	public static PathsD Union(PathsD subject, PathsD clip, FillRule fillRule, int precision) {
+		return BooleanOp(ClipType.Union, subject, clip, fillRule, precision);
+	}
+
+	/**
+	 * Subtracts the clip paths from the subject paths.
+	 *
+	 * @param subject the subject paths.
+	 * @param clip the clip paths.
+	 * @param fillRule the polygon fill rule to apply.
+	 * @return the difference of the subject and clip paths.
+	 */
+	public static Paths64 Difference(Paths64 subject, Paths64 clip, FillRule fillRule) {
+		return BooleanOp(ClipType.Difference, subject, clip, fillRule);
+	}
+
+	/**
+	 * Subtracts the clip paths from the subject paths using the default precision.
+	 *
+	 * @param subject the subject paths.
+	 * @param clip the clip paths.
+	 * @param fillRule the polygon fill rule to apply.
+	 * @return the difference of the subject and clip paths.
+	 */
+	public static PathsD Difference(PathsD subject, PathsD clip, FillRule fillRule) {
+		return Difference(subject, clip, fillRule, 2);
+	}
+
+	/**
+	 * Subtracts the clip paths from the subject paths.
+	 *
+	 * @param subject the subject paths.
+	 * @param clip the clip paths.
+	 * @param fillRule the polygon fill rule to apply.
+	 * @param precision the decimal precision to use when scaling coordinates.
+	 * @return the difference of the subject and clip paths.
+	 */
+	public static PathsD Difference(PathsD subject, PathsD clip, FillRule fillRule, int precision) {
+		return BooleanOp(ClipType.Difference, subject, clip, fillRule, precision);
+	}
+
+	/**
+	 * Computes the exclusive-or of two sets of integer paths.
+	 *
+	 * @param subject the subject paths.
+	 * @param clip the clip paths.
+	 * @param fillRule the polygon fill rule to apply.
+	 * @return the exclusive-or of the subject and clip paths.
+	 */
+	public static Paths64 Xor(Paths64 subject, Paths64 clip, FillRule fillRule) {
+		return BooleanOp(ClipType.Xor, subject, clip, fillRule);
+	}
+
+	/**
+	 * Computes the exclusive-or of two sets of floating-point paths using the
+	 * default precision.
+	 *
+	 * @param subject the subject paths.
+	 * @param clip the clip paths.
+	 * @param fillRule the polygon fill rule to apply.
+	 * @return the exclusive-or of the subject and clip paths.
+	 */
+	public static PathsD Xor(PathsD subject, PathsD clip, FillRule fillRule) {
+		return Xor(subject, clip, fillRule, 2);
+	}
+
+	/**
+	 * Computes the exclusive-or of two sets of floating-point paths.
+	 *
+	 * @param subject the subject paths.
+	 * @param clip the clip paths.
+	 * @param fillRule the polygon fill rule to apply.
+	 * @param precision the decimal precision to use when scaling coordinates.
+	 * @return the exclusive-or of the subject and clip paths.
+	 */
+	public static PathsD Xor(PathsD subject, PathsD clip, FillRule fillRule, int precision) {
+		return BooleanOp(ClipType.Xor, subject, clip, fillRule, precision);
+	}
+
+	/**
+	 * Applies the requested boolean operation to integer subject and clip paths.
+	 *
+	 * @param clipType the boolean operation to perform.
+	 * @param subject the subject paths.
+	 * @param clip the clip paths.
+	 * @param fillRule the polygon fill rule to apply.
+	 * @return the resulting paths.
+	 */
+	public static Paths64 BooleanOp(ClipType clipType, Paths64 subject, Paths64 clip, FillRule fillRule) {
+		Paths64 solution = new Paths64();
+		if (subject == null) {
+			return solution;
+		}
+		Clipper64 c = new Clipper64();
+		c.AddPaths(subject, PathType.Subject);
+		if (clip != null) {
+			c.AddPaths(clip, PathType.Clip);
+		}
+		c.Execute(clipType, fillRule, solution);
+		return solution;
+	}
+
+	/**
+	 * This function is a generic alternative to the Intersect, Difference, Union
+	 * and XOR functions.
+	 *
+	 * @param clipType the boolean operation to perform.
+	 * @param subject the subject paths.
+	 * @param clip the clip paths, or {@code null}.
+	 * @param polytree the destination polytree that receives the result.
+	 * @param fillRule the polygon fill rule to apply.
+	 */
+	public static void BooleanOp(ClipType clipType, @Nullable Paths64 subject, @Nullable Paths64 clip, PolyTree64 polytree, FillRule fillRule) {
+		if (subject == null) {
+			return;
+		}
+		Clipper64 c = new Clipper64();
+		c.AddPaths(subject, PathType.Subject);
+		if (clip != null) {
+			c.AddPaths(clip, PathType.Clip);
+		}
+		c.Execute(clipType, fillRule, polytree);
+	}
+
+	/**
+	 * Applies the requested boolean operation to floating-point subject and clip
+	 * paths using the default precision.
+	 *
+	 * @param clipType the boolean operation to perform.
+	 * @param subject the subject paths.
+	 * @param clip the clip paths.
+	 * @param fillRule the polygon fill rule to apply.
+	 * @return the resulting paths.
+	 */
+	public static PathsD BooleanOp(ClipType clipType, PathsD subject, PathsD clip, FillRule fillRule) {
+		return BooleanOp(clipType, subject, clip, fillRule, 2);
+	}
+
+	/**
+	 * This function is a generic alternative to the Intersect, Difference, Union
+	 * and XOR functions.
+	 * 
+	 * @param clipType the boolean operation to perform.
+	 * @param subject the subject paths.
+	 * @param clip the clip paths, or {@code null}.
+	 * @param fillRule the polygon fill rule to apply.
+	 * @param precision The desired coordinate precision (up to 8 decimal places).
+	 * @return the resulting paths.
+	 */
+	public static PathsD BooleanOp(ClipType clipType, PathsD subject, @Nullable PathsD clip, FillRule fillRule, int precision) {
+		PathsD solution = new PathsD();
+		ClipperD c = new ClipperD(precision);
+		c.AddSubjects(subject);
+		if (clip != null) {
+			c.AddClips(clip);
+		}
+		c.Execute(clipType, fillRule, solution);
+		return solution;
+	}
+
+	/**
+	 * Applies the requested boolean operation to floating-point paths and stores the
+	 * result in a {@link PolyTreeD} using the default precision.
+	 *
+	 * @param clipType the boolean operation to perform.
+	 * @param subject the subject paths.
+	 * @param clip the clip paths, or {@code null}.
+	 * @param polytree the destination polytree that receives the result.
+	 * @param fillRule the polygon fill rule to apply.
+	 */
+	public static void BooleanOp(ClipType clipType, @Nullable PathsD subject, @Nullable PathsD clip, PolyTreeD polytree, FillRule fillRule) {
+		BooleanOp(clipType, subject, clip, polytree, fillRule, 2);
+	}
+
+	/**
+	 * Applies the requested boolean operation to floating-point paths and stores the
+	 * result in a {@link PolyTreeD}.
+	 *
+	 * @param clipType the boolean operation to perform.
+	 * @param subject the subject paths.
+	 * @param clip the clip paths, or {@code null}.
+	 * @param polytree the destination polytree that receives the result.
+	 * @param fillRule the polygon fill rule to apply.
+	 * @param precision the decimal precision to use when scaling coordinates.
+	 */
+	public static void BooleanOp(ClipType clipType, @Nullable PathsD subject, @Nullable PathsD clip, PolyTreeD polytree, FillRule fillRule, int precision) {
+		if (subject == null) {
+			return;
+		}
+		ClipperD c = new ClipperD(precision);
+		c.AddPaths(subject, PathType.Subject);
+		if (clip != null) {
+			c.AddPaths(clip, PathType.Clip);
+		}
+		c.Execute(clipType, fillRule, polytree);
+	}
+
+	/**
+	 * Inflates or shrinks integer paths with default miter and arc settings.
+	 *
+	 * @param paths the paths to offset.
+	 * @param delta the offset distance.
+	 * @param joinType the join type to apply at vertices.
+	 * @param endType the end treatment to apply.
+	 * @return the offset paths.
+	 *
+	 * @see #InflatePaths(PathsD, double, JoinType, EndType, double, double, int)
+	 */
+	public static Paths64 InflatePaths(Paths64 paths, double delta, JoinType joinType, EndType endType) {
+		return InflatePaths(paths, delta, joinType, endType, 2.0, 0.0);
+	}
+
+	/**
+	 * Inflates or shrinks integer paths.
+	 *
+	 * @param paths the paths to offset.
+	 * @param delta the offset distance.
+	 * @param joinType the join type to apply at vertices.
+	 * @param endType the end treatment to apply.
+	 * @param miterLimit the miter limit in multiples of {@code delta}.
+	 * @param arcTolerance the tolerance used when flattening round joins.
+	 * @return the offset paths.
+	 *
+	 * @see #InflatePaths(PathsD, double, JoinType, EndType, double, double, int)
+	 */
+	public static Paths64 InflatePaths(Paths64 paths, double delta, JoinType joinType, EndType endType, double miterLimit, double arcTolerance) {
+		ClipperOffset co = new ClipperOffset(miterLimit, arcTolerance);
+		co.AddPaths(paths, joinType, endType);
+		Paths64 solution = new Paths64();
+		co.Execute(delta, solution);
+		return solution;
+	}
+
+	/**
+	 * Inflates or shrinks floating-point paths with a custom miter limit.
+	 *
+	 * @param paths the paths to offset.
+	 * @param delta the offset distance.
+	 * @param joinType the join type to apply at vertices.
+	 * @param endType the end treatment to apply.
+	 * @param miterLimit the miter limit in multiples of {@code delta}.
+	 * @return the offset paths.
+	 *
+	 * @see #InflatePaths(PathsD, double, JoinType, EndType, double, double, int)
+	 */
+	public static PathsD InflatePaths(PathsD paths, double delta, JoinType joinType, EndType endType, double miterLimit) {
+		return InflatePaths(paths, delta, joinType, endType, miterLimit, 0.0, 8);
+	}
+
+	/**
+	 * Inflates or shrinks floating-point paths with default settings.
+	 *
+	 * @param paths the paths to offset.
+	 * @param delta the offset distance.
+	 * @param joinType the join type to apply at vertices.
+	 * @param endType the end treatment to apply.
+	 * @return the offset paths.
+	 *
+	 * @see #InflatePaths(PathsD, double, JoinType, EndType, double, double, int)
+	 */
+	public static PathsD InflatePaths(PathsD paths, double delta, JoinType joinType, EndType endType) {
+		return InflatePaths(paths, delta, joinType, endType, 2.0, 0.0, 8);
+	}
+
+	/**
+	 * These functions encapsulate {@link ClipperOffset}, the class that performs
+	 * both polygon and open path offsetting.
+	 * <p>
+	 * When using this function to inflate polygons (ie closed paths), it's
+	 * important that you select {@link EndType#Polygon}. If instead you select one
+	 * of the open path end types (including {@link EndType#Joined}), you'll inflate
+	 * the polygon's outline.
+	 * <p>
+	 * With closed paths (polygons), a positive delta specifies how much outer
+	 * polygon contours will expand and how much inner "hole" contours will contract
+	 * (and the converse with negative deltas).
+	 * <p>
+	 * With open paths (polylines), including {@link EndType#Joined}, delta
+	 * specifies the width of the inflated line.
+	 * <p>
+	 * Caution: Offsetting self-intersecting polygons may produce unexpected
+	 * results.
+	 *
+	 * @param paths        A Paths object that is to undergo offsetting.
+	 * @param delta        With closed paths (polygons), a positive
+	 *                     <code>delta</code> specifies how much outer polygon
+	 *                     contours will expand and how much inner "hole" contours
+	 *                     will contract (and the converse with negative deltas).
+	 *                     <p>
+	 *                     With open paths (polylines), including EndType.Join,
+	 *                     <code>delta</code> specifies the width of the inflated
+	 *                     line.
+	 * @param joinType     see {@link JoinType}
+	 * @param endType      see {@link EndType}
+	 * @param miterLimit   Sets the maximum distance in multiples of delta that
+	 *                     vertices can be offset from their original positions
+	 *                     before squaring is applied. (Squaring truncates a miter
+	 *                     by 'cutting it off' at 1 × delta distance from the
+	 *                     original vertex.)
+	 *                     <p>
+	 *                     The default value for MiterLimit is 2 (ie twice delta).
+	 *                     This is also the smallest MiterLimit that's allowed. If
+	 *                     mitering was unrestricted (ie without any squaring), then
+	 *                     offsets at very acute angles would generate unacceptably
+	 *                     long 'spikes'.
+	 * @param arcTolerance Sets the distance the flattened path will deviate from
+	 *                     the 'true' arc (only relevant when offsetting with
+	 *                     JoinType.Round and/or EndType.Round).
+	 * @param precision    The number of decimal places of precision to consider
+	 *                     when paths is type PathsD. (Maximum is 8 decimal places)
+	 * @return the offset paths.
+	 */
+	public static PathsD InflatePaths(PathsD paths, double delta, JoinType joinType, EndType endType, double miterLimit, double arcTolerance, int precision) {
+		InternalClipper.CheckPrecision(precision);
+		double scale = Math.pow(10, precision);
+		Paths64 tmp = ScalePaths64(paths, scale);
+		ClipperOffset co = new ClipperOffset(miterLimit, arcTolerance * scale);
+		co.AddPaths(tmp, joinType, endType);
+		co.Execute(delta * scale, tmp); // reuse 'tmp' to receive (scaled) solution
+		return ScalePathsD(tmp, 1 / scale);
+	}
+
+	public static Paths64 RectClip(Rect64 rect, Paths64 paths) {
+		if (rect.IsEmpty() || paths.isEmpty()) {
+			return new Paths64();
+		}
+		RectClip64 rc = new RectClip64(rect);
+		return rc.Execute(paths);
+	}
+
+	public static Paths64 RectClip(Rect64 rect, Path64 path) {
+		if (rect.IsEmpty() || path.isEmpty()) {
+			return new Paths64();
+		}
+		Paths64 tmp = new Paths64();
+		tmp.add(path);
+		return RectClip(rect, tmp);
+	}
+
+	public static PathsD RectClip(RectD rect, PathsD paths) {
+		return RectClip(rect, paths, 2);
+	}
+
+	public static PathsD RectClip(RectD rect, PathsD paths, int precision) {
+		InternalClipper.CheckPrecision(precision);
+		if (rect.IsEmpty() || paths.isEmpty()) {
+			return new PathsD();
+		}
+		double scale = Math.pow(10, precision);
+		Rect64 r = ScaleRect(rect, scale);
+		Paths64 tmpPath = ScalePaths64(paths, scale);
+		RectClip64 rc = new RectClip64(r);
+		tmpPath = rc.Execute(tmpPath);
+		return ScalePathsD(tmpPath, 1 / scale);
+	}
+
+	public static PathsD RectClip(RectD rect, PathD path) {
+		return RectClip(rect, path, 2);
+	}
+
+	public static PathsD RectClip(RectD rect, PathD path, int precision) {
+		if (rect.IsEmpty() || path.isEmpty()) {
+			return new PathsD();
+		}
+		PathsD tmp = new PathsD();
+		tmp.add(path);
+		return RectClip(rect, tmp, precision);
+	}
+
+	public static Paths64 RectClipLines(Rect64 rect, Paths64 paths) {
+		if (rect.IsEmpty() || paths.isEmpty()) {
+			return new Paths64();
+		}
+		RectClipLines64 rc = new RectClipLines64(rect);
+		return rc.Execute(paths);
+	}
+
+	public static Paths64 RectClipLines(Rect64 rect, Path64 path) {
+		if (rect.IsEmpty() || path.isEmpty()) {
+			return new Paths64();
+		}
+		Paths64 tmp = new Paths64();
+		tmp.add(path);
+		return RectClipLines(rect, tmp);
+	}
+
+	public static PathsD RectClipLines(RectD rect, PathsD paths) {
+		return RectClipLines(rect, paths, 2);
+	}
+
+	public static PathsD RectClipLines(RectD rect, PathsD paths, int precision) {
+		InternalClipper.CheckPrecision(precision);
+		if (rect.IsEmpty() || paths.isEmpty()) {
+			return new PathsD();
+		}
+		double scale = Math.pow(10, precision);
+		Rect64 r = ScaleRect(rect, scale);
+		Paths64 tmpPath = ScalePaths64(paths, scale);
+		RectClipLines64 rc = new RectClipLines64(r);
+		tmpPath = rc.Execute(tmpPath);
+		return ScalePathsD(tmpPath, 1 / scale);
+	}
+
+	public static PathsD RectClipLines(RectD rect, PathD path) {
+		return RectClipLines(rect, path, 2);
+	}
+
+	public static PathsD RectClipLines(RectD rect, PathD path, int precision) {
+		if (rect.IsEmpty() || path.isEmpty()) {
+			return new PathsD();
+		}
+		PathsD tmp = new PathsD();
+		tmp.add(path);
+		return RectClipLines(rect, tmp, precision);
+	}
+
+	public static Paths64 MinkowskiSum(Path64 pattern, Path64 path, boolean isClosed) {
+		return Minkowski.Sum(pattern, path, isClosed);
+	}
+
+	public static PathsD MinkowskiSum(PathD pattern, PathD path, boolean isClosed) {
+		return Minkowski.Sum(pattern, path, isClosed);
+	}
+
+	public static Paths64 MinkowskiDiff(Path64 pattern, Path64 path, boolean isClosed) {
+		return Minkowski.Diff(pattern, path, isClosed);
+	}
+
+	public static PathsD MinkowskiDiff(PathD pattern, PathD path, boolean isClosed) {
+		return Minkowski.Diff(pattern, path, isClosed);
+	}
+
+	/**
+	 * Returns the area of the supplied polygon. It's assumed that the path is
+	 * closed and does not self-intersect. Depending on the path's winding
+	 * orientation, this value may be positive or negative. If the winding is
+	 * clockwise, then the area will be positive and conversely, if winding is
+	 * counter-clockwise, then the area will be negative.
+	 *
+	 * @param path the path whose area will be calculated.
+	 * @return the signed area of the path.
+	 */
+	public static double Area(Path64 path) {
+		// https://en.wikipedia.org/wiki/Shoelace_formula
+		double a = 0.0;
+		int cnt = path.size();
+		if (cnt < 3) {
+			return 0.0;
+		}
+		Point64 prevPt = path.get(cnt - 1);
+		for (Point64 pt : path) {
+			a += (double) (prevPt.y + pt.y) * (prevPt.x - pt.x);
+			prevPt = pt;
+		}
+		return a * 0.5;
+	}
+
+	/**
+	 * Returns the area of the supplied polygon. It's assumed that the path is
+	 * closed and does not self-intersect. Depending on the path's winding
+	 * orientation, this value may be positive or negative. If the winding is
+	 * clockwise, then the area will be positive and conversely, if winding is
+	 * counter-clockwise, then the area will be negative.
+	 *
+	 * @param paths the paths whose total area will be calculated.
+	 * @return the sum of the signed areas of all supplied paths.
+	 */
+	public static double Area(Paths64 paths) {
+		double a = 0.0;
+		for (Path64 path : paths) {
+			a += Area(path);
+		}
+		return a;
+	}
+
+	/**
+	 * Returns the signed area of the supplied floating-point polygon.
+	 *
+	 * @param path the path whose area will be calculated.
+	 * @return the signed area of the path.
+	 */
+	public static double Area(PathD path) {
+		double a = 0.0;
+		int cnt = path.size();
+		if (cnt < 3) {
+			return 0.0;
+		}
+		PointD prevPt = path.get(cnt - 1);
+		for (PointD pt : path) {
+			a += (prevPt.y + pt.y) * (prevPt.x - pt.x);
+			prevPt = pt;
+		}
+		return a * 0.5;
+	}
+
+	/**
+	 * Returns the combined signed area of the supplied floating-point polygons.
+	 *
+	 * @param paths the paths whose total area will be calculated.
+	 * @return the sum of the signed areas of all supplied paths.
+	 */
+	public static double Area(PathsD paths) {
+		double a = 0.0;
+		for (PathD path : paths) {
+			a += Area(path);
+		}
+		return a;
+	}
+
+	/**
+	 * This function assesses the winding orientation of closed paths.
+	 * <p>
+	 * Positive winding paths will be oriented in an anti-clockwise direction in
+	 * Cartesian coordinates (where coordinate values increase when heading
+	 * rightward and upward). Nevertheless it's common for graphics libraries to use
+	 * inverted Y-axes (where Y values decrease heading upward). In these libraries,
+	 * paths with Positive winding will be oriented clockwise.
+	 * <p>
+	 * Note: Self-intersecting polygons have indeterminate orientation since some
+	 * path segments will commonly wind in opposite directions to other segments.
+	 *
+	 * @param poly the polygon to test.
+	 * @return {@code true} when the polygon has positive winding.
+	 */
+	public static boolean IsPositive(Path64 poly) {
+		return Area(poly) >= 0;
+	}
+
+	/**
+	 * This function assesses the winding orientation of closed paths.
+	 * <p>
+	 * Positive winding paths will be oriented in an anti-clockwise direction in
+	 * Cartesian coordinates (where coordinate values increase when heading
+	 * rightward and upward). Nevertheless it's common for graphics libraries to use
+	 * inverted Y-axes (where Y values decrease heading upward). In these libraries,
+	 * paths with Positive winding will be oriented clockwise.
+	 * <p>
+	 * Note: Self-intersecting polygons have indeterminate orientation since some
+	 * path segments will commonly wind in opposite directions to other segments.
+	 *
+	 * @param poly the polygon to test.
+	 * @return {@code true} when the polygon has positive winding.
+	 */
+	public static boolean IsPositive(PathD poly) {
+		return Area(poly) >= 0;
+	}
+
+	public static String Path64ToString(Path64 path) {
+		StringBuilder bld = new StringBuilder();
+		for (Point64 pt : path) {
+			bld.append(pt.toString());
+		}
+		return bld.toString() + '\n';
+	}
+
+	public static String Paths64ToString(Paths64 paths) {
+		StringBuilder bld = new StringBuilder();
+		for (Path64 path : paths) {
+			bld.append(Path64ToString(path));
+		}
+		return bld.toString();
+	}
+
+	public static String PathDToString(PathD path) {
+		StringBuilder bld = new StringBuilder();
+		for (PointD pt : path) {
+			bld.append(pt.toString());
+		}
+		return bld.toString() + '\n';
+	}
+
+	public static String PathsDToString(PathsD paths) {
+		StringBuilder bld = new StringBuilder();
+		for (PathD path : paths) {
+			bld.append(PathDToString(path));
+		}
+		return bld.toString();
+	}
+
+	public static Path64 OffsetPath(Path64 path, long dx, long dy) {
+		Path64 result = new Path64(path.size());
+		for (Point64 pt : path) {
+			result.add(new Point64(pt.x + dx, pt.y + dy));
+		}
+		return result;
+	}
+
+	public static Point64 ScalePoint64(Point64 pt, double scale) {
+		Point64 result = new Point64();
+		result.x = (long) Math.rint(pt.x * scale);
+		result.y = (long) Math.rint(pt.y * scale);
+		return result;
+	}
+
+	public static PointD ScalePointD(Point64 pt, double scale) {
+		PointD result = new PointD();
+		result.x = pt.x * scale;
+		result.y = pt.y * scale;
+		return result;
+	}
+
+	public static Rect64 ScaleRect(RectD rec, double scale) {
+		Rect64 result = new Rect64((long) (rec.left * scale), (long) (rec.top * scale), (long) (rec.right * scale), (long) (rec.bottom * scale));
+		return result;
+	}
+
+	public static Path64 ScalePath(Path64 path, double scale) {
+		if (InternalClipper.IsAlmostZero(scale - 1)) {
+			return path;
+		}
+		Path64 result = new Path64(path.size());
+		for (Point64 pt : path) {
+			result.add(new Point64(pt.x * scale, pt.y * scale));
+		}
+		return result;
+	}
+
+	public static Paths64 ScalePaths(Paths64 paths, double scale) {
+		if (InternalClipper.IsAlmostZero(scale - 1)) {
+			return paths;
+		}
+		Paths64 result = new Paths64(paths.size());
+		for (Path64 path : paths) {
+			result.add(ScalePath(path, scale));
+		}
+		return result;
+	}
+
+	public static PathD ScalePath(PathD path, double scale) {
+		if (InternalClipper.IsAlmostZero(scale - 1)) {
+			return path;
+		}
+		PathD result = new PathD(path.size());
+		for (PointD pt : path) {
+			result.add(new PointD(pt, scale));
+		}
+		return result;
+	}
+
+	public static PathsD ScalePaths(PathsD paths, double scale) {
+		if (InternalClipper.IsAlmostZero(scale - 1)) {
+			return paths;
+		}
+		PathsD result = new PathsD(paths.size());
+		for (PathD path : paths) {
+			result.add(ScalePath(path, scale));
+		}
+		return result;
+	}
+
+	// Unlike ScalePath, both ScalePath64 & ScalePathD also involve type conversion
+	public static Path64 ScalePath64(PathD path, double scale) {
+		int cnt = path.size();
+		Path64 res = new Path64(cnt);
+		for (PointD pt : path) {
+			res.add(new Point64(pt, scale));
+		}
+		return res;
+	}
+
+	public static Paths64 ScalePaths64(PathsD paths, double scale) {
+		int cnt = paths.size();
+		Paths64 res = new Paths64(cnt);
+		for (PathD path : paths) {
+			res.add(ScalePath64(path, scale));
+		}
+		return res;
+	}
+
+	public static PathD ScalePathD(Path64 path, double scale) {
+		int cnt = path.size();
+		PathD res = new PathD(cnt);
+		for (Point64 pt : path) {
+			res.add(new PointD(pt, scale));
+		}
+		return res;
+	}
+
+	public static PathsD ScalePathsD(Paths64 paths, double scale) {
+		int cnt = paths.size();
+		PathsD res = new PathsD(cnt);
+		for (Path64 path : paths) {
+			res.add(ScalePathD(path, scale));
+		}
+		return res;
+	}
+
+	// The static functions Path64 and PathD convert path types without scaling
+	public static Path64 Path64(PathD path) {
+		Path64 result = new Path64(path.size());
+		for (PointD pt : path) {
+			result.add(new Point64(pt));
+		}
+		return result;
+	}
+
+	public static Paths64 Paths64(PathsD paths) {
+		Paths64 result = new Paths64(paths.size());
+		for (PathD path : paths) {
+			result.add(Path64(path));
+		}
+		return result;
+	}
+
+	public static PathsD PathsD(Paths64 paths) {
+		PathsD result = new PathsD(paths.size());
+		for (Path64 path : paths) {
+			result.add(PathD(path));
+		}
+		return result;
+	}
+
+	public static PathD PathD(Path64 path) {
+		PathD result = new PathD(path.size());
+		for (Point64 pt : path) {
+			result.add(new PointD(pt));
+		}
+		return result;
+	}
+
+	public static Path64 TranslatePath(Path64 path, long dx, long dy) {
+		Path64 result = new Path64(path.size());
+		for (Point64 pt : path) {
+			result.add(new Point64(pt.x + dx, pt.y + dy));
+		}
+		return result;
+	}
+
+	public static Paths64 TranslatePaths(Paths64 paths, long dx, long dy) {
+		Paths64 result = new Paths64(paths.size());
+		for (Path64 path : paths) {
+			result.add(OffsetPath(path, dx, dy));
+		}
+		return result;
+	}
+
+	public static PathD TranslatePath(PathD path, double dx, double dy) {
+		PathD result = new PathD(path.size());
+		for (PointD pt : path) {
+			result.add(new PointD(pt.x + dx, pt.y + dy));
+		}
+		return result;
+	}
+
+	public static PathsD TranslatePaths(PathsD paths, double dx, double dy) {
+		PathsD result = new PathsD(paths.size());
+		for (PathD path : paths) {
+			result.add(TranslatePath(path, dx, dy));
+		}
+		return result;
+	}
+
+	public static Path64 ReversePath(Path64 path) {
+		Path64 result = new Path64(path);
+		Collections.reverse(result);
+		return result;
+	}
+
+	public static PathD ReversePath(PathD path) {
+		PathD result = new PathD(path);
+		Collections.reverse(result);
+		return result;
+	}
+
+	public static Paths64 ReversePaths(Paths64 paths) {
+		Paths64 result = new Paths64(paths.size());
+		for (Path64 t : paths) {
+			result.add(ReversePath(t));
+		}
+
+		return result;
+	}
+
+	public static PathsD ReversePaths(PathsD paths) {
+		PathsD result = new PathsD(paths.size());
+		for (PathD path : paths) {
+			result.add(ReversePath(path));
+		}
+		return result;
+	}
+
+	/**
+	 * Returns the bounds of an integer path.
+	 *
+	 * @param path the path to measure.
+	 * @return the path bounds, or an empty rectangle when the path is empty.
+	 */
+	public static Rect64 GetBounds(Path64 path) {
+		Rect64 result = InvalidRect64.clone();
+		for (Point64 pt : path) {
+			if (pt.x < result.left) {
+				result.left = pt.x;
+			}
+			if (pt.x > result.right) {
+				result.right = pt.x;
+			}
+			if (pt.y < result.top) {
+				result.top = pt.y;
+			}
+			if (pt.y > result.bottom) {
+				result.bottom = pt.y;
+			}
+		}
+		return result.left == Long.MAX_VALUE ? new Rect64() : result;
+	}
+
+	/**
+	 * Returns the bounds of multiple integer paths.
+	 *
+	 * @param paths the paths to measure.
+	 * @return the combined bounds, or an empty rectangle when no points are
+	 *         supplied.
+	 */
+	public static Rect64 GetBounds(Paths64 paths) {
+		Rect64 result = InvalidRect64.clone();
+		for (Path64 path : paths) {
+			for (Point64 pt : path) {
+				if (pt.x < result.left) {
+					result.left = pt.x;
+				}
+				if (pt.x > result.right) {
+					result.right = pt.x;
+				}
+				if (pt.y < result.top) {
+					result.top = pt.y;
+				}
+				if (pt.y > result.bottom) {
+					result.bottom = pt.y;
+				}
+			}
+		}
+		return result.left == Long.MAX_VALUE ? new Rect64() : result;
+	}
+
+	/**
+	 * Returns the bounds of a floating-point path.
+	 *
+	 * @param path the path to measure.
+	 * @return the path bounds, or an empty rectangle when the path is empty.
+	 */
+	public static RectD GetBounds(PathD path) {
+		RectD result = InvalidRectD.clone();
+		for (PointD pt : path) {
+			if (pt.x < result.left) {
+				result.left = pt.x;
+			}
+			if (pt.x > result.right) {
+				result.right = pt.x;
+			}
+			if (pt.y < result.top) {
+				result.top = pt.y;
+			}
+			if (pt.y > result.bottom) {
+				result.bottom = pt.y;
+			}
+		}
+		return InternalClipper.IsAlmostZero(result.left - Double.MAX_VALUE) ? new RectD() : result;
+	}
+
+	/**
+	 * Returns the bounds of multiple floating-point paths.
+	 *
+	 * @param paths the paths to measure.
+	 * @return the combined bounds, or an empty rectangle when no points are
+	 *         supplied.
+	 */
+	public static RectD GetBounds(PathsD paths) {
+		RectD result = InvalidRectD.clone();
+		for (PathD path : paths) {
+			for (PointD pt : path) {
+				if (pt.x < result.left) {
+					result.left = pt.x;
+				}
+				if (pt.x > result.right) {
+					result.right = pt.x;
+				}
+				if (pt.y < result.top) {
+					result.top = pt.y;
+				}
+				if (pt.y > result.bottom) {
+					result.bottom = pt.y;
+				}
+			}
+		}
+		return InternalClipper.IsAlmostZero(result.left - Double.MAX_VALUE) ? new RectD() : result;
+	}
+
+	/**
+	 * Creates an integer path from alternating {@code x,y} coordinate pairs.
+	 *
+	 * @param arr the coordinate array.
+	 * @return the constructed path.
+	 */
+	public static Path64 MakePath(int[] arr) {
+		int len = arr.length / 2;
+		Path64 p = new Path64(len);
+		for (int i = 0; i < len; i++) {
+			p.add(new Point64(arr[i * 2], arr[i * 2 + 1]));
+		}
+		return p;
+	}
+
+	public static Path64 MakePath(long[] arr) {
+		int len = arr.length / 2;
+		Path64 p = new Path64(len);
+		for (int i = 0; i < len; i++) {
+			p.add(new Point64(arr[i * 2], arr[i * 2 + 1]));
+		}
+		return p;
+	}
+
+	/**
+	 * Creates a floating-point path from alternating {@code x,y} coordinate pairs.
+	 *
+	 * @param arr the coordinate array.
+	 * @return the constructed path.
+	 */
+	public static PathD MakePath(double[] arr) {
+		int len = arr.length / 2;
+		PathD p = new PathD(len);
+		for (int i = 0; i < len; i++) {
+			p.add(new PointD(arr[i * 2], arr[i * 2 + 1]));
+		}
+		return p;
+	}
+
+	public static double Sqr(double value) {
+		return value * value;
+	}
+
+	public static double Sqr(long value) {
+		return (double) value * (double) value;
+	}
+
+	/**
+	 * Returns the squared distance between two integer points.
+	 *
+	 * @param pt1 the first point.
+	 * @param pt2 the second point.
+	 * @return the squared Euclidean distance between the two points.
+	 */
+	public static double DistanceSqr(Point64 pt1, Point64 pt2) {
+		return Sqr(pt1.x - pt2.x) + Sqr(pt1.y - pt2.y);
+	}
+
+	public static Point64 MidPoint(Point64 pt1, Point64 pt2) {
+		return new Point64((pt1.x + pt2.x) / 2, (pt1.y + pt2.y) / 2);
+	}
+
+	public static PointD MidPoint(PointD pt1, PointD pt2) {
+		return new PointD((pt1.x + pt2.x) / 2, (pt1.y + pt2.y) / 2);
+	}
+
+	/**
+	 * Expands or contracts an integer rectangle in place.
+	 *
+	 * @param rec the rectangle to modify.
+	 * @param dx the horizontal delta to apply on both sides.
+	 * @param dy the vertical delta to apply on both sides.
+	 */
+	public static void InflateRect(Rect64 rec, int dx, int dy) {
+		rec.left -= dx;
+		rec.right += dx;
+		rec.top -= dy;
+		rec.bottom += dy;
+	}
+
+	/**
+	 * Expands or contracts a floating-point rectangle in place.
+	 *
+	 * @param rec the rectangle to modify.
+	 * @param dx the horizontal delta to apply on both sides.
+	 * @param dy the vertical delta to apply on both sides.
+	 */
+	public static void InflateRect(RectD rec, double dx, double dy) {
+		rec.left -= dx;
+		rec.right += dx;
+		rec.top -= dy;
+		rec.bottom += dy;
+	}
+
+	public static boolean PointsNearEqual(PointD pt1, PointD pt2, double distanceSqrd) {
+		return Sqr(pt1.x - pt2.x) + Sqr(pt1.y - pt2.y) < distanceSqrd;
+	}
+
+	public static PathD StripNearDuplicates(PathD path, double minEdgeLenSqrd, boolean isClosedPath) {
+		int cnt = path.size();
+		PathD result = new PathD(cnt);
+		if (cnt == 0) {
+			return result;
+		}
+		PointD lastPt = path.get(0);
+		result.add(lastPt);
+		for (int i = 1; i < cnt; i++) {
+			if (!PointsNearEqual(lastPt, path.get(i), minEdgeLenSqrd)) {
+				lastPt = path.get(i);
+				result.add(lastPt);
+			}
+		}
+
+		if (isClosedPath && PointsNearEqual(lastPt, result.get(0), minEdgeLenSqrd)) {
+			result.remove(result.size() - 1);
+		}
+
+		return result;
+	}
+
+	public static Path64 StripDuplicates(Path64 path, boolean isClosedPath) {
+		int cnt = path.size();
+		Path64 result = new Path64(cnt);
+		if (cnt == 0) {
+			return result;
+		}
+		Point64 lastPt = path.get(0);
+		result.add(lastPt);
+		for (int i = 1; i < cnt; i++) {
+			if (!path.get(i).equals(lastPt)) {
+				lastPt = path.get(i);
+				result.add(lastPt);
+			}
+		}
+		if (isClosedPath && result.get(0).equals(lastPt)) {
+			result.remove(result.size() - 1);
+		}
+		return result;
+	}
+
+	private static void AddPolyNodeToPaths(PolyPath64 polyPath, Paths64 paths) {
+		if (!polyPath.getPolygon().isEmpty()) {
+			paths.add(polyPath.getPolygon());
+		}
+		polyPath.iterator().forEachRemaining(p -> AddPolyNodeToPaths((PolyPath64) p, paths));
+	}
+
+	public static Paths64 PolyTreeToPaths64(PolyTree64 polyTree) {
+		Paths64 result = new Paths64();
+		polyTree.iterator().forEachRemaining(p -> AddPolyNodeToPaths((PolyPath64) p, result));
+		return result;
+	}
+
+	/**
+	 * Flattens a floating-point polytree into a path collection.
+	 *
+	 * @param polyPath the current polytree node.
+	 * @param paths the destination path collection.
+	 */
+	public static void AddPolyNodeToPathsD(PolyPathD polyPath, PathsD paths) {
+		if (!polyPath.getPolygon().isEmpty()) {
+			paths.add(polyPath.getPolygon());
+		}
+		polyPath.iterator().forEachRemaining(p -> AddPolyNodeToPathsD((PolyPathD) p, paths));
+	}
+
+	public static PathsD PolyTreeToPathsD(PolyTreeD polyTree) {
+		PathsD result = new PathsD();
+		for (PolyPathBase polyPathBase : polyTree) {
+			PolyPathD p = (PolyPathD) polyPathBase;
+			AddPolyNodeToPathsD(p, result);
+		}
+
+		return result;
+	}
+
+	public static double PerpendicDistFromLineSqrd(PointD pt, PointD line1, PointD line2) {
+		double a = pt.x - line1.x;
+		double b = pt.y - line1.y;
+		double c = line2.x - line1.x;
+		double d = line2.y - line1.y;
+		if (c == 0 && d == 0) {
+			return 0;
+		}
+		return Sqr(a * d - c * b) / (c * c + d * d);
+	}
+
+	public static double PerpendicDistFromLineSqrd(Point64 pt, Point64 line1, Point64 line2) {
+		double a = (double) pt.x - line1.x;
+		double b = (double) pt.y - line1.y;
+		double c = (double) line2.x - line1.x;
+		double d = (double) line2.y - line1.y;
+		if (c == 0 && d == 0) {
+			return 0;
+		}
+		return Sqr(a * d - c * b) / (c * c + d * d);
+	}
+
+	public static void RDP(Path64 path, int begin, int end, double epsSqrd, List<Boolean> flags) {
+		while (true) {
+			int idx = 0;
+			double maxD = 0;
+			while (end > begin && path.get(begin).equals(path.get(end))) {
+				flags.set(end--, false);
+			}
+			for (int i = begin + 1; i < end; ++i) {
+				// PerpendicDistFromLineSqrd - avoids expensive Sqrt()
+				double d = PerpendicDistFromLineSqrd(path.get(i), path.get(begin), path.get(end));
+				if (d <= maxD) {
+					continue;
+				}
+				maxD = d;
+				idx = i;
+			}
+			if (maxD <= epsSqrd) {
+				return;
+			}
+			flags.set(idx, true);
+			if (idx > begin + 1) {
+				RDP(path, begin, idx, epsSqrd, flags);
+			}
+			if (idx < end - 1) {
+				begin = idx;
+				continue;
+			}
+			break;
+		}
+	}
+
+	/**
+	 * The Ramer-Douglas-Peucker algorithm is very useful in removing path segments
+	 * that don't contribute meaningfully to the path's shape. The algorithm's
+	 * aggressiveness is determined by the epsilon parameter, with larger values
+	 * removing more vertices. (Somewhat simplistically, the algorithm removes
+	 * vertices that are less than epsilon distance from imaginary lines passing
+	 * through their adjacent vertices.)
+	 * <p>
+	 * This function can be particularly useful when offsetting paths (ie
+	 * inflating/shrinking) where the offsetting process often creates tiny
+	 * segments. These segments don't enhance curve quality, but they will slow path
+	 * processing (whether during file storage, or when rendering, or in subsequent
+	 * offsetting procedures).
+	 *
+	 * @param path the path to simplify.
+	 * @param epsilon the maximum permitted deviation from the original path.
+	 * @return the simplified path.
+	 */
+	public static Path64 RamerDouglasPeuckerPath(Path64 path, double epsilon) {
+		int len = path.size();
+		if (len < 5) {
+			return path;
+		}
+		List<Boolean> flags = new ArrayList<>(Collections.nCopies(len, false));
+		flags.set(0, true);
+		flags.set(len - 1, true);
+		RDP(path, 0, len - 1, Sqr(epsilon), flags);
+		Path64 result = new Path64(len);
+		for (int i = 0; i < len; ++i) {
+			if (flags.get(i).booleanValue()) {
+				result.add(path.get(i));
+			}
+		}
+		return result;
+	}
+
+	/**
+	 * The Ramer-Douglas-Peucker algorithm is very useful in removing path segments
+	 * that don't contribute meaningfully to the path's shape. The algorithm's
+	 * aggressiveness is determined by the epsilon parameter, with larger values
+	 * removing more vertices. (Somewhat simplistically, the algorithm removes
+	 * vertices that are less than epsilon distance from imaginary lines passing
+	 * through their adjacent vertices.)
+	 * <p>
+	 * This function can be particularly useful when offsetting paths (ie
+	 * inflating/shrinking) where the offsetting process often creates tiny
+	 * segments. These segments don't enhance curve quality, but they will slow path
+	 * processing (whether during file storage, or when rendering, or in subsequent
+	 * offsetting procedures).
+	 *
+	 * @param paths the paths to simplify.
+	 * @param epsilon the maximum permitted deviation from the original paths.
+	 * @return the simplified paths.
+	 */
+	public static Paths64 RamerDouglasPeucker(Paths64 paths, double epsilon) {
+		Paths64 result = new Paths64(paths.size());
+		for (Path64 path : paths) {
+			result.add(RamerDouglasPeuckerPath(path, epsilon));
+		}
+		return result;
+	}
+
+	public static void RDP(PathD path, int begin, int end, double epsSqrd, List<Boolean> flags) {
+		while (true) {
+			int idx = 0;
+			double maxD = 0;
+			while (end > begin && path.get(begin).equals(path.get(end))) {
+				flags.set(end--, false);
+			}
+			for (int i = begin + 1; i < end; ++i) {
+				// PerpendicDistFromLineSqrd - avoids expensive Sqrt()
+				double d = PerpendicDistFromLineSqrd(path.get(i), path.get(begin), path.get(end));
+				if (d <= maxD) {
+					continue;
+				}
+				maxD = d;
+				idx = i;
+			}
+			if (maxD <= epsSqrd) {
+				return;
+			}
+			flags.set(idx, true);
+			if (idx > begin + 1) {
+				RDP(path, begin, idx, epsSqrd, flags);
+			}
+			if (idx < end - 1) {
+				begin = idx;
+				continue;
+			}
+			break;
+		}
+	}
+
+	/**
+	 * Simplifies a floating-point path using the Ramer-Douglas-Peucker algorithm.
+	 *
+	 * @param path the path to simplify.
+	 * @param epsilon the maximum permitted deviation from the original path.
+	 * @return the simplified path.
+	 */
+	public static PathD RamerDouglasPeucker(PathD path, double epsilon) {
+		int len = path.size();
+		if (len < 5) {
+			return path;
+		}
+		List<Boolean> flags = new ArrayList<>(Collections.nCopies(len, false));
+		flags.set(0, true);
+		flags.set(len - 1, true);
+		RDP(path, 0, len - 1, Sqr(epsilon), flags);
+		PathD result = new PathD(len);
+		for (int i = 0; i < len; ++i) {
+			if (flags.get(i).booleanValue()) {
+				result.add(path.get(i));
+			}
+		}
+		return result;
+	}
+
+	/**
+	 * Simplifies floating-point paths using the Ramer-Douglas-Peucker algorithm.
+	 *
+	 * @param paths the paths to simplify.
+	 * @param epsilon the maximum permitted deviation from the original paths.
+	 * @return the simplified paths.
+	 */
+	public static PathsD RamerDouglasPeucker(PathsD paths, double epsilon) {
+		PathsD result = new PathsD(paths.size());
+		for (PathD path : paths) {
+			result.add(RamerDouglasPeucker(path, epsilon));
+		}
+		return result;
+	}
+
+	private static int GetNext(int current, int high, final /* ref */ boolean[] flags) {
+		++current;
+		while (current <= high && flags[current]) {
+			++current;
+		}
+		if (current <= high) {
+			return current;
+		}
+		current = 0;
+		while (flags[current]) {
+			++current;
+		}
+		return current;
+	}
+
+	private static int GetPrior(int current, int high, final /* ref */ boolean[] flags) {
+		if (current == 0) {
+			current = high;
+		} else {
+			--current;
+		}
+		while (current > 0 && flags[current]) {
+			--current;
+		}
+		if (!flags[current]) {
+			return current;
+		}
+		current = high;
+		while (flags[current]) {
+			--current;
+		}
+		return current;
+	}
+
+	/**
+	 * Simplifies a path assuming an open path by default.
+	 *
+	 * @param path the path to simplify.
+	 * @param epsilon the maximum permitted deviation from the original path.
+	 * @return the simplified path.
+	 */
+	public static Path64 SimplifyPath(Path64 path, double epsilon) {
+		return SimplifyPath(path, epsilon, false);
+	}
+
+	/**
+	 * Removes vertices that are less than the specified epsilon distance from an
+	 * imaginary line that passes through its 2 adjacent vertices. Logically,
+	 * smaller epsilon values will be less aggressive in removing vertices than
+	 * larger epsilon values.
+	 * <p>
+	 * This function is strongly recommended before offsetting (ie before
+	 * inflating/shrinking) when paths may contain redundant segments. And removing
+	 * redundant segments is especially important when offsetting paths that have
+	 * themselves been offset.
+	 * 
+	 * @param path the path to simplify.
+	 * @param epsilon the maximum permitted deviation from the original path.
+	 * @param isClosedPath whether the path should be treated as closed.
+	 * @return the simplified path.
+	 */
+	public static Path64 SimplifyPath(Path64 path, double epsilon, boolean isClosedPath) {
+		int len = path.size();
+		int high = len - 1;
+		double epsSqr = Sqr(epsilon);
+		if (len < 4) {
+			return path; // Return original path if too short
+		}
+
+		boolean[] flags = new boolean[len];
+		double[] dsq = new double[len];
+		int curr = 0, prev, start, next, prior2;
+
+		if (isClosedPath) {
+			dsq[0] = PerpendicDistFromLineSqrd(path.get(0), path.get(high), path.get(1));
+			dsq[high] = PerpendicDistFromLineSqrd(path.get(high), path.get(0), path.get(high - 1));
+		} else {
+			dsq[0] = Double.MAX_VALUE;
+			dsq[high] = Double.MAX_VALUE;
+		}
+
+		for (int i = 1; i < high; ++i) {
+			dsq[i] = PerpendicDistFromLineSqrd(path.get(i), path.get(i - 1), path.get(i + 1));
+		}
+
+		for (;;) {
+			if (dsq[curr] > epsSqr) {
+				start = curr;
+				do {
+					curr = GetNext(curr, high, flags);
+				} while (curr != start && dsq[curr] > epsSqr);
+				if (curr == start) {
+					break;
+				}
+			}
+
+			prev = GetPrior(curr, high, flags);
+			next = GetNext(curr, high, flags);
+			if (next == prev) {
+				break;
+			}
+
+			if (dsq[next] < dsq[curr]) {
+				prior2 = prev;
+				prev = curr;
+				curr = next;
+				next = GetNext(next, high, flags);
+			} else {
+				prior2 = GetPrior(prev, high, flags);
+			}
+
+			flags[curr] = true;
+			curr = next;
+			next = GetNext(next, high, flags);
+
+			if (isClosedPath || ((curr != high) && (curr != 0))) {
+				dsq[curr] = PerpendicDistFromLineSqrd(path.get(curr), path.get(prev), path.get(next));
+			}
+			if (isClosedPath || ((prev != 0) && (prev != high))) {
+				dsq[prev] = PerpendicDistFromLineSqrd(path.get(prev), path.get(prior2), path.get(curr));
+			}
+		}
+
+		Path64 result = new Path64(len);
+		for (int i = 0; i < len; i++) {
+			if (!flags[i]) {
+				result.add(path.get(i));
+			}
+		}
+		return result;
+	}
+
+	/**
+	 * Simplifies multiple integer paths assuming open paths by default.
+	 *
+	 * @param paths the paths to simplify.
+	 * @param epsilon the maximum permitted deviation from the original paths.
+	 * @return the simplified paths.
+	 */
+	public static Paths64 SimplifyPaths(Paths64 paths, double epsilon) {
+		return SimplifyPaths(paths, epsilon, false);
+	}
+
+	/**
+	 * Simplifies multiple integer paths.
+	 *
+	 * @param paths the paths to simplify.
+	 * @param epsilon the maximum permitted deviation from the original paths.
+	 * @param isClosedPath whether the paths should be treated as closed.
+	 * @return the simplified paths.
+	 */
+	public static Paths64 SimplifyPaths(Paths64 paths, double epsilon, boolean isClosedPath) {
+		Paths64 result = new Paths64(paths.size());
+		for (Path64 path : paths) {
+			result.add(SimplifyPath(path, epsilon, isClosedPath));
+		}
+		return result;
+	}
+
+	/**
+	 * Simplifies a floating-point path assuming an open path by default.
+	 *
+	 * @param path the path to simplify.
+	 * @param epsilon the maximum permitted deviation from the original path.
+	 * @return the simplified path.
+	 */
+	public static PathD SimplifyPath(PathD path, double epsilon) {
+		return SimplifyPath(path, epsilon, false);
+	}
+
+	/**
+	 * Removes vertices that are less than the specified epsilon distance from an
+	 * imaginary line that passes through its 2 adjacent vertices. Logically,
+	 * smaller epsilon values will be less aggressive in removing vertices than
+	 * larger epsilon values.
+	 * <p>
+	 * This function is strongly recommended before offsetting (ie before
+	 * inflating/shrinking) when paths may contain redundant segments. And removing
+	 * redundant segments is especially important when offsetting paths that have
+	 * themselves been offset.
+	 * 
+	 * @param path the path to simplify.
+	 * @param epsilon the maximum permitted deviation from the original path.
+	 * @param isClosedPath whether the path should be treated as closed.
+	 * @return the simplified path.
+	 */
+	public static PathD SimplifyPath(PathD path, double epsilon, boolean isClosedPath) {
+		int len = path.size();
+		int high = len - 1;
+		double epsSqr = Sqr(epsilon);
+		if (len < 4) {
+			return path;
+		}
+
+		boolean[] flags = new boolean[len];
+		double[] dsq = new double[len];
+		int curr = 0, prev, start, next, prior2;
+
+		if (isClosedPath) {
+			dsq[0] = PerpendicDistFromLineSqrd(path.get(0), path.get(high), path.get(1));
+			dsq[high] = PerpendicDistFromLineSqrd(path.get(high), path.get(0), path.get(high - 1));
+		} else {
+			dsq[0] = Double.MAX_VALUE;
+			dsq[high] = Double.MAX_VALUE;
+		}
+
+		for (int i = 1; i < high; ++i) {
+			dsq[i] = PerpendicDistFromLineSqrd(path.get(i), path.get(i - 1), path.get(i + 1));
+		}
+
+		for (;;) {
+			if (dsq[curr] > epsSqr) {
+				start = curr;
+				do {
+					curr = GetNext(curr, high, flags);
+				} while (curr != start && dsq[curr] > epsSqr);
+				if (curr == start) {
+					break;
+				}
+			}
+
+			prev = GetPrior(curr, high, flags);
+			next = GetNext(curr, high, flags);
+			if (next == prev) {
+				break;
+			}
+
+			if (dsq[next] < dsq[curr]) {
+				prior2 = prev;
+				prev = curr;
+				curr = next;
+				next = GetNext(next, high, flags);
+			} else {
+				prior2 = GetPrior(prev, high, flags);
+			}
+
+			flags[curr] = true;
+			curr = next;
+			next = GetNext(next, high, flags);
+			if (isClosedPath || ((curr != high) && (curr != 0))) {
+				dsq[curr] = PerpendicDistFromLineSqrd(path.get(curr), path.get(prev), path.get(next));
+			}
+			if (isClosedPath || ((prev != 0) && (prev != high))) {
+				dsq[prev] = PerpendicDistFromLineSqrd(path.get(prev), path.get(prior2), path.get(curr));
+			}
+		}
+
+		PathD result = new PathD(len);
+		for (int i = 0; i < len; i++) {
+			if (!flags[i]) {
+				result.add(path.get(i));
+			}
+		}
+		return result;
+	}
+
+	/**
+	 * Simplifies multiple floating-point paths assuming open paths by default.
+	 *
+	 * @param paths the paths to simplify.
+	 * @param epsilon the maximum permitted deviation from the original paths.
+	 * @return the simplified paths.
+	 */
+	public static PathsD SimplifyPaths(PathsD paths, double epsilon) {
+		return SimplifyPaths(paths, epsilon, false);
+	}
+
+	/**
+	 * Simplifies multiple floating-point paths.
+	 *
+	 * @param paths the paths to simplify.
+	 * @param epsilon the maximum permitted deviation from the original paths.
+	 * @param isClosedPath whether the paths should be treated as closed.
+	 * @return the simplified paths.
+	 */
+	public static PathsD SimplifyPaths(PathsD paths, double epsilon, boolean isClosedPath) {
+		PathsD result = new PathsD(paths.size());
+		for (PathD path : paths) {
+			result.add(SimplifyPath(path, epsilon, isClosedPath));
+		}
+		return result;
+	}
+
+	/**
+	 * This function removes the vertices between adjacent collinear segments. It
+	 * will also remove duplicate vertices (adjacent vertices with identical
+	 * coordinates).
+	 * <p>
+	 * Note: Duplicate vertices will be removed automatically from clipping
+	 * solutions, but not collinear edges unless the Clipper object's
+	 * PreserveCollinear property had been disabled.
+	 *
+	 * @param path the path to trim.
+	 * @return the trimmed path.
+	 */
+	public static Path64 TrimCollinear(Path64 path) {
+		return TrimCollinear(path, false);
+	}
+
+	/**
+	 * This function removes the vertices between adjacent collinear segments. It
+	 * will also remove duplicate vertices (adjacent vertices with identical
+	 * coordinates).
+	 * <p>
+	 * Note: Duplicate vertices will be removed automatically from clipping
+	 * solutions, but not collinear edges unless the Clipper object's
+	 * PreserveCollinear property had been disabled.
+	 *
+	 * @param path the path to trim.
+	 * @param isOpen whether the path should be treated as open.
+	 * @return the trimmed path.
+	 */
+	public static Path64 TrimCollinear(Path64 path, boolean isOpen) {
+		int len = path.size();
+		int i = 0;
+		if (!isOpen) {
+			while (i < len - 1 && InternalClipper.IsCollinear(path.get(len - 1), path.get(i), path.get(i + 1))) {
+				i++;
+			}
+			while (i < len - 1 && InternalClipper.IsCollinear(path.get(len - 2), path.get(len - 1), path.get(i))) {
+				len--;
+			}
+		}
+
+		if (len - i < 3) {
+			if (!isOpen || len < 2 || path.get(0).equals(path.get(1))) {
+				return new Path64();
+			}
+			return path;
+		}
+
+		Path64 result = new Path64(len - i);
+		Point64 last = path.get(i);
+		result.add(last);
+		for (i++; i < len - 1; i++) {
+			if (InternalClipper.IsCollinear(last, path.get(i), path.get(i + 1))) {
+				continue;
+			}
+			last = path.get(i);
+			result.add(last);
+		}
+
+		if (isOpen) {
+			result.add(path.get(len - 1));
+		} else if (!InternalClipper.IsCollinear(last, path.get(len - 1), result.get(0))) {
+			result.add(path.get(len - 1));
+		} else {
+			while (result.size() > 2 && InternalClipper.IsCollinear(result.get(result.size() - 1), result.get(result.size() - 2), result.get(0))) {
+				result.remove(result.size() - 1);
+			}
+			if (result.size() < 3) {
+				result.clear();
+			}
+		}
+		return result;
+	}
+
+	/**
+	 * This function removes the vertices between adjacent collinear segments. It
+	 * will also remove duplicate vertices (adjacent vertices with identical
+	 * coordinates).
+	 * <p>
+	 * With floating point paths, the precision parameter indicates the decimal
+	 * precision that's required when determining collinearity.
+	 * <p>
+	 * Note: Duplicate vertices will be removed automatically from clipping
+	 * solutions, but not collinear edges unless the Clipper object's
+	 * PreserveCollinear property had been disabled.
+	 *
+	 * @param path the path to trim.
+	 * @param precision the decimal precision used to test collinearity.
+	 * @return the trimmed path.
+	 */
+	public static PathD TrimCollinear(PathD path, int precision) {
+		return TrimCollinear(path, precision, false);
+	}
+
+	/**
+	 * This function removes the vertices between adjacent collinear segments. It
+	 * will also remove duplicate vertices (adjacent vertices with identical
+	 * coordinates).
+	 * <p>
+	 * With floating point paths, the precision parameter indicates the decimal
+	 * precision that's required when determining collinearity.
+	 * <p>
+	 * Note: Duplicate vertices will be removed automatically from clipping
+	 * solutions, but not collinear edges unless the Clipper object's
+	 * PreserveCollinear property had been disabled.
+	 *
+	 * @param path the path to trim.
+	 * @param precision the decimal precision used to test collinearity.
+	 * @param isOpen whether the path should be treated as open.
+	 * @return the trimmed path.
+	 */
+	public static PathD TrimCollinear(PathD path, int precision, boolean isOpen) {
+		InternalClipper.CheckPrecision(precision);
+		double scale = Math.pow(10, precision);
+		Path64 p = ScalePath64(path, scale);
+		p = TrimCollinear(p, isOpen);
+		return ScalePathD(p, 1 / scale);
+	}
+
+	public static PointInPolygonResult PointInPolygon(Point64 pt, Path64 polygon) {
+		return InternalClipper.PointInPolygon(pt, polygon);
+	}
+
+	public static PointInPolygonResult PointInPolygon(PointD pt, PathD polygon) {
+		return PointInPolygon(pt, polygon, 2);
+	}
+
+	public static PointInPolygonResult PointInPolygon(PointD pt, PathD polygon, int precision) {
+		InternalClipper.CheckPrecision(precision);
+		double scale = Math.pow(10, precision);
+		Point64 p = new Point64(pt, scale);
+		Path64 path = ScalePath64(polygon, scale);
+		return InternalClipper.PointInPolygon(p, path);
+	}
+
+	/**
+	 * Approximates an integer ellipse using an automatically chosen step count.
+	 *
+	 * @param center the ellipse center.
+	 * @param radiusX the horizontal radius.
+	 * @param radiusY the vertical radius.
+	 * @return the approximated ellipse path.
+	 */
+	public static Path64 Ellipse(Point64 center, double radiusX, double radiusY) {
+		return Ellipse(center, radiusX, radiusY, 0);
+	}
+
+	/**
+	 * Approximates an integer circle using an automatically chosen step count.
+	 *
+	 * @param center the circle center.
+	 * @param radiusX the radius to use on both axes.
+	 * @return the approximated circle path.
+	 */
+	public static Path64 Ellipse(Point64 center, double radiusX) {
+		return Ellipse(center, radiusX, 0, 0);
+	}
+
+	/**
+	 * Approximates an integer ellipse.
+	 *
+	 * @param center the ellipse center.
+	 * @param radiusX the horizontal radius.
+	 * @param radiusY the vertical radius.
+	 * @param steps the number of vertices to generate, or {@code 0} to choose
+	 *        automatically.
+	 * @return the approximated ellipse path.
+	 */
+	public static Path64 Ellipse(Point64 center, double radiusX, double radiusY, int steps) {
+		if (radiusX <= 0) {
+			return new Path64();
+		}
+		if (radiusY <= 0) {
+			radiusY = radiusX;
+		}
+		if (steps <= 2) {
+			steps = (int) Math.ceil(Math.PI * Math.sqrt((radiusX + radiusY) / 2));
+		}
+
+		double si = Math.sin(2 * Math.PI / steps);
+		double co = Math.cos(2 * Math.PI / steps);
+		double dx = co, dy = si;
+		Path64 result = new Path64(steps);
+		result.add(new Point64(center.x + radiusX, center.y));
+		for (int i = 1; i < steps; ++i) {
+			result.add(new Point64(center.x + radiusX * dx, center.y + radiusY * dy));
+			double x = dx * co - dy * si;
+			dy = dy * co + dx * si;
+			dx = x;
+		}
+		return result;
+	}
+
+	/**
+	 * Approximates a floating-point ellipse using an automatically chosen step
+	 * count.
+	 *
+	 * @param center the ellipse center.
+	 * @param radiusX the horizontal radius.
+	 * @param radiusY the vertical radius.
+	 * @return the approximated ellipse path.
+	 */
+	public static PathD Ellipse(PointD center, double radiusX, double radiusY) {
+		return Ellipse(center, radiusX, radiusY, 0);
+	}
+
+	/**
+	 * Approximates a floating-point circle using an automatically chosen step
+	 * count.
+	 *
+	 * @param center the circle center.
+	 * @param radiusX the radius to use on both axes.
+	 * @return the approximated circle path.
+	 */
+	public static PathD Ellipse(PointD center, double radiusX) {
+		return Ellipse(center, radiusX, 0, 0);
+	}
+
+	/**
+	 * Approximates a floating-point ellipse.
+	 *
+	 * @param center the ellipse center.
+	 * @param radiusX the horizontal radius.
+	 * @param radiusY the vertical radius.
+	 * @param steps the number of vertices to generate, or {@code 0} to choose
+	 *        automatically.
+	 * @return the approximated ellipse path.
+	 */
+	public static PathD Ellipse(PointD center, double radiusX, double radiusY, int steps) {
+		if (radiusX <= 0) {
+			return new PathD();
+		}
+		if (radiusY <= 0) {
+			radiusY = radiusX;
+		}
+		if (steps <= 2) {
+			steps = (int) Math.ceil(Math.PI * Math.sqrt((radiusX + radiusY) / 2));
+		}
+
+		double si = Math.sin(2 * Math.PI / steps);
+		double co = Math.cos(2 * Math.PI / steps);
+		double dx = co, dy = si;
+		PathD result = new PathD(steps);
+		result.add(new PointD(center.x + radiusX, center.y));
+		for (int i = 1; i < steps; ++i) {
+			result.add(new PointD(center.x + radiusX * dx, center.y + radiusY * dy));
+			double x = dx * co - dy * si;
+			dy = dy * co + dx * si;
+			dx = x;
+		}
+		return result;
+	}
+
+}
