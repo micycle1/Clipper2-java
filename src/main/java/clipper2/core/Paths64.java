@@ -31,8 +31,11 @@ public class Paths64 extends ArrayList<Path64> {
 	@Override
 	public String toString() {
 		StringBuilder s = new StringBuilder();
-		for (Path64 p : this) {
-			s.append(p).append("\n");
+		for (int i = 0; i < size(); i++) {
+			if (i > 0) {
+				s.append(System.lineSeparator());
+			}
+			s.append(get(i).toString());
 		}
 		return s.toString();
 	}

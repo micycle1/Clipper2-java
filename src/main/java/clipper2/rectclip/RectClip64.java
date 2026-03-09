@@ -130,7 +130,7 @@ public class RectClip64 {
 
 	private static boolean isClockwise(Location prev, Location curr, Point64 p1, Point64 p2, Point64 mid) {
 		if (areOpposites(prev, curr)) {
-			return InternalClipper.CrossProduct(p1, mid, p2) < 0;
+			return InternalClipper.CrossProductSign(p1, mid, p2) < 0;
 		}
 		return headingClockwise(prev, curr);
 	}
@@ -281,8 +281,8 @@ public class RectClip64 {
 	}
 
 	private static boolean getSegmentIntersection(Point64 p1, Point64 p2, Point64 p3, Point64 p4, Point64 ipRefObject) {
-		double r1 = InternalClipper.CrossProduct(p1, p3, p4);
-		double r2 = InternalClipper.CrossProduct(p2, p3, p4);
+		int r1 = InternalClipper.CrossProductSign(p1, p3, p4);
+		int r2 = InternalClipper.CrossProductSign(p2, p3, p4);
 		if (r1 == 0) {
 			ipRefObject.set(p1);
 			if (r2 == 0) {
@@ -310,8 +310,8 @@ public class RectClip64 {
 			ipRefObject.set(new Point64(0, 0));
 			return false;
 		}
-		double r3 = InternalClipper.CrossProduct(p3, p1, p2);
-		double r4 = InternalClipper.CrossProduct(p4, p1, p2);
+		int r3 = InternalClipper.CrossProductSign(p3, p1, p2);
+		int r4 = InternalClipper.CrossProductSign(p4, p1, p2);
 		if (r3 == 0) {
 			ipRefObject.set(p3);
 			if (p3.equals(p1) || p3.equals(p2)) {
@@ -336,7 +336,7 @@ public class RectClip64 {
 			ipRefObject.set(new Point64(0, 0));
 			return false;
 		}
-		return InternalClipper.GetSegmentIntersectPt(p1, p2, p3, p4, ipRefObject);
+		return InternalClipper.GetLineIntersectPt(p1, p2, p3, p4, ipRefObject);
 	}
 
 	protected static IntersectionResult getIntersection(Path64 rectPath, Point64 p, Point64 p2, Location loc, Point64 ipRefObject) {

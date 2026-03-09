@@ -30,11 +30,11 @@ public class PathD extends ArrayList<PointD> {
 	@Override
 	public String toString() {
 		StringBuilder s = new StringBuilder();
-		for (PointD p : this) {
-			s.append(p.toString()).append(", ");
-		}
-		if (!s.isEmpty()) {
-			s.setLength(s.length() - 2);
+		for (int i = 0; i < size(); i++) {
+			if (i > 0) {
+				s.append(", ");
+			}
+			s.append(get(i).toString().trim());
 		}
 		return s.toString();
 	}

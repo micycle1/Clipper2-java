@@ -370,33 +370,6 @@ public class ClipperOffset {
 		return NormalizeVector(new PointD(vec1.x + vec2.x, vec1.y + vec2.y));
 	}
 
-	private static PointD IntersectPoint(PointD pt1a, PointD pt1b, PointD pt2a, PointD pt2b) {
-		if (InternalClipper.IsAlmostZero(pt1a.x - pt1b.x)) { // vertical
-			if (InternalClipper.IsAlmostZero(pt2a.x - pt2b.x)) {
-				return new PointD(0, 0);
-			}
-			double m2 = (pt2b.y - pt2a.y) / (pt2b.x - pt2a.x);
-			double b2 = pt2a.y - m2 * pt2a.x;
-			return new PointD(pt1a.x, m2 * pt1a.x + b2);
-		}
-
-		if (InternalClipper.IsAlmostZero(pt2a.x - pt2b.x)) { // vertical
-			double m1 = (pt1b.y - pt1a.y) / (pt1b.x - pt1a.x);
-			double b1 = pt1a.y - m1 * pt1a.x;
-			return new PointD(pt2a.x, m1 * pt2a.x + b1);
-		} else {
-			double m1 = (pt1b.y - pt1a.y) / (pt1b.x - pt1a.x);
-			double b1 = pt1a.y - m1 * pt1a.x;
-			double m2 = (pt2b.y - pt2a.y) / (pt2b.x - pt2a.x);
-			double b2 = pt2a.y - m2 * pt2a.x;
-			if (InternalClipper.IsAlmostZero(m1 - m2)) {
-				return new PointD(0, 0);
-			}
-			double x = (b2 - b1) / (m1 - m2);
-			return new PointD(x, m1 * x + b1);
-		}
-	}
-
 	private Point64 GetPerpendic(Point64 pt, PointD norm) {
 		return new Point64(pt.x + norm.x * groupDelta, pt.y + norm.y * groupDelta);
 	}
@@ -439,13 +412,15 @@ public class ClipperOffset {
 
 		if (j == k) {
 			PointD pt4 = new PointD(pt3.x + vec.x * groupDelta, pt3.y + vec.y * groupDelta);
-			PointD pt = IntersectPoint(pt1, pt2, pt3, pt4);
+			PointD pt = new PointD();
+			InternalClipper.GetLineIntersectPt(pt1, pt2, pt3, pt4, pt);
 			// get the second intersect point through reflecion
 			pathOut.add(new Point64(ReflectPoint(pt, ptQ)));
 			pathOut.add(new Point64(pt));
 		} else {
 			PointD pt4 = GetPerpendicD(path.get(j), normals.get(k));
-			PointD pt = IntersectPoint(pt1, pt2, pt3, pt4);
+			PointD pt = new PointD();
+			InternalClipper.GetLineIntersectPt(pt1, pt2, pt3, pt4, pt);
 			pathOut.add(new Point64(pt));
 			// get the second intersect point through reflecion
 			pathOut.add(new Point64(ReflectPoint(pt, ptQ)));
