@@ -26,13 +26,13 @@ class TestOffsets {
 		Paths64 subject = new Paths64();
 		Paths64 solution = new Paths64();
 		ClipperOffset c = new ClipperOffset();
-		subject.add(Clipper.MakePath(new long[] { 50, 50, 100, 50, 100, 150, 50, 150, 0, 100 }));
+		subject.add(Clipper.makePath(new long[] { 50, 50, 100, 50, 100, 150, 50, 150, 0, 100 }));
 
-		subject = Clipper.ScalePaths(subject, scale);
+		subject = Clipper.scalePaths(subject, scale);
 
-		c.AddPaths(subject, JoinType.Round, EndType.Polygon);
+		c.addPaths(subject, JoinType.Round, EndType.Polygon);
 		c.setArcTolerance(arc_tol);
-		c.Execute(delta, solution);
+		c.execute(delta, solution);
 
 		double min_dist = delta * 2;
 		double max_dist = 0;
@@ -58,7 +58,7 @@ class TestOffsets {
 
 	@Test
 	void TestOffsets3() { // see #424
-		Paths64 subjects = new Paths64(List.of(Clipper.MakePath(new long[] { 1525311078, 1352369439, 1526632284, 1366692987, 1519397110, 1367437476, 1520246456,
+		Paths64 subjects = new Paths64(List.of(Clipper.makePath(new long[] { 1525311078, 1352369439, 1526632284, 1366692987, 1519397110, 1367437476, 1520246456,
 				1380177674, 1520613458, 1385913385, 1517383844, 1386238444, 1517771817, 1392099983, 1518233190, 1398758441, 1518421934, 1401883197, 1518694564,
 				1406612275, 1520267428, 1430289121, 1520770744, 1438027612, 1521148232, 1443438264, 1521441833, 1448964260, 1521683005, 1452518932, 1521819320,
 				1454374912, 1527943004, 1454154711, 1527649403, 1448523858, 1535901696, 1447989084, 1535524209, 1442788147, 1538953052, 1442463089, 1541553521,
@@ -69,34 +69,34 @@ class TestOffsets {
 				1376350372, 1530050642, 1361806623, 1599487345, 1352704983, 1602758902, 1378489467, 1618990858, 1376350372, 1615058698, 1344085688, 1603230761,
 				1345700495, 1598648484, 1346329641, 1598931599, 1348667965, 1596698132, 1348993024, 1595775386, 1342722540 })));
 
-		Paths64 solution = Clipper.InflatePaths(subjects, -209715, JoinType.Miter, EndType.Polygon);
+		Paths64 solution = Clipper.inflatePaths(subjects, -209715, JoinType.Miter, EndType.Polygon);
 		assertTrue(solution.get(0).size() - subjects.get(0).size() <= 1);
 	}
 
 	@Test
 	void TestOffsets4() { // see #482
-		Paths64 paths = new Paths64(List.of(Clipper.MakePath(new long[] { 0, 0, 20000, 200, 40000, 0, 40000, 50000, 0, 50000, 0, 0 })));
-		Paths64 solution = Clipper.InflatePaths(paths, -5000, JoinType.Square, EndType.Polygon);
+		Paths64 paths = new Paths64(List.of(Clipper.makePath(new long[] { 0, 0, 20000, 200, 40000, 0, 40000, 50000, 0, 50000, 0, 0 })));
+		Paths64 solution = Clipper.inflatePaths(paths, -5000, JoinType.Square, EndType.Polygon);
 		assertEquals(5, solution.get(0).size());
 
-		paths = new Paths64(List.of(Clipper.MakePath(new long[] { 0, 0, 20000, 400, 40000, 0, 40000, 50000, 0, 50000, 0, 0 })));
-		solution = Clipper.InflatePaths(paths, -5000, JoinType.Square, EndType.Polygon);
+		paths = new Paths64(List.of(Clipper.makePath(new long[] { 0, 0, 20000, 400, 40000, 0, 40000, 50000, 0, 50000, 0, 0 })));
+		solution = Clipper.inflatePaths(paths, -5000, JoinType.Square, EndType.Polygon);
 		assertEquals(5, solution.get(0).size());
 
-		paths = new Paths64(List.of(Clipper.MakePath(new long[] { 0, 0, 20000, 400, 40000, 0, 40000, 50000, 0, 50000, 0, 0 })));
-		solution = Clipper.InflatePaths(paths, -5000, JoinType.Round, EndType.Polygon, 2, 100);
+		paths = new Paths64(List.of(Clipper.makePath(new long[] { 0, 0, 20000, 400, 40000, 0, 40000, 50000, 0, 50000, 0, 0 })));
+		solution = Clipper.inflatePaths(paths, -5000, JoinType.Round, EndType.Polygon, 2, 100);
 		assertTrue(solution.get(0).size() > 5);
 
-		paths = new Paths64(List.of(Clipper.MakePath(new long[] { 0, 0, 20000, 1500, 40000, 0, 40000, 50000, 0, 50000, 0, 0 })));
-		solution = Clipper.InflatePaths(paths, -5000, JoinType.Round, EndType.Polygon, 2, 100);
+		paths = new Paths64(List.of(Clipper.makePath(new long[] { 0, 0, 20000, 1500, 40000, 0, 40000, 50000, 0, 50000, 0, 0 })));
+		solution = Clipper.inflatePaths(paths, -5000, JoinType.Round, EndType.Polygon, 2, 100);
 		assertTrue(solution.get(0).size() > 5);
 	}
 
 	@Test
 	void TestOffsets6() {
-		Path64 squarePath = Clipper.MakePath(new long[] { 620, 620, -620, 620, -620, -620, 620, -620 });
+		Path64 squarePath = Clipper.makePath(new long[] { 620, 620, -620, 620, -620, -620, 620, -620 });
 
-		Path64 complexPath = Clipper.MakePath(new long[] { 20, -277, 42, -275, 59, -272, 80, -266, 97, -261, 114, -254, 135, -243, 149, -235, 167, -222, 182,
+		Path64 complexPath = Clipper.makePath(new long[] { 20, -277, 42, -275, 59, -272, 80, -266, 97, -261, 114, -254, 135, -243, 149, -235, 167, -222, 182,
 				-211, 197, -197, 212, -181, 223, -167, 234, -150, 244, -133, 253, -116, 260, -99, 267, -78, 272, -61, 275, -40, 278, -18, 276, -39, 272, -61,
 				267, -79, 260, -99, 253, -116, 245, -133, 235, -150, 223, -167, 212, -181, 197, -197, 182, -211, 168, -222, 152, -233, 135, -243, 114, -254, 97,
 				-261, 80, -267, 59, -272, 42, -275, 20, -278 });
@@ -106,41 +106,41 @@ class TestOffsets {
 		final double offset = -50;
 		ClipperOffset offseter = new ClipperOffset();
 
-		offseter.AddPaths(subjects, JoinType.Round, EndType.Polygon);
+		offseter.addPaths(subjects, JoinType.Round, EndType.Polygon);
 		Paths64 solution = new Paths64();
-		offseter.Execute(offset, solution);
+		offseter.execute(offset, solution);
 
 		assertEquals(2, solution.size());
 
-		double area = Clipper.Area(solution.get(1));
+		double area = Clipper.area(solution.get(1));
 		assertTrue(area < -47500);
 	}
 
 	@Test
 	void TestOffsets7() { // (#593 & #715)
 		Paths64 solution;
-		Paths64 subject = new Paths64(List.of(Clipper.MakePath(new long[] { 0, 0, 100, 0, 100, 100, 0, 100 })));
+		Paths64 subject = new Paths64(List.of(Clipper.makePath(new long[] { 0, 0, 100, 0, 100, 100, 0, 100 })));
 
-		solution = Clipper.InflatePaths(subject, -50, JoinType.Miter, EndType.Polygon);
+		solution = Clipper.inflatePaths(subject, -50, JoinType.Miter, EndType.Polygon);
 		assertEquals(0, solution.size());
 
-		subject.add(Clipper.MakePath(new long[] { 40, 60, 60, 60, 60, 40, 40, 40 }));
-		solution = Clipper.InflatePaths(subject, 10, JoinType.Miter, EndType.Polygon);
+		subject.add(Clipper.makePath(new long[] { 40, 60, 60, 60, 60, 40, 40, 40 }));
+		solution = Clipper.inflatePaths(subject, 10, JoinType.Miter, EndType.Polygon);
 		assertEquals(1, solution.size());
 
 		Collections.reverse(subject.get(0));
 		Collections.reverse(subject.get(1));
-		solution = Clipper.InflatePaths(subject, 10, JoinType.Miter, EndType.Polygon);
+		solution = Clipper.inflatePaths(subject, 10, JoinType.Miter, EndType.Polygon);
 		assertEquals(1, solution.size());
 
 		subject = new Paths64(List.of(subject.get(0)));
-		solution = Clipper.InflatePaths(subject, -50, JoinType.Miter, EndType.Polygon);
+		solution = Clipper.inflatePaths(subject, -50, JoinType.Miter, EndType.Polygon);
 		assertEquals(0, solution.size());
 	}
 
 	@Test
 	void TestOffsets8() { // (#724)
-		Paths64 subject = new Paths64(List.of(Clipper.MakePath(new long[] { 91759700, -49711991, 83886095, -50331657, -872415388, -50331657, -880288993,
+		Paths64 subject = new Paths64(List.of(Clipper.makePath(new long[] { 91759700, -49711991, 83886095, -50331657, -872415388, -50331657, -880288993,
 				-49711991, -887968725, -47868251, -895265482, -44845834, -901999593, -40719165, -908005244, -35589856, -913134553, -29584205, -917261224,
 				-22850094, -920283639, -15553337, -922127379, -7873605, -922747045, 0, -922747045, 1434498600, -922160557, 1442159790, -920414763, 1449642437,
 				-917550346, 1456772156, -913634061, 1463382794, -908757180, 1469320287, -903033355, 1474446264, -896595982, 1478641262, -889595081, 1481807519,
@@ -185,7 +185,7 @@ class TestOffsets {
 		double offset = -50329979.277800001;
 		double arc_tol = 5000;
 
-		Paths64 solution = Clipper.InflatePaths(subject, offset, JoinType.Round, EndType.Polygon, 2, arc_tol);
+		Paths64 solution = Clipper.inflatePaths(subject, offset, JoinType.Round, EndType.Polygon, 2, arc_tol);
 		OffsetQual oq = getOffsetQuality(subject.get(0), solution.get(0), offset);
 		double smallestDist = distance(oq.smallestInSub, oq.smallestInSol);
 		double largestDist = distance(oq.largestInSub, oq.largestInSol);
@@ -202,73 +202,73 @@ class TestOffsets {
 		// reverse_solution is set true in ClipperOffset's constructor
 
 		// start subject's orientation positive ...
-		Paths64 subject = new Paths64(Clipper.MakePath(new long[] { 100, 100, 200, 100, 200, 400, 100, 400 }));
-		Paths64 solution = Clipper.InflatePaths(subject, 50, JoinType.Miter, EndType.Polygon);
+		Paths64 subject = new Paths64(Clipper.makePath(new long[] { 100, 100, 200, 100, 200, 400, 100, 400 }));
+		Paths64 solution = Clipper.inflatePaths(subject, 50, JoinType.Miter, EndType.Polygon);
 		assertEquals(1, solution.size());
-		assertTrue(Clipper.IsPositive(solution.get(0)));
+		assertTrue(Clipper.isPositive(solution.get(0)));
 
 		// reversing subject's orientation should not affect delta direction
 		// (ie where positive deltas inflate).
 		Collections.reverse(subject.get(0));
-		solution = Clipper.InflatePaths(subject, 50, JoinType.Miter, EndType.Polygon);
+		solution = Clipper.inflatePaths(subject, 50, JoinType.Miter, EndType.Polygon);
 		assertEquals(1, solution.size());
-		assertTrue(Math.abs(Clipper.Area(solution.get(0))) > Math.abs(Clipper.Area(subject.get(0))));
-		assertFalse(Clipper.IsPositive(solution.get(0)));
+		assertTrue(Math.abs(Clipper.area(solution.get(0))) > Math.abs(Clipper.area(subject.get(0))));
+		assertFalse(Clipper.isPositive(solution.get(0)));
 
 		ClipperOffset co = new ClipperOffset(2, 0, false, true); // last param. reverses solution
-		co.AddPaths(subject, JoinType.Miter, EndType.Polygon);
-		co.Execute(50, solution);
+		co.addPaths(subject, JoinType.Miter, EndType.Polygon);
+		co.execute(50, solution);
 		assertEquals(1, solution.size());
-		assertTrue(Math.abs(Clipper.Area(solution.get(0))) > Math.abs(Clipper.Area(subject.get(0))));
-		assertTrue(Clipper.IsPositive(solution.get(0)));
+		assertTrue(Math.abs(Clipper.area(solution.get(0))) > Math.abs(Clipper.area(subject.get(0))));
+		assertTrue(Clipper.isPositive(solution.get(0)));
 
 		// add a hole (ie has reverse orientation to outer path)
-		subject.add(Clipper.MakePath(new long[] { 130, 130, 170, 130, 170, 370, 130, 370 }));
-		solution = Clipper.InflatePaths(subject, 30, JoinType.Miter, EndType.Polygon);
+		subject.add(Clipper.makePath(new long[] { 130, 130, 170, 130, 170, 370, 130, 370 }));
+		solution = Clipper.inflatePaths(subject, 30, JoinType.Miter, EndType.Polygon);
 		assertEquals(1, solution.size());
-		assertFalse(Clipper.IsPositive(solution.get(0)));
+		assertFalse(Clipper.isPositive(solution.get(0)));
 
-		co.Clear(); // should still reverse solution orientation
-		co.AddPaths(subject, JoinType.Miter, EndType.Polygon);
-		co.Execute(30, solution);
+		co.clear(); // should still reverse solution orientation
+		co.addPaths(subject, JoinType.Miter, EndType.Polygon);
+		co.execute(30, solution);
 		assertEquals(1, solution.size());
-		assertTrue(Math.abs(Clipper.Area(solution.get(0))) > Math.abs(Clipper.Area(subject.get(0))));
-		assertTrue(Clipper.IsPositive(solution.get(0)));
+		assertTrue(Math.abs(Clipper.area(solution.get(0))) > Math.abs(Clipper.area(subject.get(0))));
+		assertTrue(Clipper.isPositive(solution.get(0)));
 
-		solution = Clipper.InflatePaths(subject, -15, JoinType.Miter, EndType.Polygon);
+		solution = Clipper.inflatePaths(subject, -15, JoinType.Miter, EndType.Polygon);
 		assertEquals(0, solution.size());
 	}
 
 	@Test
 	void TestOffsets10() { // see #715
-		Paths64 subjects = new Paths64(List.of(Clipper.MakePath(new long[] { 508685336, -435806096, 509492982, -434729201, 509615525, -434003092, 509615525,
+		Paths64 subjects = new Paths64(List.of(Clipper.makePath(new long[] { 508685336, -435806096, 509492982, -434729201, 509615525, -434003092, 509615525,
 				493372891, 509206033, 494655198, 508129138, 495462844, 507403029, 495585387, -545800889, 495585387, -547083196, 495175895, -547890842,
 				494099000, -548013385, 493372891, -548013385, -434003092, -547603893, -435285399, -546526998, -436093045, -545800889, -436215588, 507403029,
-				-436215588 }), Clipper.MakePath(new long[] { 106954765, -62914568, 106795129, -63717113, 106340524, -64397478, 105660159, -64852084, 104857613,
+				-436215588 }), Clipper.makePath(new long[] { 106954765, -62914568, 106795129, -63717113, 106340524, -64397478, 105660159, -64852084, 104857613,
 						-65011720, 104055068, -64852084, 103374703, -64397478, 102920097, -63717113, 102760461, -62914568, 102920097, -62112022, 103374703,
 						-61431657, 104055068, -60977052, 104857613, -60817416, 105660159, -60977052, 106340524, -61431657, 106795129, -62112022 })));
 
 		ClipperOffset offseter = new ClipperOffset(2, 104857.61318750000);
 		Paths64 solution = new Paths64();
-		offseter.AddPaths(subjects, JoinType.Round, EndType.Polygon);
-		offseter.Execute(-2212495.6382562499, solution);
+		offseter.addPaths(subjects, JoinType.Round, EndType.Polygon);
+		offseter.execute(-2212495.6382562499, solution);
 		assertEquals(2, solution.size());
 	}
 
 	@Test
 	void TestOffsets11() { // see #405
 		PathsD subject = new PathsD();
-		subject.add(Clipper.MakePath(new double[] { -1.0, -1.0, -1.0, 11.0, 11.0, 11.0, 11.0, -1.0 }));
+		subject.add(Clipper.makePath(new double[] { -1.0, -1.0, -1.0, 11.0, 11.0, 11.0, 11.0, -1.0 }));
 		// offset polygon
-		PathsD solution = Clipper.InflatePaths(subject, -50, JoinType.Miter, EndType.Polygon);
+		PathsD solution = Clipper.inflatePaths(subject, -50, JoinType.Miter, EndType.Polygon);
 		assertTrue(solution.isEmpty());
 	}
 
 	@Test
 	void TestOffsets12() { // see #873
 		Paths64 subject = new Paths64();
-		subject.add(Clipper.MakePath(new long[] { 667680768, -36382704, 737202688, -87034880, 742581888, -86055680, 747603968, -84684800 }));
-		Paths64 solution = Clipper.InflatePaths(subject, -249561088, JoinType.Miter, EndType.Polygon);
+		subject.add(Clipper.makePath(new long[] { 667680768, -36382704, 737202688, -87034880, 742581888, -86055680, 747603968, -84684800 }));
+		Paths64 solution = Clipper.inflatePaths(subject, -249561088, JoinType.Miter, EndType.Polygon);
 		assertTrue(solution.isEmpty());
 	}
 
@@ -279,15 +279,15 @@ class TestOffsets {
 
 		Paths64 subjects1 = new Paths64();
 		subjects1.add(subject1);
-		Paths64 solution1 = Clipper.InflatePaths(subjects1, delta, JoinType.Miter, EndType.Polygon);
-		long area1 = Math.round(Math.abs(Clipper.Area(solution1)));
+		Paths64 solution1 = Clipper.inflatePaths(subjects1, delta, JoinType.Miter, EndType.Polygon);
+		long area1 = Math.round(Math.abs(Clipper.area(solution1)));
 		assertEquals(122L, area1);
 
 		Paths64 subjects2 = new Paths64();
 		subjects2.add(subject1);
 		subjects2.add(new Path64(List.of(new Point64(0, 20)))); // single-point path should not change output
-		Paths64 solution2 = Clipper.InflatePaths(subjects2, delta, JoinType.Miter, EndType.Polygon);
-		long area2 = Math.round(Math.abs(Clipper.Area(solution2)));
+		Paths64 solution2 = Clipper.inflatePaths(subjects2, delta, JoinType.Miter, EndType.Polygon);
+		long area2 = Math.round(Math.abs(Clipper.area(solution2)));
 		assertEquals(122L, area2);
 	}
 

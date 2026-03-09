@@ -77,8 +77,8 @@ import com.github.micycle1.clipper2.rectclip.RectClipLines64;
  * While all offsetting is performed by the <code>ClipperOffset</code> class in
  * the <code>Clipper.Offset</code> unit, the complexities of constructing and
  * using this class can usually be avoided by using instead the
- * {@link #InflatePaths(PathsD, double, JoinType, EndType, double, double, int)
- * InflatePaths()} function in this class. This function can both inflate and
+ * {@link #inflatePaths(PathsD, double, JoinType, EndType, double, double, int)
+ * inflatePaths()} function in this class. This function can both inflate and
  * shrink polygons (using positive and negative offsets respectively).
  * Offsetting can be performed using a number of JoinTypes and EndTypes. While
  * both open paths and closed paths can be offset, logically only closed paths
@@ -107,8 +107,8 @@ public final class Clipper {
 	 * @param fillRule the polygon fill rule to apply.
 	 * @return the intersected paths.
 	 */
-	public static Paths64 Intersect(Paths64 subject, Paths64 clip, FillRule fillRule) {
-		return BooleanOp(ClipType.Intersection, subject, clip, fillRule);
+	public static Paths64 intersect(Paths64 subject, Paths64 clip, FillRule fillRule) {
+		return booleanOp(ClipType.Intersection, subject, clip, fillRule);
 	}
 
 	/**
@@ -119,8 +119,8 @@ public final class Clipper {
 	 * @param fillRule the polygon fill rule to apply.
 	 * @return the intersected paths.
 	 */
-	public static PathsD Intersect(PathsD subject, PathsD clip, FillRule fillRule) {
-		return Intersect(subject, clip, fillRule, 2);
+	public static PathsD intersect(PathsD subject, PathsD clip, FillRule fillRule) {
+		return intersect(subject, clip, fillRule, 2);
 	}
 
 	/**
@@ -132,8 +132,8 @@ public final class Clipper {
 	 * @param precision the decimal precision to use when scaling coordinates.
 	 * @return the intersected paths.
 	 */
-	public static PathsD Intersect(PathsD subject, PathsD clip, FillRule fillRule, int precision) {
-		return BooleanOp(ClipType.Intersection, subject, clip, fillRule, precision);
+	public static PathsD intersect(PathsD subject, PathsD clip, FillRule fillRule, int precision) {
+		return booleanOp(ClipType.Intersection, subject, clip, fillRule, precision);
 	}
 
 	/**
@@ -143,8 +143,8 @@ public final class Clipper {
 	 * @param fillRule the polygon fill rule to apply.
 	 * @return the unioned paths.
 	 */
-	public static Paths64 Union(Paths64 subject, FillRule fillRule) {
-		return BooleanOp(ClipType.Union, subject, null, fillRule);
+	public static Paths64 union(Paths64 subject, FillRule fillRule) {
+		return booleanOp(ClipType.Union, subject, null, fillRule);
 	}
 
 	/**
@@ -155,8 +155,8 @@ public final class Clipper {
 	 * @param fillRule the polygon fill rule to apply.
 	 * @return the unioned paths.
 	 */
-	public static Paths64 Union(Paths64 subject, Paths64 clip, FillRule fillRule) {
-		return BooleanOp(ClipType.Union, subject, clip, fillRule);
+	public static Paths64 union(Paths64 subject, Paths64 clip, FillRule fillRule) {
+		return booleanOp(ClipType.Union, subject, clip, fillRule);
 	}
 
 	/**
@@ -166,8 +166,8 @@ public final class Clipper {
 	 * @param fillRule the polygon fill rule to apply.
 	 * @return the unioned paths.
 	 */
-	public static PathsD Union(PathsD subject, FillRule fillRule) {
-		return BooleanOp(ClipType.Union, subject, null, fillRule);
+	public static PathsD union(PathsD subject, FillRule fillRule) {
+		return booleanOp(ClipType.Union, subject, null, fillRule);
 	}
 
 	/**
@@ -178,8 +178,8 @@ public final class Clipper {
 	 * @param fillRule the polygon fill rule to apply.
 	 * @return the unioned paths.
 	 */
-	public static PathsD Union(PathsD subject, PathsD clip, FillRule fillRule) {
-		return Union(subject, clip, fillRule, 2);
+	public static PathsD union(PathsD subject, PathsD clip, FillRule fillRule) {
+		return union(subject, clip, fillRule, 2);
 	}
 
 	/**
@@ -191,8 +191,8 @@ public final class Clipper {
 	 * @param precision the decimal precision to use when scaling coordinates.
 	 * @return the unioned paths.
 	 */
-	public static PathsD Union(PathsD subject, PathsD clip, FillRule fillRule, int precision) {
-		return BooleanOp(ClipType.Union, subject, clip, fillRule, precision);
+	public static PathsD union(PathsD subject, PathsD clip, FillRule fillRule, int precision) {
+		return booleanOp(ClipType.Union, subject, clip, fillRule, precision);
 	}
 
 	/**
@@ -203,8 +203,8 @@ public final class Clipper {
 	 * @param fillRule the polygon fill rule to apply.
 	 * @return the difference of the subject and clip paths.
 	 */
-	public static Paths64 Difference(Paths64 subject, Paths64 clip, FillRule fillRule) {
-		return BooleanOp(ClipType.Difference, subject, clip, fillRule);
+	public static Paths64 difference(Paths64 subject, Paths64 clip, FillRule fillRule) {
+		return booleanOp(ClipType.Difference, subject, clip, fillRule);
 	}
 
 	/**
@@ -215,8 +215,8 @@ public final class Clipper {
 	 * @param fillRule the polygon fill rule to apply.
 	 * @return the difference of the subject and clip paths.
 	 */
-	public static PathsD Difference(PathsD subject, PathsD clip, FillRule fillRule) {
-		return Difference(subject, clip, fillRule, 2);
+	public static PathsD difference(PathsD subject, PathsD clip, FillRule fillRule) {
+		return difference(subject, clip, fillRule, 2);
 	}
 
 	/**
@@ -228,8 +228,8 @@ public final class Clipper {
 	 * @param precision the decimal precision to use when scaling coordinates.
 	 * @return the difference of the subject and clip paths.
 	 */
-	public static PathsD Difference(PathsD subject, PathsD clip, FillRule fillRule, int precision) {
-		return BooleanOp(ClipType.Difference, subject, clip, fillRule, precision);
+	public static PathsD difference(PathsD subject, PathsD clip, FillRule fillRule, int precision) {
+		return booleanOp(ClipType.Difference, subject, clip, fillRule, precision);
 	}
 
 	/**
@@ -240,8 +240,8 @@ public final class Clipper {
 	 * @param fillRule the polygon fill rule to apply.
 	 * @return the exclusive-or of the subject and clip paths.
 	 */
-	public static Paths64 Xor(Paths64 subject, Paths64 clip, FillRule fillRule) {
-		return BooleanOp(ClipType.Xor, subject, clip, fillRule);
+	public static Paths64 xor(Paths64 subject, Paths64 clip, FillRule fillRule) {
+		return booleanOp(ClipType.Xor, subject, clip, fillRule);
 	}
 
 	/**
@@ -253,8 +253,8 @@ public final class Clipper {
 	 * @param fillRule the polygon fill rule to apply.
 	 * @return the exclusive-or of the subject and clip paths.
 	 */
-	public static PathsD Xor(PathsD subject, PathsD clip, FillRule fillRule) {
-		return Xor(subject, clip, fillRule, 2);
+	public static PathsD xor(PathsD subject, PathsD clip, FillRule fillRule) {
+		return xor(subject, clip, fillRule, 2);
 	}
 
 	/**
@@ -266,8 +266,8 @@ public final class Clipper {
 	 * @param precision the decimal precision to use when scaling coordinates.
 	 * @return the exclusive-or of the subject and clip paths.
 	 */
-	public static PathsD Xor(PathsD subject, PathsD clip, FillRule fillRule, int precision) {
-		return BooleanOp(ClipType.Xor, subject, clip, fillRule, precision);
+	public static PathsD xor(PathsD subject, PathsD clip, FillRule fillRule, int precision) {
+		return booleanOp(ClipType.Xor, subject, clip, fillRule, precision);
 	}
 
 	/**
@@ -279,17 +279,17 @@ public final class Clipper {
 	 * @param fillRule the polygon fill rule to apply.
 	 * @return the resulting paths.
 	 */
-	public static Paths64 BooleanOp(ClipType clipType, Paths64 subject, Paths64 clip, FillRule fillRule) {
+	public static Paths64 booleanOp(ClipType clipType, Paths64 subject, Paths64 clip, FillRule fillRule) {
 		Paths64 solution = new Paths64();
 		if (subject == null) {
 			return solution;
 		}
 		Clipper64 c = new Clipper64();
-		c.AddPaths(subject, PathType.Subject);
+		c.addPaths(subject, PathType.Subject);
 		if (clip != null) {
-			c.AddPaths(clip, PathType.Clip);
+			c.addPaths(clip, PathType.Clip);
 		}
-		c.Execute(clipType, fillRule, solution);
+		c.execute(clipType, fillRule, solution);
 		return solution;
 	}
 
@@ -303,16 +303,16 @@ public final class Clipper {
 	 * @param polytree the destination polytree that receives the result.
 	 * @param fillRule the polygon fill rule to apply.
 	 */
-	public static void BooleanOp(ClipType clipType, @Nullable Paths64 subject, @Nullable Paths64 clip, PolyTree64 polytree, FillRule fillRule) {
+	public static void booleanOp(ClipType clipType, @Nullable Paths64 subject, @Nullable Paths64 clip, PolyTree64 polytree, FillRule fillRule) {
 		if (subject == null) {
 			return;
 		}
 		Clipper64 c = new Clipper64();
-		c.AddPaths(subject, PathType.Subject);
+		c.addPaths(subject, PathType.Subject);
 		if (clip != null) {
-			c.AddPaths(clip, PathType.Clip);
+			c.addPaths(clip, PathType.Clip);
 		}
-		c.Execute(clipType, fillRule, polytree);
+		c.execute(clipType, fillRule, polytree);
 	}
 
 	/**
@@ -325,8 +325,8 @@ public final class Clipper {
 	 * @param fillRule the polygon fill rule to apply.
 	 * @return the resulting paths.
 	 */
-	public static PathsD BooleanOp(ClipType clipType, PathsD subject, PathsD clip, FillRule fillRule) {
-		return BooleanOp(clipType, subject, clip, fillRule, 2);
+	public static PathsD booleanOp(ClipType clipType, PathsD subject, PathsD clip, FillRule fillRule) {
+		return booleanOp(clipType, subject, clip, fillRule, 2);
 	}
 
 	/**
@@ -340,14 +340,14 @@ public final class Clipper {
 	 * @param precision The desired coordinate precision (up to 8 decimal places).
 	 * @return the resulting paths.
 	 */
-	public static PathsD BooleanOp(ClipType clipType, PathsD subject, @Nullable PathsD clip, FillRule fillRule, int precision) {
+	public static PathsD booleanOp(ClipType clipType, PathsD subject, @Nullable PathsD clip, FillRule fillRule, int precision) {
 		PathsD solution = new PathsD();
 		ClipperD c = new ClipperD(precision);
-		c.AddSubjects(subject);
+		c.addSubjects(subject);
 		if (clip != null) {
-			c.AddClips(clip);
+			c.addClips(clip);
 		}
-		c.Execute(clipType, fillRule, solution);
+		c.execute(clipType, fillRule, solution);
 		return solution;
 	}
 
@@ -361,8 +361,8 @@ public final class Clipper {
 	 * @param polytree the destination polytree that receives the result.
 	 * @param fillRule the polygon fill rule to apply.
 	 */
-	public static void BooleanOp(ClipType clipType, @Nullable PathsD subject, @Nullable PathsD clip, PolyTreeD polytree, FillRule fillRule) {
-		BooleanOp(clipType, subject, clip, polytree, fillRule, 2);
+	public static void booleanOp(ClipType clipType, @Nullable PathsD subject, @Nullable PathsD clip, PolyTreeD polytree, FillRule fillRule) {
+		booleanOp(clipType, subject, clip, polytree, fillRule, 2);
 	}
 
 	/**
@@ -376,16 +376,16 @@ public final class Clipper {
 	 * @param fillRule the polygon fill rule to apply.
 	 * @param precision the decimal precision to use when scaling coordinates.
 	 */
-	public static void BooleanOp(ClipType clipType, @Nullable PathsD subject, @Nullable PathsD clip, PolyTreeD polytree, FillRule fillRule, int precision) {
+	public static void booleanOp(ClipType clipType, @Nullable PathsD subject, @Nullable PathsD clip, PolyTreeD polytree, FillRule fillRule, int precision) {
 		if (subject == null) {
 			return;
 		}
 		ClipperD c = new ClipperD(precision);
-		c.AddPaths(subject, PathType.Subject);
+		c.addPaths(subject, PathType.Subject);
 		if (clip != null) {
-			c.AddPaths(clip, PathType.Clip);
+			c.addPaths(clip, PathType.Clip);
 		}
-		c.Execute(clipType, fillRule, polytree);
+		c.execute(clipType, fillRule, polytree);
 	}
 
 	/**
@@ -397,10 +397,10 @@ public final class Clipper {
 	 * @param endType the end treatment to apply.
 	 * @return the offset paths.
 	 *
-	 * @see #InflatePaths(PathsD, double, JoinType, EndType, double, double, int)
+	 * @see #inflatePaths(PathsD, double, JoinType, EndType, double, double, int)
 	 */
-	public static Paths64 InflatePaths(Paths64 paths, double delta, JoinType joinType, EndType endType) {
-		return InflatePaths(paths, delta, joinType, endType, 2.0, 0.0);
+	public static Paths64 inflatePaths(Paths64 paths, double delta, JoinType joinType, EndType endType) {
+		return inflatePaths(paths, delta, joinType, endType, 2.0, 0.0);
 	}
 
 	/**
@@ -414,13 +414,13 @@ public final class Clipper {
 	 * @param arcTolerance the tolerance used when flattening round joins.
 	 * @return the offset paths.
 	 *
-	 * @see #InflatePaths(PathsD, double, JoinType, EndType, double, double, int)
+	 * @see #inflatePaths(PathsD, double, JoinType, EndType, double, double, int)
 	 */
-	public static Paths64 InflatePaths(Paths64 paths, double delta, JoinType joinType, EndType endType, double miterLimit, double arcTolerance) {
+	public static Paths64 inflatePaths(Paths64 paths, double delta, JoinType joinType, EndType endType, double miterLimit, double arcTolerance) {
 		ClipperOffset co = new ClipperOffset(miterLimit, arcTolerance);
-		co.AddPaths(paths, joinType, endType);
+		co.addPaths(paths, joinType, endType);
 		Paths64 solution = new Paths64();
-		co.Execute(delta, solution);
+		co.execute(delta, solution);
 		return solution;
 	}
 
@@ -434,10 +434,10 @@ public final class Clipper {
 	 * @param miterLimit the miter limit in multiples of {@code delta}.
 	 * @return the offset paths.
 	 *
-	 * @see #InflatePaths(PathsD, double, JoinType, EndType, double, double, int)
+	 * @see #inflatePaths(PathsD, double, JoinType, EndType, double, double, int)
 	 */
-	public static PathsD InflatePaths(PathsD paths, double delta, JoinType joinType, EndType endType, double miterLimit) {
-		return InflatePaths(paths, delta, joinType, endType, miterLimit, 0.0, 8);
+	public static PathsD inflatePaths(PathsD paths, double delta, JoinType joinType, EndType endType, double miterLimit) {
+		return inflatePaths(paths, delta, joinType, endType, miterLimit, 0.0, 8);
 	}
 
 	/**
@@ -449,10 +449,10 @@ public final class Clipper {
 	 * @param endType the end treatment to apply.
 	 * @return the offset paths.
 	 *
-	 * @see #InflatePaths(PathsD, double, JoinType, EndType, double, double, int)
+	 * @see #inflatePaths(PathsD, double, JoinType, EndType, double, double, int)
 	 */
-	public static PathsD InflatePaths(PathsD paths, double delta, JoinType joinType, EndType endType) {
-		return InflatePaths(paths, delta, joinType, endType, 2.0, 0.0, 8);
+	public static PathsD inflatePaths(PathsD paths, double delta, JoinType joinType, EndType endType) {
+		return inflatePaths(paths, delta, joinType, endType, 2.0, 0.0, 8);
 	}
 
 	/**
@@ -503,124 +503,124 @@ public final class Clipper {
 	 *                     when paths is type PathsD. (Maximum is 8 decimal places)
 	 * @return the offset paths.
 	 */
-	public static PathsD InflatePaths(PathsD paths, double delta, JoinType joinType, EndType endType, double miterLimit, double arcTolerance, int precision) {
-		InternalClipper.CheckPrecision(precision);
+	public static PathsD inflatePaths(PathsD paths, double delta, JoinType joinType, EndType endType, double miterLimit, double arcTolerance, int precision) {
+		InternalClipper.checkPrecision(precision);
 		double scale = Math.pow(10, precision);
-		Paths64 tmp = ScalePaths64(paths, scale);
+		Paths64 tmp = scalePaths64(paths, scale);
 		ClipperOffset co = new ClipperOffset(miterLimit, arcTolerance * scale);
-		co.AddPaths(tmp, joinType, endType);
-		co.Execute(delta * scale, tmp); // reuse 'tmp' to receive (scaled) solution
-		return ScalePathsD(tmp, 1 / scale);
+		co.addPaths(tmp, joinType, endType);
+		co.execute(delta * scale, tmp); // reuse 'tmp' to receive (scaled) solution
+		return scalePathsD(tmp, 1 / scale);
 	}
 
-	public static Paths64 RectClip(Rect64 rect, Paths64 paths) {
-		if (rect.IsEmpty() || paths.isEmpty()) {
+	public static Paths64 rectClip(Rect64 rect, Paths64 paths) {
+		if (rect.isEmpty() || paths.isEmpty()) {
 			return new Paths64();
 		}
 		RectClip64 rc = new RectClip64(rect);
-		return rc.Execute(paths);
+		return rc.execute(paths);
 	}
 
-	public static Paths64 RectClip(Rect64 rect, Path64 path) {
-		if (rect.IsEmpty() || path.isEmpty()) {
+	public static Paths64 rectClip(Rect64 rect, Path64 path) {
+		if (rect.isEmpty() || path.isEmpty()) {
 			return new Paths64();
 		}
 		Paths64 tmp = new Paths64();
 		tmp.add(path);
-		return RectClip(rect, tmp);
+		return rectClip(rect, tmp);
 	}
 
-	public static PathsD RectClip(RectD rect, PathsD paths) {
-		return RectClip(rect, paths, 2);
+	public static PathsD rectClip(RectD rect, PathsD paths) {
+		return rectClip(rect, paths, 2);
 	}
 
-	public static PathsD RectClip(RectD rect, PathsD paths, int precision) {
-		InternalClipper.CheckPrecision(precision);
-		if (rect.IsEmpty() || paths.isEmpty()) {
+	public static PathsD rectClip(RectD rect, PathsD paths, int precision) {
+		InternalClipper.checkPrecision(precision);
+		if (rect.isEmpty() || paths.isEmpty()) {
 			return new PathsD();
 		}
 		double scale = Math.pow(10, precision);
-		Rect64 r = ScaleRect(rect, scale);
-		Paths64 tmpPath = ScalePaths64(paths, scale);
+		Rect64 r = scaleRect(rect, scale);
+		Paths64 tmpPath = scalePaths64(paths, scale);
 		RectClip64 rc = new RectClip64(r);
-		tmpPath = rc.Execute(tmpPath);
-		return ScalePathsD(tmpPath, 1 / scale);
+		tmpPath = rc.execute(tmpPath);
+		return scalePathsD(tmpPath, 1 / scale);
 	}
 
-	public static PathsD RectClip(RectD rect, PathD path) {
-		return RectClip(rect, path, 2);
+	public static PathsD rectClip(RectD rect, PathD path) {
+		return rectClip(rect, path, 2);
 	}
 
-	public static PathsD RectClip(RectD rect, PathD path, int precision) {
-		if (rect.IsEmpty() || path.isEmpty()) {
+	public static PathsD rectClip(RectD rect, PathD path, int precision) {
+		if (rect.isEmpty() || path.isEmpty()) {
 			return new PathsD();
 		}
 		PathsD tmp = new PathsD();
 		tmp.add(path);
-		return RectClip(rect, tmp, precision);
+		return rectClip(rect, tmp, precision);
 	}
 
-	public static Paths64 RectClipLines(Rect64 rect, Paths64 paths) {
-		if (rect.IsEmpty() || paths.isEmpty()) {
+	public static Paths64 rectClipLines(Rect64 rect, Paths64 paths) {
+		if (rect.isEmpty() || paths.isEmpty()) {
 			return new Paths64();
 		}
 		RectClipLines64 rc = new RectClipLines64(rect);
-		return rc.Execute(paths);
+		return rc.execute(paths);
 	}
 
-	public static Paths64 RectClipLines(Rect64 rect, Path64 path) {
-		if (rect.IsEmpty() || path.isEmpty()) {
+	public static Paths64 rectClipLines(Rect64 rect, Path64 path) {
+		if (rect.isEmpty() || path.isEmpty()) {
 			return new Paths64();
 		}
 		Paths64 tmp = new Paths64();
 		tmp.add(path);
-		return RectClipLines(rect, tmp);
+		return rectClipLines(rect, tmp);
 	}
 
-	public static PathsD RectClipLines(RectD rect, PathsD paths) {
-		return RectClipLines(rect, paths, 2);
+	public static PathsD rectClipLines(RectD rect, PathsD paths) {
+		return rectClipLines(rect, paths, 2);
 	}
 
-	public static PathsD RectClipLines(RectD rect, PathsD paths, int precision) {
-		InternalClipper.CheckPrecision(precision);
-		if (rect.IsEmpty() || paths.isEmpty()) {
+	public static PathsD rectClipLines(RectD rect, PathsD paths, int precision) {
+		InternalClipper.checkPrecision(precision);
+		if (rect.isEmpty() || paths.isEmpty()) {
 			return new PathsD();
 		}
 		double scale = Math.pow(10, precision);
-		Rect64 r = ScaleRect(rect, scale);
-		Paths64 tmpPath = ScalePaths64(paths, scale);
+		Rect64 r = scaleRect(rect, scale);
+		Paths64 tmpPath = scalePaths64(paths, scale);
 		RectClipLines64 rc = new RectClipLines64(r);
-		tmpPath = rc.Execute(tmpPath);
-		return ScalePathsD(tmpPath, 1 / scale);
+		tmpPath = rc.execute(tmpPath);
+		return scalePathsD(tmpPath, 1 / scale);
 	}
 
-	public static PathsD RectClipLines(RectD rect, PathD path) {
-		return RectClipLines(rect, path, 2);
+	public static PathsD rectClipLines(RectD rect, PathD path) {
+		return rectClipLines(rect, path, 2);
 	}
 
-	public static PathsD RectClipLines(RectD rect, PathD path, int precision) {
-		if (rect.IsEmpty() || path.isEmpty()) {
+	public static PathsD rectClipLines(RectD rect, PathD path, int precision) {
+		if (rect.isEmpty() || path.isEmpty()) {
 			return new PathsD();
 		}
 		PathsD tmp = new PathsD();
 		tmp.add(path);
-		return RectClipLines(rect, tmp, precision);
+		return rectClipLines(rect, tmp, precision);
 	}
 
-	public static Paths64 MinkowskiSum(Path64 pattern, Path64 path, boolean isClosed) {
-		return Minkowski.Sum(pattern, path, isClosed);
+	public static Paths64 minkowskiSum(Path64 pattern, Path64 path, boolean isClosed) {
+		return Minkowski.sum(pattern, path, isClosed);
 	}
 
-	public static PathsD MinkowskiSum(PathD pattern, PathD path, boolean isClosed) {
-		return Minkowski.Sum(pattern, path, isClosed);
+	public static PathsD minkowskiSum(PathD pattern, PathD path, boolean isClosed) {
+		return Minkowski.sum(pattern, path, isClosed);
 	}
 
-	public static Paths64 MinkowskiDiff(Path64 pattern, Path64 path, boolean isClosed) {
-		return Minkowski.Diff(pattern, path, isClosed);
+	public static Paths64 minkowskiDiff(Path64 pattern, Path64 path, boolean isClosed) {
+		return Minkowski.diff(pattern, path, isClosed);
 	}
 
-	public static PathsD MinkowskiDiff(PathD pattern, PathD path, boolean isClosed) {
-		return Minkowski.Diff(pattern, path, isClosed);
+	public static PathsD minkowskiDiff(PathD pattern, PathD path, boolean isClosed) {
+		return Minkowski.diff(pattern, path, isClosed);
 	}
 
 	/**
@@ -633,7 +633,7 @@ public final class Clipper {
 	 * @param path the path whose area will be calculated.
 	 * @return the signed area of the path.
 	 */
-	public static double Area(Path64 path) {
+	public static double area(Path64 path) {
 		// https://en.wikipedia.org/wiki/Shoelace_formula
 		double a = 0.0;
 		int cnt = path.size();
@@ -658,10 +658,10 @@ public final class Clipper {
 	 * @param paths the paths whose total area will be calculated.
 	 * @return the sum of the signed areas of all supplied paths.
 	 */
-	public static double Area(Paths64 paths) {
+	public static double area(Paths64 paths) {
 		double a = 0.0;
 		for (Path64 path : paths) {
-			a += Area(path);
+			a += area(path);
 		}
 		return a;
 	}
@@ -672,7 +672,7 @@ public final class Clipper {
 	 * @param path the path whose area will be calculated.
 	 * @return the signed area of the path.
 	 */
-	public static double Area(PathD path) {
+	public static double area(PathD path) {
 		double a = 0.0;
 		int cnt = path.size();
 		if (cnt < 3) {
@@ -692,10 +692,10 @@ public final class Clipper {
 	 * @param paths the paths whose total area will be calculated.
 	 * @return the sum of the signed areas of all supplied paths.
 	 */
-	public static double Area(PathsD paths) {
+	public static double area(PathsD paths) {
 		double a = 0.0;
 		for (PathD path : paths) {
-			a += Area(path);
+			a += area(path);
 		}
 		return a;
 	}
@@ -715,8 +715,8 @@ public final class Clipper {
 	 * @param poly the polygon to test.
 	 * @return {@code true} when the polygon has positive winding.
 	 */
-	public static boolean IsPositive(Path64 poly) {
-		return Area(poly) >= 0;
+	public static boolean isPositive(Path64 poly) {
+		return area(poly) >= 0;
 	}
 
 	/**
@@ -734,11 +734,11 @@ public final class Clipper {
 	 * @param poly the polygon to test.
 	 * @return {@code true} when the polygon has positive winding.
 	 */
-	public static boolean IsPositive(PathD poly) {
-		return Area(poly) >= 0;
+	public static boolean isPositive(PathD poly) {
+		return area(poly) >= 0;
 	}
 
-	public static String Path64ToString(Path64 path) {
+	public static String path64ToString(Path64 path) {
 		StringBuilder bld = new StringBuilder();
 		for (Point64 pt : path) {
 			bld.append(pt.toString());
@@ -746,15 +746,15 @@ public final class Clipper {
 		return bld.toString() + '\n';
 	}
 
-	public static String Paths64ToString(Paths64 paths) {
+	public static String paths64ToString(Paths64 paths) {
 		StringBuilder bld = new StringBuilder();
 		for (Path64 path : paths) {
-			bld.append(Path64ToString(path));
+			bld.append(path64ToString(path));
 		}
 		return bld.toString();
 	}
 
-	public static String PathDToString(PathD path) {
+	public static String pathDToString(PathD path) {
 		StringBuilder bld = new StringBuilder();
 		for (PointD pt : path) {
 			bld.append(pt.toString());
@@ -762,15 +762,15 @@ public final class Clipper {
 		return bld.toString() + '\n';
 	}
 
-	public static String PathsDToString(PathsD paths) {
+	public static String pathsDToString(PathsD paths) {
 		StringBuilder bld = new StringBuilder();
 		for (PathD path : paths) {
-			bld.append(PathDToString(path));
+			bld.append(pathDToString(path));
 		}
 		return bld.toString();
 	}
 
-	public static Path64 OffsetPath(Path64 path, long dx, long dy) {
+	public static Path64 offsetPath(Path64 path, long dx, long dy) {
 		Path64 result = new Path64(path.size());
 		for (Point64 pt : path) {
 			result.add(new Point64(pt.x + dx, pt.y + dy));
@@ -778,27 +778,27 @@ public final class Clipper {
 		return result;
 	}
 
-	public static Point64 ScalePoint64(Point64 pt, double scale) {
+	public static Point64 scalePoint64(Point64 pt, double scale) {
 		Point64 result = new Point64();
 		result.x = (long) Math.rint(pt.x * scale);
 		result.y = (long) Math.rint(pt.y * scale);
 		return result;
 	}
 
-	public static PointD ScalePointD(Point64 pt, double scale) {
+	public static PointD scalePointD(Point64 pt, double scale) {
 		PointD result = new PointD();
 		result.x = pt.x * scale;
 		result.y = pt.y * scale;
 		return result;
 	}
 
-	public static Rect64 ScaleRect(RectD rec, double scale) {
+	public static Rect64 scaleRect(RectD rec, double scale) {
 		Rect64 result = new Rect64((long) (rec.left * scale), (long) (rec.top * scale), (long) (rec.right * scale), (long) (rec.bottom * scale));
 		return result;
 	}
 
-	public static Path64 ScalePath(Path64 path, double scale) {
-		if (InternalClipper.IsAlmostZero(scale - 1)) {
+	public static Path64 scalePath(Path64 path, double scale) {
+		if (InternalClipper.isAlmostZero(scale - 1)) {
 			return path;
 		}
 		Path64 result = new Path64(path.size());
@@ -808,19 +808,19 @@ public final class Clipper {
 		return result;
 	}
 
-	public static Paths64 ScalePaths(Paths64 paths, double scale) {
-		if (InternalClipper.IsAlmostZero(scale - 1)) {
+	public static Paths64 scalePaths(Paths64 paths, double scale) {
+		if (InternalClipper.isAlmostZero(scale - 1)) {
 			return paths;
 		}
 		Paths64 result = new Paths64(paths.size());
 		for (Path64 path : paths) {
-			result.add(ScalePath(path, scale));
+			result.add(scalePath(path, scale));
 		}
 		return result;
 	}
 
-	public static PathD ScalePath(PathD path, double scale) {
-		if (InternalClipper.IsAlmostZero(scale - 1)) {
+	public static PathD scalePath(PathD path, double scale) {
+		if (InternalClipper.isAlmostZero(scale - 1)) {
 			return path;
 		}
 		PathD result = new PathD(path.size());
@@ -830,19 +830,19 @@ public final class Clipper {
 		return result;
 	}
 
-	public static PathsD ScalePaths(PathsD paths, double scale) {
-		if (InternalClipper.IsAlmostZero(scale - 1)) {
+	public static PathsD scalePaths(PathsD paths, double scale) {
+		if (InternalClipper.isAlmostZero(scale - 1)) {
 			return paths;
 		}
 		PathsD result = new PathsD(paths.size());
 		for (PathD path : paths) {
-			result.add(ScalePath(path, scale));
+			result.add(scalePath(path, scale));
 		}
 		return result;
 	}
 
 	// Unlike ScalePath, both ScalePath64 & ScalePathD also involve type conversion
-	public static Path64 ScalePath64(PathD path, double scale) {
+	public static Path64 scalePath64(PathD path, double scale) {
 		int cnt = path.size();
 		Path64 res = new Path64(cnt);
 		for (PointD pt : path) {
@@ -851,16 +851,16 @@ public final class Clipper {
 		return res;
 	}
 
-	public static Paths64 ScalePaths64(PathsD paths, double scale) {
+	public static Paths64 scalePaths64(PathsD paths, double scale) {
 		int cnt = paths.size();
 		Paths64 res = new Paths64(cnt);
 		for (PathD path : paths) {
-			res.add(ScalePath64(path, scale));
+			res.add(scalePath64(path, scale));
 		}
 		return res;
 	}
 
-	public static PathD ScalePathD(Path64 path, double scale) {
+	public static PathD scalePathD(Path64 path, double scale) {
 		int cnt = path.size();
 		PathD res = new PathD(cnt);
 		for (Point64 pt : path) {
@@ -869,17 +869,17 @@ public final class Clipper {
 		return res;
 	}
 
-	public static PathsD ScalePathsD(Paths64 paths, double scale) {
+	public static PathsD scalePathsD(Paths64 paths, double scale) {
 		int cnt = paths.size();
 		PathsD res = new PathsD(cnt);
 		for (Path64 path : paths) {
-			res.add(ScalePathD(path, scale));
+			res.add(scalePathD(path, scale));
 		}
 		return res;
 	}
 
 	// The static functions Path64 and PathD convert path types without scaling
-	public static Path64 Path64(PathD path) {
+	public static Path64 path64(PathD path) {
 		Path64 result = new Path64(path.size());
 		for (PointD pt : path) {
 			result.add(new Point64(pt));
@@ -887,23 +887,23 @@ public final class Clipper {
 		return result;
 	}
 
-	public static Paths64 Paths64(PathsD paths) {
+	public static Paths64 paths64(PathsD paths) {
 		Paths64 result = new Paths64(paths.size());
 		for (PathD path : paths) {
-			result.add(Path64(path));
+			result.add(path64(path));
 		}
 		return result;
 	}
 
-	public static PathsD PathsD(Paths64 paths) {
+	public static PathsD pathsD(Paths64 paths) {
 		PathsD result = new PathsD(paths.size());
 		for (Path64 path : paths) {
-			result.add(PathD(path));
+			result.add(pathD(path));
 		}
 		return result;
 	}
 
-	public static PathD PathD(Path64 path) {
+	public static PathD pathD(Path64 path) {
 		PathD result = new PathD(path.size());
 		for (Point64 pt : path) {
 			result.add(new PointD(pt));
@@ -911,7 +911,7 @@ public final class Clipper {
 		return result;
 	}
 
-	public static Path64 TranslatePath(Path64 path, long dx, long dy) {
+	public static Path64 translatePath(Path64 path, long dx, long dy) {
 		Path64 result = new Path64(path.size());
 		for (Point64 pt : path) {
 			result.add(new Point64(pt.x + dx, pt.y + dy));
@@ -919,15 +919,15 @@ public final class Clipper {
 		return result;
 	}
 
-	public static Paths64 TranslatePaths(Paths64 paths, long dx, long dy) {
+	public static Paths64 translatePaths(Paths64 paths, long dx, long dy) {
 		Paths64 result = new Paths64(paths.size());
 		for (Path64 path : paths) {
-			result.add(OffsetPath(path, dx, dy));
+			result.add(offsetPath(path, dx, dy));
 		}
 		return result;
 	}
 
-	public static PathD TranslatePath(PathD path, double dx, double dy) {
+	public static PathD translatePath(PathD path, double dx, double dy) {
 		PathD result = new PathD(path.size());
 		for (PointD pt : path) {
 			result.add(new PointD(pt.x + dx, pt.y + dy));
@@ -935,39 +935,39 @@ public final class Clipper {
 		return result;
 	}
 
-	public static PathsD TranslatePaths(PathsD paths, double dx, double dy) {
+	public static PathsD translatePaths(PathsD paths, double dx, double dy) {
 		PathsD result = new PathsD(paths.size());
 		for (PathD path : paths) {
-			result.add(TranslatePath(path, dx, dy));
+			result.add(translatePath(path, dx, dy));
 		}
 		return result;
 	}
 
-	public static Path64 ReversePath(Path64 path) {
+	public static Path64 reversePath(Path64 path) {
 		Path64 result = new Path64(path);
 		Collections.reverse(result);
 		return result;
 	}
 
-	public static PathD ReversePath(PathD path) {
+	public static PathD reversePath(PathD path) {
 		PathD result = new PathD(path);
 		Collections.reverse(result);
 		return result;
 	}
 
-	public static Paths64 ReversePaths(Paths64 paths) {
+	public static Paths64 reversePaths(Paths64 paths) {
 		Paths64 result = new Paths64(paths.size());
 		for (Path64 t : paths) {
-			result.add(ReversePath(t));
+			result.add(reversePath(t));
 		}
 
 		return result;
 	}
 
-	public static PathsD ReversePaths(PathsD paths) {
+	public static PathsD reversePaths(PathsD paths) {
 		PathsD result = new PathsD(paths.size());
 		for (PathD path : paths) {
-			result.add(ReversePath(path));
+			result.add(reversePath(path));
 		}
 		return result;
 	}
@@ -978,7 +978,7 @@ public final class Clipper {
 	 * @param path the path to measure.
 	 * @return the path bounds, or an empty rectangle when the path is empty.
 	 */
-	public static Rect64 GetBounds(Path64 path) {
+	public static Rect64 getBounds(Path64 path) {
 		Rect64 result = InvalidRect64.clone();
 		for (Point64 pt : path) {
 			if (pt.x < result.left) {
@@ -1004,7 +1004,7 @@ public final class Clipper {
 	 * @return the combined bounds, or an empty rectangle when no points are
 	 *         supplied.
 	 */
-	public static Rect64 GetBounds(Paths64 paths) {
+	public static Rect64 getBounds(Paths64 paths) {
 		Rect64 result = InvalidRect64.clone();
 		for (Path64 path : paths) {
 			for (Point64 pt : path) {
@@ -1031,7 +1031,7 @@ public final class Clipper {
 	 * @param path the path to measure.
 	 * @return the path bounds, or an empty rectangle when the path is empty.
 	 */
-	public static RectD GetBounds(PathD path) {
+	public static RectD getBounds(PathD path) {
 		RectD result = InvalidRectD.clone();
 		for (PointD pt : path) {
 			if (pt.x < result.left) {
@@ -1047,7 +1047,7 @@ public final class Clipper {
 				result.bottom = pt.y;
 			}
 		}
-		return InternalClipper.IsAlmostZero(result.left - Double.MAX_VALUE) ? new RectD() : result;
+		return InternalClipper.isAlmostZero(result.left - Double.MAX_VALUE) ? new RectD() : result;
 	}
 
 	/**
@@ -1057,7 +1057,7 @@ public final class Clipper {
 	 * @return the combined bounds, or an empty rectangle when no points are
 	 *         supplied.
 	 */
-	public static RectD GetBounds(PathsD paths) {
+	public static RectD getBounds(PathsD paths) {
 		RectD result = InvalidRectD.clone();
 		for (PathD path : paths) {
 			for (PointD pt : path) {
@@ -1075,7 +1075,7 @@ public final class Clipper {
 				}
 			}
 		}
-		return InternalClipper.IsAlmostZero(result.left - Double.MAX_VALUE) ? new RectD() : result;
+		return InternalClipper.isAlmostZero(result.left - Double.MAX_VALUE) ? new RectD() : result;
 	}
 
 	/**
@@ -1084,7 +1084,7 @@ public final class Clipper {
 	 * @param arr the coordinate array.
 	 * @return the constructed path.
 	 */
-	public static Path64 MakePath(int[] arr) {
+	public static Path64 makePath(int[] arr) {
 		int len = arr.length / 2;
 		Path64 p = new Path64(len);
 		for (int i = 0; i < len; i++) {
@@ -1093,7 +1093,7 @@ public final class Clipper {
 		return p;
 	}
 
-	public static Path64 MakePath(long[] arr) {
+	public static Path64 makePath(long[] arr) {
 		int len = arr.length / 2;
 		Path64 p = new Path64(len);
 		for (int i = 0; i < len; i++) {
@@ -1108,7 +1108,7 @@ public final class Clipper {
 	 * @param arr the coordinate array.
 	 * @return the constructed path.
 	 */
-	public static PathD MakePath(double[] arr) {
+	public static PathD makePath(double[] arr) {
 		int len = arr.length / 2;
 		PathD p = new PathD(len);
 		for (int i = 0; i < len; i++) {
@@ -1117,11 +1117,11 @@ public final class Clipper {
 		return p;
 	}
 
-	public static double Sqr(double value) {
+	public static double sqr(double value) {
 		return value * value;
 	}
 
-	public static double Sqr(long value) {
+	public static double sqr(long value) {
 		return (double) value * (double) value;
 	}
 
@@ -1132,15 +1132,15 @@ public final class Clipper {
 	 * @param pt2 the second point.
 	 * @return the squared Euclidean distance between the two points.
 	 */
-	public static double DistanceSqr(Point64 pt1, Point64 pt2) {
-		return Sqr(pt1.x - pt2.x) + Sqr(pt1.y - pt2.y);
+	public static double distanceSqr(Point64 pt1, Point64 pt2) {
+		return sqr(pt1.x - pt2.x) + sqr(pt1.y - pt2.y);
 	}
 
-	public static Point64 MidPoint(Point64 pt1, Point64 pt2) {
+	public static Point64 midPoint(Point64 pt1, Point64 pt2) {
 		return new Point64((pt1.x + pt2.x) / 2, (pt1.y + pt2.y) / 2);
 	}
 
-	public static PointD MidPoint(PointD pt1, PointD pt2) {
+	public static PointD midPoint(PointD pt1, PointD pt2) {
 		return new PointD((pt1.x + pt2.x) / 2, (pt1.y + pt2.y) / 2);
 	}
 
@@ -1151,7 +1151,7 @@ public final class Clipper {
 	 * @param dx the horizontal delta to apply on both sides.
 	 * @param dy the vertical delta to apply on both sides.
 	 */
-	public static void InflateRect(Rect64 rec, int dx, int dy) {
+	public static void inflateRect(Rect64 rec, int dx, int dy) {
 		rec.left -= dx;
 		rec.right += dx;
 		rec.top -= dy;
@@ -1165,18 +1165,18 @@ public final class Clipper {
 	 * @param dx the horizontal delta to apply on both sides.
 	 * @param dy the vertical delta to apply on both sides.
 	 */
-	public static void InflateRect(RectD rec, double dx, double dy) {
+	public static void inflateRect(RectD rec, double dx, double dy) {
 		rec.left -= dx;
 		rec.right += dx;
 		rec.top -= dy;
 		rec.bottom += dy;
 	}
 
-	public static boolean PointsNearEqual(PointD pt1, PointD pt2, double distanceSqrd) {
-		return Sqr(pt1.x - pt2.x) + Sqr(pt1.y - pt2.y) < distanceSqrd;
+	public static boolean pointsNearEqual(PointD pt1, PointD pt2, double distanceSqrd) {
+		return sqr(pt1.x - pt2.x) + sqr(pt1.y - pt2.y) < distanceSqrd;
 	}
 
-	public static PathD StripNearDuplicates(PathD path, double minEdgeLenSqrd, boolean isClosedPath) {
+	public static PathD stripNearDuplicates(PathD path, double minEdgeLenSqrd, boolean isClosedPath) {
 		int cnt = path.size();
 		PathD result = new PathD(cnt);
 		if (cnt == 0) {
@@ -1185,20 +1185,20 @@ public final class Clipper {
 		PointD lastPt = path.get(0);
 		result.add(lastPt);
 		for (int i = 1; i < cnt; i++) {
-			if (!PointsNearEqual(lastPt, path.get(i), minEdgeLenSqrd)) {
+			if (!pointsNearEqual(lastPt, path.get(i), minEdgeLenSqrd)) {
 				lastPt = path.get(i);
 				result.add(lastPt);
 			}
 		}
 
-		if (isClosedPath && PointsNearEqual(lastPt, result.get(0), minEdgeLenSqrd)) {
+		if (isClosedPath && pointsNearEqual(lastPt, result.get(0), minEdgeLenSqrd)) {
 			result.remove(result.size() - 1);
 		}
 
 		return result;
 	}
 
-	public static Path64 StripDuplicates(Path64 path, boolean isClosedPath) {
+	public static Path64 stripDuplicates(Path64 path, boolean isClosedPath) {
 		int cnt = path.size();
 		Path64 result = new Path64(cnt);
 		if (cnt == 0) {
@@ -1225,7 +1225,7 @@ public final class Clipper {
 		polyPath.iterator().forEachRemaining(p -> AddPolyNodeToPaths((PolyPath64) p, paths));
 	}
 
-	public static Paths64 PolyTreeToPaths64(PolyTree64 polyTree) {
+	public static Paths64 polyTreeToPaths64(PolyTree64 polyTree) {
 		Paths64 result = new Paths64();
 		polyTree.iterator().forEachRemaining(p -> AddPolyNodeToPaths((PolyPath64) p, result));
 		return result;
@@ -1237,24 +1237,24 @@ public final class Clipper {
 	 * @param polyPath the current polytree node.
 	 * @param paths the destination path collection.
 	 */
-	public static void AddPolyNodeToPathsD(PolyPathD polyPath, PathsD paths) {
+	public static void addPolyNodeToPathsD(PolyPathD polyPath, PathsD paths) {
 		if (!polyPath.getPolygon().isEmpty()) {
 			paths.add(polyPath.getPolygon());
 		}
-		polyPath.iterator().forEachRemaining(p -> AddPolyNodeToPathsD((PolyPathD) p, paths));
+		polyPath.iterator().forEachRemaining(p -> addPolyNodeToPathsD((PolyPathD) p, paths));
 	}
 
-	public static PathsD PolyTreeToPathsD(PolyTreeD polyTree) {
+	public static PathsD polyTreeToPathsD(PolyTreeD polyTree) {
 		PathsD result = new PathsD();
 		for (PolyPathBase polyPathBase : polyTree) {
 			PolyPathD p = (PolyPathD) polyPathBase;
-			AddPolyNodeToPathsD(p, result);
+			addPolyNodeToPathsD(p, result);
 		}
 
 		return result;
 	}
 
-	public static double PerpendicDistFromLineSqrd(PointD pt, PointD line1, PointD line2) {
+	public static double perpendicDistFromLineSqrd(PointD pt, PointD line1, PointD line2) {
 		double a = pt.x - line1.x;
 		double b = pt.y - line1.y;
 		double c = line2.x - line1.x;
@@ -1262,10 +1262,10 @@ public final class Clipper {
 		if (c == 0 && d == 0) {
 			return 0;
 		}
-		return Sqr(a * d - c * b) / (c * c + d * d);
+		return sqr(a * d - c * b) / (c * c + d * d);
 	}
 
-	public static double PerpendicDistFromLineSqrd(Point64 pt, Point64 line1, Point64 line2) {
+	public static double perpendicDistFromLineSqrd(Point64 pt, Point64 line1, Point64 line2) {
 		double a = (double) pt.x - line1.x;
 		double b = (double) pt.y - line1.y;
 		double c = (double) line2.x - line1.x;
@@ -1273,10 +1273,10 @@ public final class Clipper {
 		if (c == 0 && d == 0) {
 			return 0;
 		}
-		return Sqr(a * d - c * b) / (c * c + d * d);
+		return sqr(a * d - c * b) / (c * c + d * d);
 	}
 
-	public static void RDP(Path64 path, int begin, int end, double epsSqrd, List<Boolean> flags) {
+	public static void rDP(Path64 path, int begin, int end, double epsSqrd, List<Boolean> flags) {
 		while (true) {
 			int idx = 0;
 			double maxD = 0;
@@ -1285,7 +1285,7 @@ public final class Clipper {
 			}
 			for (int i = begin + 1; i < end; ++i) {
 				// PerpendicDistFromLineSqrd - avoids expensive Sqrt()
-				double d = PerpendicDistFromLineSqrd(path.get(i), path.get(begin), path.get(end));
+				double d = perpendicDistFromLineSqrd(path.get(i), path.get(begin), path.get(end));
 				if (d <= maxD) {
 					continue;
 				}
@@ -1297,7 +1297,7 @@ public final class Clipper {
 			}
 			flags.set(idx, true);
 			if (idx > begin + 1) {
-				RDP(path, begin, idx, epsSqrd, flags);
+				rDP(path, begin, idx, epsSqrd, flags);
 			}
 			if (idx < end - 1) {
 				begin = idx;
@@ -1325,7 +1325,7 @@ public final class Clipper {
 	 * @param epsilon the maximum permitted deviation from the original path.
 	 * @return the simplified path.
 	 */
-	public static Path64 RamerDouglasPeuckerPath(Path64 path, double epsilon) {
+	public static Path64 ramerDouglasPeuckerPath(Path64 path, double epsilon) {
 		int len = path.size();
 		if (len < 5) {
 			return path;
@@ -1333,7 +1333,7 @@ public final class Clipper {
 		List<Boolean> flags = new ArrayList<>(Collections.nCopies(len, false));
 		flags.set(0, true);
 		flags.set(len - 1, true);
-		RDP(path, 0, len - 1, Sqr(epsilon), flags);
+		rDP(path, 0, len - 1, sqr(epsilon), flags);
 		Path64 result = new Path64(len);
 		for (int i = 0; i < len; ++i) {
 			if (flags.get(i).booleanValue()) {
@@ -1361,15 +1361,15 @@ public final class Clipper {
 	 * @param epsilon the maximum permitted deviation from the original paths.
 	 * @return the simplified paths.
 	 */
-	public static Paths64 RamerDouglasPeucker(Paths64 paths, double epsilon) {
+	public static Paths64 ramerDouglasPeucker(Paths64 paths, double epsilon) {
 		Paths64 result = new Paths64(paths.size());
 		for (Path64 path : paths) {
-			result.add(RamerDouglasPeuckerPath(path, epsilon));
+			result.add(ramerDouglasPeuckerPath(path, epsilon));
 		}
 		return result;
 	}
 
-	public static void RDP(PathD path, int begin, int end, double epsSqrd, List<Boolean> flags) {
+	public static void rDP(PathD path, int begin, int end, double epsSqrd, List<Boolean> flags) {
 		while (true) {
 			int idx = 0;
 			double maxD = 0;
@@ -1378,7 +1378,7 @@ public final class Clipper {
 			}
 			for (int i = begin + 1; i < end; ++i) {
 				// PerpendicDistFromLineSqrd - avoids expensive Sqrt()
-				double d = PerpendicDistFromLineSqrd(path.get(i), path.get(begin), path.get(end));
+				double d = perpendicDistFromLineSqrd(path.get(i), path.get(begin), path.get(end));
 				if (d <= maxD) {
 					continue;
 				}
@@ -1390,7 +1390,7 @@ public final class Clipper {
 			}
 			flags.set(idx, true);
 			if (idx > begin + 1) {
-				RDP(path, begin, idx, epsSqrd, flags);
+				rDP(path, begin, idx, epsSqrd, flags);
 			}
 			if (idx < end - 1) {
 				begin = idx;
@@ -1407,7 +1407,7 @@ public final class Clipper {
 	 * @param epsilon the maximum permitted deviation from the original path.
 	 * @return the simplified path.
 	 */
-	public static PathD RamerDouglasPeucker(PathD path, double epsilon) {
+	public static PathD ramerDouglasPeucker(PathD path, double epsilon) {
 		int len = path.size();
 		if (len < 5) {
 			return path;
@@ -1415,7 +1415,7 @@ public final class Clipper {
 		List<Boolean> flags = new ArrayList<>(Collections.nCopies(len, false));
 		flags.set(0, true);
 		flags.set(len - 1, true);
-		RDP(path, 0, len - 1, Sqr(epsilon), flags);
+		rDP(path, 0, len - 1, sqr(epsilon), flags);
 		PathD result = new PathD(len);
 		for (int i = 0; i < len; ++i) {
 			if (flags.get(i).booleanValue()) {
@@ -1432,10 +1432,10 @@ public final class Clipper {
 	 * @param epsilon the maximum permitted deviation from the original paths.
 	 * @return the simplified paths.
 	 */
-	public static PathsD RamerDouglasPeucker(PathsD paths, double epsilon) {
+	public static PathsD ramerDouglasPeucker(PathsD paths, double epsilon) {
 		PathsD result = new PathsD(paths.size());
 		for (PathD path : paths) {
-			result.add(RamerDouglasPeucker(path, epsilon));
+			result.add(ramerDouglasPeucker(path, epsilon));
 		}
 		return result;
 	}
@@ -1481,8 +1481,8 @@ public final class Clipper {
 	 * @param epsilon the maximum permitted deviation from the original path.
 	 * @return the simplified path.
 	 */
-	public static Path64 SimplifyPath(Path64 path, double epsilon) {
-		return SimplifyPath(path, epsilon, false);
+	public static Path64 simplifyPath(Path64 path, double epsilon) {
+		return simplifyPath(path, epsilon, false);
 	}
 
 	/**
@@ -1501,10 +1501,10 @@ public final class Clipper {
 	 * @param isClosedPath whether the path should be treated as closed.
 	 * @return the simplified path.
 	 */
-	public static Path64 SimplifyPath(Path64 path, double epsilon, boolean isClosedPath) {
+	public static Path64 simplifyPath(Path64 path, double epsilon, boolean isClosedPath) {
 		int len = path.size();
 		int high = len - 1;
-		double epsSqr = Sqr(epsilon);
+		double epsSqr = sqr(epsilon);
 		if (len < 4) {
 			return path; // Return original path if too short
 		}
@@ -1514,15 +1514,15 @@ public final class Clipper {
 		int curr = 0, prev, start, next, prior2;
 
 		if (isClosedPath) {
-			dsq[0] = PerpendicDistFromLineSqrd(path.get(0), path.get(high), path.get(1));
-			dsq[high] = PerpendicDistFromLineSqrd(path.get(high), path.get(0), path.get(high - 1));
+			dsq[0] = perpendicDistFromLineSqrd(path.get(0), path.get(high), path.get(1));
+			dsq[high] = perpendicDistFromLineSqrd(path.get(high), path.get(0), path.get(high - 1));
 		} else {
 			dsq[0] = Double.MAX_VALUE;
 			dsq[high] = Double.MAX_VALUE;
 		}
 
 		for (int i = 1; i < high; ++i) {
-			dsq[i] = PerpendicDistFromLineSqrd(path.get(i), path.get(i - 1), path.get(i + 1));
+			dsq[i] = perpendicDistFromLineSqrd(path.get(i), path.get(i - 1), path.get(i + 1));
 		}
 
 		for (;;) {
@@ -1556,10 +1556,10 @@ public final class Clipper {
 			next = GetNext(next, high, flags);
 
 			if (isClosedPath || ((curr != high) && (curr != 0))) {
-				dsq[curr] = PerpendicDistFromLineSqrd(path.get(curr), path.get(prev), path.get(next));
+				dsq[curr] = perpendicDistFromLineSqrd(path.get(curr), path.get(prev), path.get(next));
 			}
 			if (isClosedPath || ((prev != 0) && (prev != high))) {
-				dsq[prev] = PerpendicDistFromLineSqrd(path.get(prev), path.get(prior2), path.get(curr));
+				dsq[prev] = perpendicDistFromLineSqrd(path.get(prev), path.get(prior2), path.get(curr));
 			}
 		}
 
@@ -1579,8 +1579,8 @@ public final class Clipper {
 	 * @param epsilon the maximum permitted deviation from the original paths.
 	 * @return the simplified paths.
 	 */
-	public static Paths64 SimplifyPaths(Paths64 paths, double epsilon) {
-		return SimplifyPaths(paths, epsilon, false);
+	public static Paths64 simplifyPaths(Paths64 paths, double epsilon) {
+		return simplifyPaths(paths, epsilon, false);
 	}
 
 	/**
@@ -1591,10 +1591,10 @@ public final class Clipper {
 	 * @param isClosedPath whether the paths should be treated as closed.
 	 * @return the simplified paths.
 	 */
-	public static Paths64 SimplifyPaths(Paths64 paths, double epsilon, boolean isClosedPath) {
+	public static Paths64 simplifyPaths(Paths64 paths, double epsilon, boolean isClosedPath) {
 		Paths64 result = new Paths64(paths.size());
 		for (Path64 path : paths) {
-			result.add(SimplifyPath(path, epsilon, isClosedPath));
+			result.add(simplifyPath(path, epsilon, isClosedPath));
 		}
 		return result;
 	}
@@ -1606,8 +1606,8 @@ public final class Clipper {
 	 * @param epsilon the maximum permitted deviation from the original path.
 	 * @return the simplified path.
 	 */
-	public static PathD SimplifyPath(PathD path, double epsilon) {
-		return SimplifyPath(path, epsilon, false);
+	public static PathD simplifyPath(PathD path, double epsilon) {
+		return simplifyPath(path, epsilon, false);
 	}
 
 	/**
@@ -1626,10 +1626,10 @@ public final class Clipper {
 	 * @param isClosedPath whether the path should be treated as closed.
 	 * @return the simplified path.
 	 */
-	public static PathD SimplifyPath(PathD path, double epsilon, boolean isClosedPath) {
+	public static PathD simplifyPath(PathD path, double epsilon, boolean isClosedPath) {
 		int len = path.size();
 		int high = len - 1;
-		double epsSqr = Sqr(epsilon);
+		double epsSqr = sqr(epsilon);
 		if (len < 4) {
 			return path;
 		}
@@ -1639,15 +1639,15 @@ public final class Clipper {
 		int curr = 0, prev, start, next, prior2;
 
 		if (isClosedPath) {
-			dsq[0] = PerpendicDistFromLineSqrd(path.get(0), path.get(high), path.get(1));
-			dsq[high] = PerpendicDistFromLineSqrd(path.get(high), path.get(0), path.get(high - 1));
+			dsq[0] = perpendicDistFromLineSqrd(path.get(0), path.get(high), path.get(1));
+			dsq[high] = perpendicDistFromLineSqrd(path.get(high), path.get(0), path.get(high - 1));
 		} else {
 			dsq[0] = Double.MAX_VALUE;
 			dsq[high] = Double.MAX_VALUE;
 		}
 
 		for (int i = 1; i < high; ++i) {
-			dsq[i] = PerpendicDistFromLineSqrd(path.get(i), path.get(i - 1), path.get(i + 1));
+			dsq[i] = perpendicDistFromLineSqrd(path.get(i), path.get(i - 1), path.get(i + 1));
 		}
 
 		for (;;) {
@@ -1680,10 +1680,10 @@ public final class Clipper {
 			curr = next;
 			next = GetNext(next, high, flags);
 			if (isClosedPath || ((curr != high) && (curr != 0))) {
-				dsq[curr] = PerpendicDistFromLineSqrd(path.get(curr), path.get(prev), path.get(next));
+				dsq[curr] = perpendicDistFromLineSqrd(path.get(curr), path.get(prev), path.get(next));
 			}
 			if (isClosedPath || ((prev != 0) && (prev != high))) {
-				dsq[prev] = PerpendicDistFromLineSqrd(path.get(prev), path.get(prior2), path.get(curr));
+				dsq[prev] = perpendicDistFromLineSqrd(path.get(prev), path.get(prior2), path.get(curr));
 			}
 		}
 
@@ -1703,8 +1703,8 @@ public final class Clipper {
 	 * @param epsilon the maximum permitted deviation from the original paths.
 	 * @return the simplified paths.
 	 */
-	public static PathsD SimplifyPaths(PathsD paths, double epsilon) {
-		return SimplifyPaths(paths, epsilon, false);
+	public static PathsD simplifyPaths(PathsD paths, double epsilon) {
+		return simplifyPaths(paths, epsilon, false);
 	}
 
 	/**
@@ -1715,10 +1715,10 @@ public final class Clipper {
 	 * @param isClosedPath whether the paths should be treated as closed.
 	 * @return the simplified paths.
 	 */
-	public static PathsD SimplifyPaths(PathsD paths, double epsilon, boolean isClosedPath) {
+	public static PathsD simplifyPaths(PathsD paths, double epsilon, boolean isClosedPath) {
 		PathsD result = new PathsD(paths.size());
 		for (PathD path : paths) {
-			result.add(SimplifyPath(path, epsilon, isClosedPath));
+			result.add(simplifyPath(path, epsilon, isClosedPath));
 		}
 		return result;
 	}
@@ -1735,8 +1735,8 @@ public final class Clipper {
 	 * @param path the path to trim.
 	 * @return the trimmed path.
 	 */
-	public static Path64 TrimCollinear(Path64 path) {
-		return TrimCollinear(path, false);
+	public static Path64 trimCollinear(Path64 path) {
+		return trimCollinear(path, false);
 	}
 
 	/**
@@ -1752,14 +1752,14 @@ public final class Clipper {
 	 * @param isOpen whether the path should be treated as open.
 	 * @return the trimmed path.
 	 */
-	public static Path64 TrimCollinear(Path64 path, boolean isOpen) {
+	public static Path64 trimCollinear(Path64 path, boolean isOpen) {
 		int len = path.size();
 		int i = 0;
 		if (!isOpen) {
-			while (i < len - 1 && InternalClipper.IsCollinear(path.get(len - 1), path.get(i), path.get(i + 1))) {
+			while (i < len - 1 && InternalClipper.isCollinear(path.get(len - 1), path.get(i), path.get(i + 1))) {
 				i++;
 			}
-			while (i < len - 1 && InternalClipper.IsCollinear(path.get(len - 2), path.get(len - 1), path.get(i))) {
+			while (i < len - 1 && InternalClipper.isCollinear(path.get(len - 2), path.get(len - 1), path.get(i))) {
 				len--;
 			}
 		}
@@ -1775,7 +1775,7 @@ public final class Clipper {
 		Point64 last = path.get(i);
 		result.add(last);
 		for (i++; i < len - 1; i++) {
-			if (InternalClipper.IsCollinear(last, path.get(i), path.get(i + 1))) {
+			if (InternalClipper.isCollinear(last, path.get(i), path.get(i + 1))) {
 				continue;
 			}
 			last = path.get(i);
@@ -1784,10 +1784,10 @@ public final class Clipper {
 
 		if (isOpen) {
 			result.add(path.get(len - 1));
-		} else if (!InternalClipper.IsCollinear(last, path.get(len - 1), result.get(0))) {
+		} else if (!InternalClipper.isCollinear(last, path.get(len - 1), result.get(0))) {
 			result.add(path.get(len - 1));
 		} else {
-			while (result.size() > 2 && InternalClipper.IsCollinear(result.get(result.size() - 1), result.get(result.size() - 2), result.get(0))) {
+			while (result.size() > 2 && InternalClipper.isCollinear(result.get(result.size() - 1), result.get(result.size() - 2), result.get(0))) {
 				result.remove(result.size() - 1);
 			}
 			if (result.size() < 3) {
@@ -1813,8 +1813,8 @@ public final class Clipper {
 	 * @param precision the decimal precision used to test collinearity.
 	 * @return the trimmed path.
 	 */
-	public static PathD TrimCollinear(PathD path, int precision) {
-		return TrimCollinear(path, precision, false);
+	public static PathD trimCollinear(PathD path, int precision) {
+		return trimCollinear(path, precision, false);
 	}
 
 	/**
@@ -1834,28 +1834,28 @@ public final class Clipper {
 	 * @param isOpen whether the path should be treated as open.
 	 * @return the trimmed path.
 	 */
-	public static PathD TrimCollinear(PathD path, int precision, boolean isOpen) {
-		InternalClipper.CheckPrecision(precision);
+	public static PathD trimCollinear(PathD path, int precision, boolean isOpen) {
+		InternalClipper.checkPrecision(precision);
 		double scale = Math.pow(10, precision);
-		Path64 p = ScalePath64(path, scale);
-		p = TrimCollinear(p, isOpen);
-		return ScalePathD(p, 1 / scale);
+		Path64 p = scalePath64(path, scale);
+		p = trimCollinear(p, isOpen);
+		return scalePathD(p, 1 / scale);
 	}
 
-	public static PointInPolygonResult PointInPolygon(Point64 pt, Path64 polygon) {
-		return InternalClipper.PointInPolygon(pt, polygon);
+	public static PointInPolygonResult pointInPolygon(Point64 pt, Path64 polygon) {
+		return InternalClipper.pointInPolygon(pt, polygon);
 	}
 
-	public static PointInPolygonResult PointInPolygon(PointD pt, PathD polygon) {
-		return PointInPolygon(pt, polygon, 2);
+	public static PointInPolygonResult pointInPolygon(PointD pt, PathD polygon) {
+		return pointInPolygon(pt, polygon, 2);
 	}
 
-	public static PointInPolygonResult PointInPolygon(PointD pt, PathD polygon, int precision) {
-		InternalClipper.CheckPrecision(precision);
+	public static PointInPolygonResult pointInPolygon(PointD pt, PathD polygon, int precision) {
+		InternalClipper.checkPrecision(precision);
 		double scale = Math.pow(10, precision);
 		Point64 p = new Point64(pt, scale);
-		Path64 path = ScalePath64(polygon, scale);
-		return InternalClipper.PointInPolygon(p, path);
+		Path64 path = scalePath64(polygon, scale);
+		return InternalClipper.pointInPolygon(p, path);
 	}
 
 	/**
@@ -1866,8 +1866,8 @@ public final class Clipper {
 	 * @param radiusY the vertical radius.
 	 * @return the approximated ellipse path.
 	 */
-	public static Path64 Ellipse(Point64 center, double radiusX, double radiusY) {
-		return Ellipse(center, radiusX, radiusY, 0);
+	public static Path64 ellipse(Point64 center, double radiusX, double radiusY) {
+		return ellipse(center, radiusX, radiusY, 0);
 	}
 
 	/**
@@ -1877,8 +1877,8 @@ public final class Clipper {
 	 * @param radiusX the radius to use on both axes.
 	 * @return the approximated circle path.
 	 */
-	public static Path64 Ellipse(Point64 center, double radiusX) {
-		return Ellipse(center, radiusX, 0, 0);
+	public static Path64 ellipse(Point64 center, double radiusX) {
+		return ellipse(center, radiusX, 0, 0);
 	}
 
 	/**
@@ -1891,7 +1891,7 @@ public final class Clipper {
 	 *        automatically.
 	 * @return the approximated ellipse path.
 	 */
-	public static Path64 Ellipse(Point64 center, double radiusX, double radiusY, int steps) {
+	public static Path64 ellipse(Point64 center, double radiusX, double radiusY, int steps) {
 		if (radiusX <= 0) {
 			return new Path64();
 		}
@@ -1925,8 +1925,8 @@ public final class Clipper {
 	 * @param radiusY the vertical radius.
 	 * @return the approximated ellipse path.
 	 */
-	public static PathD Ellipse(PointD center, double radiusX, double radiusY) {
-		return Ellipse(center, radiusX, radiusY, 0);
+	public static PathD ellipse(PointD center, double radiusX, double radiusY) {
+		return ellipse(center, radiusX, radiusY, 0);
 	}
 
 	/**
@@ -1937,8 +1937,8 @@ public final class Clipper {
 	 * @param radiusX the radius to use on both axes.
 	 * @return the approximated circle path.
 	 */
-	public static PathD Ellipse(PointD center, double radiusX) {
-		return Ellipse(center, radiusX, 0, 0);
+	public static PathD ellipse(PointD center, double radiusX) {
+		return ellipse(center, radiusX, 0, 0);
 	}
 
 	/**
@@ -1951,7 +1951,7 @@ public final class Clipper {
 	 *        automatically.
 	 * @return the approximated ellipse path.
 	 */
-	public static PathD Ellipse(PointD center, double radiusX, double radiusY, int steps) {
+	public static PathD ellipse(PointD center, double radiusX, double radiusY, int steps) {
 		if (radiusX <= 0) {
 			return new PathD();
 		}

@@ -47,8 +47,8 @@ class TestToStringOutput {
 	@Test
 	void polyPathBaseToStringMatchesExistingFormat() {
 		PolyTree64 tree = new PolyTree64();
-		PolyPathBase polygon = tree.AddChild(new Path64());
-		polygon.AddChild(new Path64());
+		PolyPathBase polygon = tree.addChild(new Path64());
+		polygon.addChild(new Path64());
 		assertEquals("Polytree with 1 polygon.\n  +- polygon (0) contains 1 hole.\n\n", tree.toString());
 	}
 }

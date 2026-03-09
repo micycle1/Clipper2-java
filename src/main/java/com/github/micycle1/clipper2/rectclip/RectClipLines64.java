@@ -22,17 +22,17 @@ public class RectClipLines64 extends RectClip64 {
 		super(rect);
 	}
 
-	public Paths64 Execute(Paths64 paths) {
+	public Paths64 execute(Paths64 paths) {
 		Paths64 res = new Paths64();
-		if (rect_.IsEmpty()) {
+		if (rect_.isEmpty()) {
 			return res;
 		}
 		for (Path64 path : paths) {
 			if (path.size() < 2) {
 				continue;
 			}
-			pathBounds_ = Clipper.GetBounds(path);
-			if (!rect_.Intersects(pathBounds_)) {
+			pathBounds_ = Clipper.getBounds(path);
+			if (!rect_.intersects(pathBounds_)) {
 				continue;
 			}
 			executeInternal(path);
@@ -68,7 +68,7 @@ public class RectClipLines64 extends RectClip64 {
 	@Override
 	protected void executeInternal(Path64 path) {
 		results_.clear();
-		if (path.size() < 2 || rect_.IsEmpty()) {
+		if (path.size() < 2 || rect_.isEmpty()) {
 			return;
 		}
 		Location loc = Location.inside;

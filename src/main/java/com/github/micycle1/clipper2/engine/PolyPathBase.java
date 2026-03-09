@@ -52,12 +52,12 @@ public abstract class PolyPathBase implements Iterable<PolyPathBase> {
 		return children.size();
 	}
 
-	public abstract PolyPathBase AddChild(Path64 p);
+	public abstract PolyPathBase addChild(Path64 p);
 
 	/**
 	 * This method clears the Polygon and deletes any contained children.
 	 */
-	public final void Clear() {
+	public final void clear() {
 		children.clear();
 	}
 

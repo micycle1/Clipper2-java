@@ -35,47 +35,47 @@ public class ClipperD extends ClipperBase {
 		invScale = 1 / scale;
 	}
 
-	public void AddPath(PathD path, PathType polytype) {
-		AddPath(path, polytype, false);
+	public void addPath(PathD path, PathType polytype) {
+		addPath(path, polytype, false);
 	}
 
-	public void AddPath(PathD path, PathType polytype, boolean isOpen) {
-		super.AddPath(Clipper.ScalePath64(path, scale), polytype, isOpen);
+	public void addPath(PathD path, PathType polytype, boolean isOpen) {
+		super.addPath(Clipper.scalePath64(path, scale), polytype, isOpen);
 	}
 
-	public void AddPaths(PathsD paths, PathType polytype) {
-		AddPaths(paths, polytype, false);
+	public void addPaths(PathsD paths, PathType polytype) {
+		addPaths(paths, polytype, false);
 	}
 
-	public void AddPaths(PathsD paths, PathType polytype, boolean isOpen) {
-		super.AddPaths(Clipper.ScalePaths64(paths, scale), polytype, isOpen);
+	public void addPaths(PathsD paths, PathType polytype, boolean isOpen) {
+		super.addPaths(Clipper.scalePaths64(paths, scale), polytype, isOpen);
 	}
 
-	public void AddSubject(PathD path) {
-		AddPath(path, PathType.Subject);
+	public void addSubject(PathD path) {
+		addPath(path, PathType.Subject);
 	}
 
-	public void AddOpenSubject(PathD path) {
-		AddPath(path, PathType.Subject, true);
+	public void addOpenSubject(PathD path) {
+		addPath(path, PathType.Subject, true);
 	}
 
-	public void AddClip(PathD path) {
-		AddPath(path, PathType.Clip);
+	public void addClip(PathD path) {
+		addPath(path, PathType.Clip);
 	}
 
-	public void AddSubjects(PathsD paths) {
-		AddPaths(paths, PathType.Subject);
+	public void addSubjects(PathsD paths) {
+		addPaths(paths, PathType.Subject);
 	}
 
-	public void AddOpenSubjects(PathsD paths) {
-		AddPaths(paths, PathType.Subject, true);
+	public void addOpenSubjects(PathsD paths) {
+		addPaths(paths, PathType.Subject, true);
 	}
 
-	public void AddClips(PathsD paths) {
-		AddPaths(paths, PathType.Clip);
+	public void addClips(PathsD paths) {
+		addPaths(paths, PathType.Clip);
 	}
 
-	public boolean Execute(ClipType clipType, FillRule fillRule, PathsD solutionClosed, PathsD solutionOpen) {
+	public boolean execute(ClipType clipType, FillRule fillRule, PathsD solutionClosed, PathsD solutionOpen) {
 		Paths64 solClosed64 = new Paths64(), solOpen64 = new Paths64();
 
 		boolean success = true;
@@ -95,22 +95,22 @@ public class ClipperD extends ClipperBase {
 
 		solutionClosed.ensureCapacity(solClosed64.size());
 		for (Path64 path : solClosed64) {
-			solutionClosed.add(Clipper.ScalePathD(path, invScale));
+			solutionClosed.add(Clipper.scalePathD(path, invScale));
 		}
 		solutionOpen.ensureCapacity(solOpen64.size());
 		for (Path64 path : solOpen64) {
-			solutionOpen.add(Clipper.ScalePathD(path, invScale));
+			solutionOpen.add(Clipper.scalePathD(path, invScale));
 		}
 
 		return true;
 	}
 
-	public boolean Execute(ClipType clipType, FillRule fillRule, PathsD solutionClosed) {
-		return Execute(clipType, fillRule, solutionClosed, new PathsD());
+	public boolean execute(ClipType clipType, FillRule fillRule, PathsD solutionClosed) {
+		return execute(clipType, fillRule, solutionClosed, new PathsD());
 	}
 
-	public boolean Execute(ClipType clipType, FillRule fillRule, PolyTreeD polytree, PathsD openPaths) {
-		polytree.Clear();
+	public boolean execute(ClipType clipType, FillRule fillRule, PolyTreeD polytree, PathsD openPaths) {
+		polytree.clear();
 		polytree.setScale(invScale);
 		openPaths.clear();
 		Paths64 oPaths = new Paths64();
@@ -130,13 +130,13 @@ public class ClipperD extends ClipperBase {
 		}
 		openPaths.ensureCapacity(oPaths.size());
 		for (Path64 path : oPaths) {
-			openPaths.add(Clipper.ScalePathD(path, invScale));
+			openPaths.add(Clipper.scalePathD(path, invScale));
 		}
 		return true;
 	}
 
-	public boolean Execute(ClipType clipType, FillRule fillRule, PolyTreeD polytree) {
-		return Execute(clipType, fillRule, polytree, new PathsD());
+	public boolean execute(ClipType clipType, FillRule fillRule, PolyTreeD polytree) {
+		return execute(clipType, fillRule, polytree, new PathsD());
 	}
 
 }

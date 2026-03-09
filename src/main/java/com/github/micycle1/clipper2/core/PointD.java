@@ -42,7 +42,7 @@ public final class PointD {
 		this.y = y;
 	}
 
-	public void Negate() {
+	public void negate() {
 		x = -x;
 		y = -y;
 	}
@@ -53,11 +53,11 @@ public final class PointD {
 	}
 
 	public static boolean opEquals(PointD lhs, PointD rhs) {
-		return InternalClipper.IsAlmostZero(lhs.x - rhs.x) && InternalClipper.IsAlmostZero(lhs.y - rhs.y);
+		return InternalClipper.isAlmostZero(lhs.x - rhs.x) && InternalClipper.isAlmostZero(lhs.y - rhs.y);
 	}
 
 	public static boolean opNotEquals(PointD lhs, PointD rhs) {
-		return !InternalClipper.IsAlmostZero(lhs.x - rhs.x) || !InternalClipper.IsAlmostZero(lhs.y - rhs.y);
+		return !InternalClipper.isAlmostZero(lhs.x - rhs.x) || !InternalClipper.isAlmostZero(lhs.y - rhs.y);
 	}
 
 	@Override

@@ -32,13 +32,13 @@ class TestPolygons {
 		Paths64 solution = new Paths64();
 		Paths64 solution_open = new Paths64();
 
-		c64.AddSubject(test.subj());
-		c64.AddOpenSubject(test.subj_open());
-		c64.AddClip(test.clip());
-		c64.Execute(test.clipType(), test.fillRule(), solution, solution_open);
+		c64.addSubject(test.subj());
+		c64.addOpenSubject(test.subj_open());
+		c64.addClip(test.clip());
+		c64.execute(test.clipType(), test.fillRule(), solution, solution_open);
 
 		int measuredCount = solution.size();
-		long measuredArea = (long) Clipper.Area(solution);
+		long measuredArea = (long) Clipper.area(solution);
 		int storedCount = test.count();
 		long storedArea = test.area();
 		int countDiff = storedCount > 0 ? Math.abs(storedCount - measuredCount) : 0;
@@ -88,15 +88,15 @@ class TestPolygons {
 	@Test
 	void TestCollinearOnMacOs() { // #777
 		Paths64 subject = new Paths64();
-		subject.add(Clipper.MakePath(new long[] { 0, -453054451, 0, -433253797, -455550000, 0 }));
-		subject.add(Clipper.MakePath(new long[] { 0, -433253797, 0, 0, -455550000, 0 }));
+		subject.add(Clipper.makePath(new long[] { 0, -453054451, 0, -433253797, -455550000, 0 }));
+		subject.add(Clipper.makePath(new long[] { 0, -433253797, 0, 0, -455550000, 0 }));
 		Clipper64 clipper = new Clipper64();
 		clipper.setPreserveCollinear(false);
-		clipper.AddSubject(subject);
+		clipper.addSubject(subject);
 		Paths64 solution = new Paths64();
-		clipper.Execute(ClipType.Union, FillRule.NonZero, solution);
+		clipper.execute(ClipType.Union, FillRule.NonZero, solution);
 		assertEquals(1, solution.size());
 		assertEquals(3, solution.get(0).size());
-		assertEquals(Clipper.IsPositive(subject.get(0)), Clipper.IsPositive(solution.get(0)));
+		assertEquals(Clipper.isPositive(subject.get(0)), Clipper.isPositive(solution.get(0)));
 	}
 }

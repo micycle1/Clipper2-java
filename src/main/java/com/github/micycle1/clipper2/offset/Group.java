@@ -27,7 +27,7 @@ class Group {
 		inPaths = new Paths64(paths.size());
 
 		for (Path64 path : paths) {
-			inPaths.add(Clipper.StripDuplicates(path, isJoined));
+			inPaths.add(Clipper.stripDuplicates(path, isJoined));
 		}
 
 		if (endType == EndType.Polygon) {
@@ -59,7 +59,7 @@ class Group {
 					continue;
 				}
 				if (area == Double.MAX_VALUE) {
-					area = Clipper.Area(paths.get(i));
+					area = Clipper.area(paths.get(i));
 					if (area == 0) {
 						break; // invalid closed path
 					}

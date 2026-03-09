@@ -12,35 +12,35 @@ public final class Minkowski {
 	private Minkowski() {
 	}
 
-	public static Paths64 Sum(Path64 pattern, Path64 path, boolean isClosed) {
-		return Clipper.Union(MinkowskiInternal(pattern, path, true, isClosed), FillRule.NonZero);
+	public static Paths64 sum(Path64 pattern, Path64 path, boolean isClosed) {
+		return Clipper.union(MinkowskiInternal(pattern, path, true, isClosed), FillRule.NonZero);
 	}
 
-	public static PathsD Sum(PathD pattern, PathD path, boolean isClosed) {
-		return Sum(pattern, path, isClosed, 2);
+	public static PathsD sum(PathD pattern, PathD path, boolean isClosed) {
+		return sum(pattern, path, isClosed, 2);
 	}
 
-	public static PathsD Sum(PathD pattern, PathD path, boolean isClosed, int decimalPlaces) {
+	public static PathsD sum(PathD pattern, PathD path, boolean isClosed, int decimalPlaces) {
 		double scale = Math.pow(10, decimalPlaces);
-		Paths64 tmp = Clipper.Union(
-				MinkowskiInternal(Clipper.ScalePath64(pattern, scale), Clipper.ScalePath64(path, scale), true, isClosed), FillRule.NonZero);
-		return Clipper.ScalePathsD(tmp, 1 / scale);
+		Paths64 tmp = Clipper.union(
+				MinkowskiInternal(Clipper.scalePath64(pattern, scale), Clipper.scalePath64(path, scale), true, isClosed), FillRule.NonZero);
+		return Clipper.scalePathsD(tmp, 1 / scale);
 	}
 
-	public static Paths64 Diff(Path64 pattern, Path64 path, boolean isClosed) {
-		return Clipper.Union(MinkowskiInternal(pattern, path, false, isClosed), FillRule.NonZero);
+	public static Paths64 diff(Path64 pattern, Path64 path, boolean isClosed) {
+		return Clipper.union(MinkowskiInternal(pattern, path, false, isClosed), FillRule.NonZero);
 	}
 
-	public static PathsD Diff(PathD pattern, PathD path, boolean isClosed) {
-		return Diff(pattern, path, isClosed, 2);
+	public static PathsD diff(PathD pattern, PathD path, boolean isClosed) {
+		return diff(pattern, path, isClosed, 2);
 	}
 
-	public static PathsD Diff(PathD pattern, PathD path, boolean isClosed, int decimalPlaces) {
+	public static PathsD diff(PathD pattern, PathD path, boolean isClosed, int decimalPlaces) {
 		double scale = Math.pow(10, decimalPlaces);
-		Paths64 tmp = Clipper.Union(
-				MinkowskiInternal(Clipper.ScalePath64(pattern, scale), Clipper.ScalePath64(path, scale), false, isClosed),
+		Paths64 tmp = Clipper.union(
+				MinkowskiInternal(Clipper.scalePath64(pattern, scale), Clipper.scalePath64(path, scale), false, isClosed),
 				FillRule.NonZero);
-		return Clipper.ScalePathsD(tmp, 1 / scale);
+		return Clipper.scalePathsD(tmp, 1 / scale);
 	}
 
 	private static Paths64 MinkowskiInternal(Path64 pattern, Path64 path, boolean isSum, boolean isClosed) {
@@ -69,8 +69,8 @@ public final class Minkowski {
 		for (int i = delta; i < pathLen; i++) {
 			for (int j = 0; j < patLen; j++) {
 				Path64 quad = new Path64(tmp.get(g).get(h), tmp.get(i).get(h), tmp.get(i).get(j), tmp.get(g).get(j));
-				if (!Clipper.IsPositive(quad)) {
-					result.add(Clipper.ReversePath(quad));
+				if (!Clipper.isPositive(quad)) {
+					result.add(Clipper.reversePath(quad));
 				} else {
 					result.add(quad);
 				}

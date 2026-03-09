@@ -22,7 +22,7 @@ public class PolyPath64 extends PolyPathBase {
 	}
 
 	@Override
-	public PolyPathBase AddChild(Path64 p) {
+	public PolyPathBase addChild(Path64 p) {
 		PolyPath64 newChild = new PolyPath64(this);
 		newChild.setPolygon(p);
 		children.add(newChild);
@@ -36,11 +36,11 @@ public class PolyPath64 extends PolyPathBase {
 		return (PolyPath64) children.get(index);
 	}
 
-	public final double Area() {
-		double result = getPolygon() == null ? 0 : Clipper.Area(getPolygon());
+	public final double area() {
+		double result = getPolygon() == null ? 0 : Clipper.area(getPolygon());
 		for (PolyPathBase polyPathBase : children) {
 			PolyPath64 child = (PolyPath64) polyPathBase;
-			result += child.Area();
+			result += child.area();
 		}
 		return result;
 	}
