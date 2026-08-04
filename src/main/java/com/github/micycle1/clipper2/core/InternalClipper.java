@@ -26,6 +26,25 @@ public final class InternalClipper {
 		return (Math.abs(value) <= FLOATING_POINT_TOLERANCE);
 	}
 
+	/**
+	 * Rounds to the nearest long, with midpoints rounded away from zero. This
+	 * matches <code>Math.Round(v, MidpointRounding.AwayFromZero)</code>, which the
+	 * reference C# implementation uses whenever floating point coordinates are
+	 * converted into integer ones. (Where the reference instead rounds half to
+	 * even, to match the C++ <code>nearbyint</code> behaviour, this port uses
+	 * {@link Math#rint}.)
+	 */
+	public static long round(double value) {
+		// Math.rint is a single machine instruction but breaks ties to even, so
+		// correct the (rare) exact-midpoint case: when rint has rounded towards
+		// zero, away-from-zero wants the other neighbour.
+		double r = Math.rint(value);
+		if (value - r == Math.copySign(0.5, value)) {
+			r += Math.copySign(1.0, value);
+		}
+		return (long) r;
+	}
+
 	public static double crossProduct(Point64 pt1, Point64 pt2, Point64 pt3) {
 		// typecast to double to avoid potential int overflow
 		return ((double) (pt2.x - pt1.x) * (pt3.y - pt2.y) - (double) (pt2.y - pt1.y) * (pt3.x - pt2.x));
@@ -73,7 +92,7 @@ public final class InternalClipper {
 		if ((val >= MAX_COORD) || (val <= MIN_COORD)) {
 			return Invalid64;
 		}
-		return (long) Math.rint(val);
+		return round(val);
 	}
 
 	public static boolean getLineIntersectPt(Point64 ln1a, Point64 ln1b, Point64 ln2a, Point64 ln2b, /* out */ Point64 ip) {
@@ -151,21 +170,58 @@ public final class InternalClipper {
 	}
 
 	public static boolean segsIntersect(Point64 seg1a, Point64 seg1b, Point64 seg2a, Point64 seg2b, boolean inclusive) {
-		if (inclusive) {
-			double res1 = crossProduct(seg1a, seg2a, seg2b);
-			double res2 = crossProduct(seg1b, seg2a, seg2b);
-			if (res1 * res2 > 0) {
-				return false;
-			}
-			double res3 = crossProduct(seg2a, seg1a, seg1b);
-			double res4 = crossProduct(seg2b, seg1a, seg1b);
-			if (res3 * res4 > 0) {
-				return false;
-			}
-			return (res1 != 0 || res2 != 0 || res3 != 0 || res4 != 0);
+		double dy1 = (seg1b.y - seg1a.y);
+		double dx1 = (seg1b.x - seg1a.x);
+		double dy2 = (seg2b.y - seg2a.y);
+		double dx2 = (seg2b.x - seg2a.x);
+		double cp = dy1 * dx2 - dy2 * dx1;
+		if (cp == 0) {
+			return false; // parallel (and collinear) segments never 'intersect'
 		}
-		return (crossProduct(seg1a, seg2a, seg2b) * crossProduct(seg1b, seg2a, seg2b) < 0)
-				&& (crossProduct(seg2a, seg1a, seg1b) * crossProduct(seg2b, seg1a, seg1b) < 0);
+
+		if (inclusive) {
+			double t = ((seg1a.x - seg2a.x) * dy2 - (seg1a.y - seg2a.y) * dx2);
+			if (t == 0) {
+				return true;
+			}
+			if (t > 0) {
+				if (cp < 0 || t > cp) {
+					return false;
+				}
+			} else if (cp > 0 || t < cp) {
+				return false;
+			}
+
+			t = ((seg1a.x - seg2a.x) * dy1 - (seg1a.y - seg2a.y) * dx1);
+			if (t == 0) {
+				return true;
+			}
+			if (t > 0) {
+				return (cp > 0 && t <= cp);
+			}
+			return (cp < 0 && t >= cp);
+		}
+
+		double t = ((seg1a.x - seg2a.x) * dy2 - (seg1a.y - seg2a.y) * dx2);
+		if (t == 0) {
+			return false;
+		}
+		if (t > 0) {
+			if (cp < 0 || t >= cp) {
+				return false;
+			}
+		} else if (cp > 0 || t <= cp) {
+			return false;
+		}
+
+		t = ((seg1a.x - seg2a.x) * dy1 - (seg1a.y - seg2a.y) * dx1);
+		if (t == 0) {
+			return false;
+		}
+		if (t > 0) {
+			return (cp > 0 && t < cp);
+		}
+		return (cp < 0 && t > cp);
 	}
 
 	public static Point64 getClosestPtOnSegment(Point64 offPt, Point64 seg1, Point64 seg2) {

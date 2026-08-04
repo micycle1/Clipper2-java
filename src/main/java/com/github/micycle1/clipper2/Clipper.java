@@ -780,8 +780,8 @@ public final class Clipper {
 
 	public static Point64 scalePoint64(Point64 pt, double scale) {
 		Point64 result = new Point64();
-		result.x = (long) Math.rint(pt.x * scale);
-		result.y = (long) Math.rint(pt.y * scale);
+		result.x = InternalClipper.round(pt.x * scale);
+		result.y = InternalClipper.round(pt.y * scale);
 		return result;
 	}
 

@@ -30,31 +30,31 @@ public final class Point64 {
 	}
 
 	public Point64(double x, double y) {
-		this.x = (long) Math.rint(x);
-		this.y = (long) Math.rint(y);
+		this.x = InternalClipper.round(x);
+		this.y = InternalClipper.round(y);
 	}
 
 	public Point64(PointD pt) {
-		x = (long) Math.rint(pt.x);
-		y = (long) Math.rint(pt.y);
+		x = InternalClipper.round(pt.x);
+		y = InternalClipper.round(pt.y);
 	}
 
 	public Point64(Point64 pt, double scale) {
-		x = (long) Math.rint(pt.x * scale);
-		y = (long) Math.rint(pt.y * scale);
+		x = InternalClipper.round(pt.x * scale);
+		y = InternalClipper.round(pt.y * scale);
 	}
 
 	public Point64(PointD pt, double scale) {
-		x = (long) Math.rint(pt.x * scale);
-		y = (long) Math.rint(pt.y * scale);
+		x = InternalClipper.round(pt.x * scale);
+		y = InternalClipper.round(pt.y * scale);
 	}
 
 	public void setX(double x) {
-		this.x = (long) Math.rint(x);
+		this.x = InternalClipper.round(x);
 	}
 
 	public void setY(double y) {
-		this.y = (long) Math.rint(y);
+		this.y = InternalClipper.round(y);
 	}
 	
 	/**

@@ -819,10 +819,10 @@ public class RectClip64 {
 				j++;
 				continue;
 			}
-			boolean rejoin = p1a.ownerIdx != p2.ownerIdx;
+			boolean rejoin = cw.get(i).ownerIdx != ccw.get(j).ownerIdx;
 			if (rejoin) {
 				results_.set(p2.ownerIdx, null);
-				setNewOwner(p2, p1a.ownerIdx);
+				setNewOwner(p2, p1.ownerIdx);
 			}
 			if (cwL) {
 				p1.next = p2;
@@ -861,27 +861,27 @@ public class RectClip64 {
 			if (o.next == o.prev || o.pt.equals(o.prev.pt)) {
 				if (o2L == cwL) {
 					cw.set(i, o2);
-					ccw.set(j, null);
+					ccw.set(j++, null);
 				} else {
 					ccw.set(j, o2);
-					cw.set(i, null);
+					cw.set(i++, null);
 				}
 			} else if (o2.next == o2.prev || o2.pt.equals(o2.prev.pt)) {
 				if (oL == cwL) {
 					cw.set(i, o);
-					ccw.set(j, null);
+					ccw.set(j++, null);
 				} else {
 					ccw.set(j, o);
-					cw.set(i, null);
+					cw.set(i++, null);
 				}
 			} else if (oL == o2L) {
 				if (oL == cwL) {
 					cw.set(i, o);
 					uncoupleEdge(o2);
 					addToEdge(cw, o2);
-					ccw.set(j, null);
+					ccw.set(j++, null);
 				} else {
-					cw.set(i, null);
+					cw.set(i++, null);
 					ccw.set(j, o2);
 					uncoupleEdge(o);
 					addToEdge(ccw, o);

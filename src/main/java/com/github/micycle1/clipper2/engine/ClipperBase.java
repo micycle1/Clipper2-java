@@ -2152,11 +2152,13 @@ abstract class ClipperBase {
 				if (isLeftToRight) {
 					IntersectEdges(horz, ae, pt);
 					SwapPositionsInAEL(horz, ae);
+					CheckJoinLeft(ae, pt);
 					horz.curX = ae.curX;
 					ae = horz.nextInAEL;
 				} else {
 					IntersectEdges(ae, horz, pt);
 					SwapPositionsInAEL(ae, horz);
+					CheckJoinRight(ae, pt);
 					horz.curX = ae.curX;
 					ae = horz.prevInAEL;
 				}
@@ -2863,17 +2865,24 @@ abstract class ClipperBase {
 
 	private void FixSelfIntersects(OutRec outrec) {
 		OutPt op2 = outrec.pts;
+		// triangles can't self-intersect
+		if (op2.prev == op2.next.next) {
+			return;
+		}
 		for (;;) {
-			// triangles can't self-intersect
-			if (op2.prev == op2.next.next) {
-				break;
-			}
 			if (InternalClipper.segsIntersect(op2.prev.pt, op2.pt, op2.next.pt, op2.next.next.pt)) {
+				if (op2 == outrec.pts || op2.next == outrec.pts) {
+					outrec.pts = outrec.pts.prev;
+				}
 				DoSplitOp(outrec, op2);
 				if (outrec.pts == null) {
 					return;
 				}
 				op2 = outrec.pts;
+				// triangles can't self-intersect
+				if (op2.prev == op2.next.next) {
+					break;
+				}
 				continue;
 			}
 			op2 = op2.next;
