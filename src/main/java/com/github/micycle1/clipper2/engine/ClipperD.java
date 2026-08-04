@@ -205,6 +205,7 @@ public class ClipperD extends ClipperBase {
 		polytree.clear();
 		polytree.setScale(invScale);
 		openPaths.clear();
+		usingPolytree = true;
 		Paths64 oPaths = new Paths64();
 		boolean success = true;
 		try {

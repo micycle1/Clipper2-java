@@ -19,12 +19,15 @@ import com.github.micycle1.clipper2.core.ClipType;
 import com.github.micycle1.clipper2.core.FillRule;
 import com.github.micycle1.clipper2.core.Path64;
 import com.github.micycle1.clipper2.core.Paths64;
+import com.github.micycle1.clipper2.core.PathsD;
 import com.github.micycle1.clipper2.core.Point64;
 import com.github.micycle1.clipper2.engine.Clipper64;
+import com.github.micycle1.clipper2.engine.ClipperD;
 import com.github.micycle1.clipper2.engine.PointInPolygonResult;
 import com.github.micycle1.clipper2.engine.PolyPath64;
 import com.github.micycle1.clipper2.engine.PolyPathBase;
 import com.github.micycle1.clipper2.engine.PolyTree64;
+import com.github.micycle1.clipper2.engine.PolyTreeD;
 
 class TestPolytree {
 
@@ -260,6 +263,38 @@ class TestPolytree {
 
 		assertEquals(1, solution.getCount());
 		assertEquals(1, solution.get(0).getCount());
+	}
+
+	@Test
+	void TestPolytreeDUnion() { // #38
+		// ClipperD.execute() with a PolyTreeD solution must set usingPolytree, otherwise
+		// owner cycles form and RecursiveCheckOwners overflows the stack.
+		PathsD subject = new PathsD();
+		subject.add(Clipper.makePath(new double[] { 18000.000000, 2816.225830, -18000.000000, 2816.225830, -18000.000000, -2202.873535, 18000.000000,
+				-2202.873535 }));
+		subject.add(Clipper.makePath(new double[] { -9032.000000, 3820.046631, -9032.000000, 2816.225830, -5968.000000, 2816.225830, -5967.999512,
+				3820.046875 }));
+		subject.add(Clipper.makePath(new double[] { 5968.000488, 3820.046143, 5968.000000, 2816.225830, 9032.000000, 2816.225830, 9032.000000,
+				3820.046143 }));
+
+		ClipperD clipper = new ClipperD(0);
+		clipper.addSubjects(subject);
+		PolyTreeD solution = new PolyTreeD();
+		PathsD openPaths = new PathsD();
+
+		assertTrue(clipper.execute(ClipType.Union, FillRule.NonZero, solution, openPaths));
+
+		assertEquals(0, openPaths.size());
+		// the three rectangles abut along y = 2816.22583, so they union into a single
+		// outer polygon with no holes
+		assertEquals(1, solution.getCount());
+		assertEquals(0, solution.get(0).getCount());
+		assertEquals(12, solution.get(0).getPolygon().size());
+
+		// 36000 x 5019 base, plus two 3064 x 1004 tabs
+		double expectedArea = 36000d * 5019 + 2 * (3064d * 1004);
+		assertEquals(expectedArea, Clipper.area(Clipper.polyTreeToPathsD(solution)), 0.0001);
+		assertEquals(expectedArea, solution.area(), 0.0001);
 	}
 
 	@Test
